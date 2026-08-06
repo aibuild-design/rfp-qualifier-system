@@ -30,11 +30,13 @@
   --rfp-gold-bright: #f2c94c;
   --rfp-cream: #f5f2ea;
 
-  /* status (fixed, never themed) */
+  /* status (fixed, never themed — kept distinct from --rfp-gold so verdict/
+     deadline badges don't visually blend with the brand accent) */
   --rfp-good: #1b8a5a;
-  --rfp-warning: #c9a227;
+  --rfp-warning: #d9962c;
   --rfp-serious: #d97a3a;
   --rfp-critical: #c23b3b;
+  --rfp-neutral: #8f8d84;
 
   --background: var(--rfp-page);
   --foreground: var(--rfp-ink);
@@ -61,6 +63,7 @@
   --color-rfp-warning: var(--rfp-warning);
   --color-rfp-serious: var(--rfp-serious);
   --color-rfp-critical: var(--rfp-critical);
+  --color-rfp-neutral: var(--rfp-neutral);
   --font-sans: var(--font-inter);
   --font-display: var(--font-inter);
 }
