@@ -1,26 +1,81 @@
 @import "tailwindcss";
 
+/*
+  Caravann brand system, pulled from caravann.co: near-black ink on white,
+  minimal color usage, single gold/yellow accent, generous whitespace,
+  card-based sections. Token/layout architecture mirrors the sibling
+  dashboard at /Users/danielmatias/Documents/Codess/Client/Jonathan/
+  signal-based-scrapper — same pattern, different brand hues + domain.
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* surfaces */
+  --rfp-page: #fafafa;
+  --rfp-surface: #ffffff;
+  --rfp-surface-sunken: #f2f2f0;
+  --rfp-border: #e7e5e1;
+  --rfp-border-strong: #d4d1ca;
+
+  /* ink */
+  --rfp-ink: #0a0a0a;
+  --rfp-ink-secondary: #52524d;
+  --rfp-ink-muted: #8f8d84;
+
+  /* brand */
+  --rfp-black: #0a0a0a;
+  --rfp-black-2: #1a1a18;
+  --rfp-black-3: #151513;
+  --rfp-gold: #c9a227;
+  --rfp-gold-bright: #f2c94c;
+  --rfp-cream: #f5f2ea;
+
+  /* status (fixed, never themed) */
+  --rfp-good: #1b8a5a;
+  --rfp-warning: #c9a227;
+  --rfp-serious: #d97a3a;
+  --rfp-critical: #c23b3b;
+
+  --background: var(--rfp-page);
+  --foreground: var(--rfp-ink);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-rfp-page: var(--rfp-page);
+  --color-rfp-surface: var(--rfp-surface);
+  --color-rfp-surface-sunken: var(--rfp-surface-sunken);
+  --color-rfp-border: var(--rfp-border);
+  --color-rfp-border-strong: var(--rfp-border-strong);
+  --color-rfp-ink: var(--rfp-ink);
+  --color-rfp-ink-secondary: var(--rfp-ink-secondary);
+  --color-rfp-ink-muted: var(--rfp-ink-muted);
+  --color-rfp-black: var(--rfp-black);
+  --color-rfp-black-2: var(--rfp-black-2);
+  --color-rfp-black-3: var(--rfp-black-3);
+  --color-rfp-gold: var(--rfp-gold);
+  --color-rfp-gold-bright: var(--rfp-gold-bright);
+  --color-rfp-cream: var(--rfp-cream);
+  --color-rfp-good: var(--rfp-good);
+  --color-rfp-warning: var(--rfp-warning);
+  --color-rfp-serious: var(--rfp-serious);
+  --color-rfp-critical: var(--rfp-critical);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-inter);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+::selection {
+  background: var(--rfp-gold);
+  color: #0a0a0a;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
