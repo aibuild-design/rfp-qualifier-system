@@ -27,21 +27,23 @@ the verdicts.
 
 ## Setup
 
-Two credentials, both **Header Auth**, created once in the n8n UI:
-
-| Credential name | Header | Value |
-| --- | --- | --- |
-| `Bid Desk API key` | `Authorization` | `Bearer <RFP_INTAKE_API_KEY>` |
-| `OpenRouter API key` | `Authorization` | `Bearer <OPENROUTER_API_KEY>` |
-
-One env var on the n8n instance: `BID_DESK_URL` → the deployed app's origin.
-
-Then:
-
 ```bash
 npm run n8n:validate   # check the graph parses and every connection resolves
-npm run n8n:deploy     # create or update the workflow (needs N8N_BASE_URL + N8N_API_KEY)
+npm run n8n:deploy     # create/update the workflow and its credentials
 ```
+
+`n8n:deploy` creates two Header Auth credentials on first run — `Bid Desk API
+key` and `OpenRouter API key`, both `Authorization: Bearer <secret>` — from
+`RFP_INTAKE_API_KEY` and `OPENROUTER_API_KEY` in `.env.local`, then writes
+their ids back to `.env.local` as `N8N_CRED_*_ID`. The repo JSON references
+them by placeholder id and the script swaps in the real ones at deploy time,
+so the committed workflow stays instance-agnostic. n8n's public API cannot
+list credentials — if those `N8N_CRED_*_ID` lines are lost, the next deploy
+creates duplicates rather than reusing what's there.
+
+One thing the script can't set: the `BID_DESK_URL` env var on the n8n
+instance, pointing at the deployed app's origin. Set that in the n8n UI before
+activating the workflow.
 
 ## Calling it
 

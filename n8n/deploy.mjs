@@ -8,12 +8,15 @@
 //
 // Needs N8N_BASE_URL and N8N_API_KEY in .env.local.
 //
-// Credentials are NOT deployed — the workflow references two by name
-// ("Bid Desk API key", "OpenRouter API key") that must exist in the target
-// n8n instance. Creating them from here would mean writing secrets through
-// the API; they're better created once in the UI.
+// The workflow JSON stays instance-agnostic: its nodes reference credentials
+// by placeholder id (BID_DESK_API_KEY, OPENROUTER_API_KEY), and this script
+// swaps in the target instance's real credential ids at deploy time.
+//
+// n8n's public API has no "list credentials" endpoint, so created ids are
+// recorded back into .env.local (N8N_CRED_*_ID) and reused — otherwise every
+// deploy would create another duplicate credential.
 
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -89,6 +92,8 @@ async function main() {
     process.exit(1);
   }
 
+  await resolveCredentials(payload);
+
   const existing = await api("/workflows?limit=250");
   const match = (existing.data ?? []).find((w) => w.name === payload.name);
 
@@ -100,10 +105,68 @@ async function main() {
     console.log(`✓ Created workflow ${created.id}`);
   }
 
-  console.log("\nBefore activating, confirm in the n8n UI:");
-  console.log("  · credential 'Bid Desk API key'   — header Authorization: Bearer <RFP_INTAKE_API_KEY>");
-  console.log("  · credential 'OpenRouter API key' — header Authorization: Bearer <OPENROUTER_API_KEY>");
-  console.log("  · env var BID_DESK_URL points at the deployed app");
+  console.log("\nStill set by hand in the n8n UI: env var BID_DESK_URL → the deployed app's origin.");
+}
+
+// Placeholder credential id in the repo JSON → { env var holding the secret,
+// the .env.local key where the created id is remembered }.
+const CREDENTIALS = {
+  BID_DESK_API_KEY: { secretEnv: "RFP_INTAKE_API_KEY", idEnv: "N8N_CRED_BIDDESK_ID" },
+  OPENROUTER_API_KEY: { secretEnv: "OPENROUTER_API_KEY", idEnv: "N8N_CRED_OPENROUTER_ID" },
+};
+
+async function resolveCredentials(payload) {
+  for (const [placeholder, { secretEnv, idEnv }] of Object.entries(CREDENTIALS)) {
+    // Nodes carrying this placeholder — skip the API call entirely if unused.
+    const nodes = payload.nodes.filter((n) =>
+      Object.values(n.credentials ?? {}).some((c) => c.id === placeholder)
+    );
+    if (!nodes.length) continue;
+
+    let id = process.env[idEnv];
+
+    if (!id) {
+      const secret = process.env[secretEnv];
+      if (!secret) throw new Error(`${secretEnv} must be set to create the "${placeholder}" credential`);
+
+      const name = nodes[0].credentials.httpHeaderAuth.name;
+      const created = await api("/credentials", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          type: "httpHeaderAuth",
+          data: { name: "Authorization", value: `Bearer ${secret}` },
+        }),
+      });
+      id = created.id;
+      console.log(`✓ Created credential "${name}" (${id})`);
+      await rememberId(idEnv, id);
+    }
+
+    for (const node of nodes) {
+      for (const cred of Object.values(node.credentials)) {
+        if (cred.id === placeholder) cred.id = id;
+      }
+    }
+  }
+}
+
+// n8n's public API can't list credentials, so a created id has to be
+// remembered locally or the next deploy silently makes a duplicate.
+async function rememberId(key, id) {
+  const path = join(HERE, "..", ".env.local");
+  let raw = "";
+  try {
+    raw = await readFile(path, "utf8");
+  } catch {
+    // no .env.local — nothing to append to, the id just isn't cached
+    return;
+  }
+  const line = `${key}=${id}`;
+  const next = new RegExp(`^${key}=.*$`, "m").test(raw)
+    ? raw.replace(new RegExp(`^${key}=.*$`, "m"), line)
+    : `${raw.replace(/\n*$/, "")}\n${line}\n`;
+  await writeFile(path, next);
 }
 
 main().catch((err) => {

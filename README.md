@@ -30,31 +30,34 @@ service-role key.
 
 | Piece | State |
 | --- | --- |
-| Auth (login, reset, session gate) | built |
-| RFP queue + detail view | built, reads live data |
-| Settings (eligibility profile, sector map, team roster) | built, writes live data |
-| Schema | written as migrations, **not yet applied** — no Supabase project attached |
-| n8n intake + triage workflow | built and tested against fixtures, **not yet deployed** |
+| Auth (login, reset, session gate) | built, live |
+| Schema | applied to Supabase — 13 tables, RLS on every one |
+| RFP queue + detail view | built, verified against live data |
+| Settings (eligibility profile, sector map, team roster) | built, live |
+| n8n intake + triage workflow | deployed, credentials wired, **not yet activated** |
+| Eligibility profile + sector map contents | **empty — Khaled has to fill these in** |
 | Proposal assembly, filing, team match, weekly digest | not built |
 
-The triage engine is tested end to end against OpenRouter (3/3 fixtures,
-`npm run triage:test`). Everything downstream of Supabase is untested against a
-live database, because there isn't one yet.
+Verified: 3/3 triage fixtures (`npm run triage:test`) and 27/27 end-to-end
+assertions (`npm run e2e`) covering triage → intake → Supabase → the
+dashboard's own queries, including upsert idempotency on re-triage.
+
+**Before trusting any verdict**, fill in the eligibility profile and sector
+experience map in Settings. They ship empty on purpose — those numbers are
+Caravann's to state, not ours to guess — and until they're in, the
+disqualifier gate has nothing to check against and will rule out work
+Caravann is strong in. The dashboard shows a warning banner until then.
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in Supabase URL + keys, OpenRouter key
+cp .env.example .env.local   # Supabase URL + keys, OpenRouter key, DB host/password
+npm run migrate              # apply pending migrations (idempotent)
 npm run dev
 ```
 
-Then, against a real Supabase project, run both migrations in
-`supabase/migrations/` in filename order (SQL editor or CLI):
-
-1. `20260806000000_init_profiles.sql` — profiles table + auth trigger
-2. `20260806010000_rfp_domain_schema.sql` — the RFP domain (verdicts, gaps,
-   compliance, disqualifiers, questions, sector map, roster)
+`npm run migrate:status` lists applied vs pending without changing anything.
 
 ## The dashboard
 
@@ -73,6 +76,15 @@ Then, against a real Supabase project, run both migrations in
 
 See [`n8n/README.md`](n8n/README.md) for the workflow, its two credentials,
 deploy commands, and the fixture test suite.
+
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm run migrate` / `migrate:status` | apply / list migrations |
+| `npm run triage:test` | 3 fixture solicitations through real OpenRouter, asserts verdicts |
+| `npm run e2e` | full path against live Supabase; `-- --keep` leaves a demo RFP in the queue |
+| `npm run n8n:validate` / `n8n:deploy` | validate / push the workflow |
 
 ## Not in Phase 1
 

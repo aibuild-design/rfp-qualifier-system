@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { StatCard } from "@/components/StatCard";
+import { ProfileIncompleteBanner } from "@/components/ProfileIncompleteBanner";
 import { ChartIcon, CheckCircleIcon, ClockIcon, DocumentIcon } from "@/components/icons";
 import { daysUntil, deadlineColor, formatBudget, formatDate, isoDaysFromNow } from "@/lib/rfp";
 
@@ -40,10 +41,16 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     .not("due_at", "is", null)
     .lte("due_at", isoDaysFromNow(7));
 
+  const { count: sectorCount } = await supabase
+    .from("sector_experience")
+    .select("*", { count: "exact", head: true });
+
   const rows = rfps ?? [];
 
   return (
     <div className="mx-auto max-w-6xl">
+      {!sectorCount && <ProfileIncompleteBanner />}
+
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-semibold text-rfp-ink">RFP queue</h1>
