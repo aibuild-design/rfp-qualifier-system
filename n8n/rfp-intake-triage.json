@@ -1,0 +1,222 @@
+{
+  "name": "RFP Bid Desk — Intake & Triage",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rfp-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-intake",
+      "name": "Intake webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-620, 300],
+      "webhookId": "rfp-intake",
+      "notes": "POST { external_id, title?, client_agency?, source?, source_url?, document_url? | document_text? }. document_url is fetched and text-extracted; document_text is used as-is."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "bid_desk_url",
+              "value": "={{ $env.BID_DESK_URL || 'http://localhost:3000' }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "model",
+              "value": "anthropic/claude-sonnet-5",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "payload",
+              "value": "={{ $json.body }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-400, 300],
+      "notes": "1M-context model so a full solicitation goes in whole — no chunking, which is what keeps a page-52 disqualifier from being missed."
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.bid_desk_url }}/api/rfps/context",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "load-context",
+      "name": "Load triage context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-180, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BID_DESK_API_KEY",
+          "name": "Bid Desk API key"
+        }
+      },
+      "notes": "Caravann's eligibility profile + sector map, straight from what Khaled confirmed in Settings. The gate is only as good as this."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "version": 2 },
+          "conditions": [
+            {
+              "id": "has-url",
+              "leftValue": "={{ $('Config').item.json.payload.document_url }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-url",
+      "name": "Document is a URL?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [40, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Config').item.json.payload.document_url }}",
+        "options": { "response": { "response": { "responseFormat": "file" } } }
+      },
+      "id": "download-doc",
+      "name": "Download solicitation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 200],
+      "notes": "Publicly posted solicitations only. Portal-gated ones are dropped in by hand as document_text — no portal logins in Phase 1."
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "data",
+        "options": {}
+      },
+      "id": "extract-pdf",
+      "name": "Extract PDF text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [480, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Assemble the triage prompt. Two passes in one call: the hard\n// disqualifier gate first, then capability overlap scoring — the order\n// matters, because a failed hard gate makes the score irrelevant.\n//\n// Everything Caravann-specific comes from the context endpoint, so\n// editing the sector map in Settings changes the verdicts. Nothing about\n// Caravann is hardcoded here.\n\nconst config = $('Config').first().json;\nconst context = $('Load triage context').first().json;\nconst payload = config.payload;\n\n// Either the extracted PDF text or the raw text posted in.\nconst extracted = $input.first().json;\nconst documentText = extracted.text || payload.document_text || '';\n\nif (!documentText.trim()) {\n  throw new Error('No document text — document_url produced no extractable text and no document_text was supplied.');\n}\n\nconst profile = context.org_profile || {};\nconst sectors = context.sector_experience || [];\nconst portalRules = context.portal_rules || [];\n\nconst profileBlock = [\n  `Bilingual staff: ${profile.bilingual_staff ? 'yes' : 'no'}`,\n  `Media production capability: ${profile.media_production_capable ? 'yes' : 'no'}`,\n  `PR capability: ${profile.pr_capable ? 'yes' : 'no'}`,\n  `Office locations: ${(profile.office_locations || []).join(', ') || 'none recorded'}`,\n  `Consultant locations: ${(profile.consultant_locations || []).join(', ') || 'none recorded'}`,\n  `Certifications: ${(profile.certifications || []).join(', ') || 'none recorded'}`,\n  `Set-aside status: ${(profile.set_aside_status || []).join(', ') || 'none'}`,\n  profile.notes ? `Notes: ${profile.notes}` : null,\n].filter(Boolean).join('\\n');\n\nconst sectorBlock = sectors.length\n  ? sectors.map(s => `- ${s.sector}: ${s.years_experience ?? '?'} years, ${s.engagement_count ?? '?'} engagements${s.notes ? ` (${s.notes})` : ''}`).join('\\n')\n  : 'No sector experience recorded yet.';\n\nconst portalBlock = portalRules.length\n  ? portalRules.map(r => `- ${r.portal_name}: ${r.rule_text}`).join('\\n')\n  : 'None recorded.';\n\nconst system = `You are the qualification engine for Caravann Consulting's RFP bid desk.\n\nYou read a full government solicitation and return a structured verdict. Caravann's principal reads your verdict INSTEAD OF the document, so a miss costs them either a wasted week or a lost bid. Be exact and be honest about uncertainty.\n\nHOW TO JUDGE\n\n1. HARD GATE FIRST. Walk every stated requirement in the solicitation. For each, decide whether Caravann meets it, using ONLY the profile below — never assume a capability that is not recorded.\n   - Requirement worded as REQUIRED/MUST/SHALL and not met -> result \"fail\", is_required true. Any such failure forces status \"no_go\".\n   - Requirement worded as PREFERRED/DESIRED/SHOULD and not met -> result \"fail\", is_required false. This LOWERS the score but never by itself forces no_go.\n   - Requirement Caravann meets -> \"pass\". Requirement that does not apply -> \"not_applicable\".\n\n2. THEN SCORE capability overlap 0-100 against Caravann's recorded sectors and capabilities. Weigh: how squarely the scope sits in a sector Caravann has real depth in, timeline feasibility, and budget versus the effort implied. A score at or above 90 means the work is squarely what Caravann already does and wins.\n\n3. VERDICT. \"go\" = clears every hard gate and scores well. \"no_go\" = fails a required gate, or the overlap is too thin to be worth the hours. \"maybe\" = clears the hard gates but something real is unresolved (thin sector depth, tight timeline, budget that may not cover the effort). Use \"maybe\" honestly — a false \"go\" costs a wasted week, and a false \"no_go\" costs a winnable contract.\n\n4. BUDGET. Read the not-to-exceed / contract value from the SOLICITATION TEXT ONLY. Never estimate, never infer from scope size. If the document names no figure anywhere, set budget_amount null and budget_source \"none_listed\". If the figure came from an attached Q&A rather than the RFP body, use \"qa_document\".\n\n5. GAPS. Everything Caravann is short on for THIS solicitation, tagged by type. This is a teaming shopping list — it must be specific enough that a reader knows what a partner firm would need to bring. \"Lacks behavioral health experience\" is useful; \"lacks experience\" is not.\n\n6. COMPLIANCE. Every rule that can disqualify a bid on a technicality: due date, question deadline, page and section limits, fonts and sizes, required sections, submission method and file-count rules, insurance, and evaluation rubric weights. Put real dates in due_at as ISO 8601. Submission mechanics matter as much as deadlines — a three-reference requirement with one upload slot belongs here.\n\n7. QUESTIONS. Draft strategic questions for the public memo lane, and one direct request to the named contact for an incumbent or prior winning proposal in the incumbent_request lane. NEVER draft a question the solicitation already answers — check first. Keep the memo short enough to be answered inside the window.\n\nWrite verdict_why and verdict_why_not as plain prose a busy principal can scan. No hedging filler, no restating the requirement list.`;\n\nconst user = `CARAVANN ELIGIBILITY PROFILE\\n${profileBlock}\\n\\nCARAVANN SECTOR EXPERIENCE\\n${sectorBlock}\\n\\nKNOWN PORTAL RULES (fold any that apply into the compliance checklist)\\n${portalBlock}\\n\\n---\\n\\nSOLICITATION TEXT\\n\\n${documentText}`;\n\nreturn [{ json: { system, user, model: config.model, bid_desk_url: config.bid_desk_url, payload } }];"
+      },
+      "id": "build-prompt",
+      "name": "Build triage prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $json.model, temperature: 0, messages: [ { role: 'system', content: $json.system }, { role: 'user', content: $json.user } ], response_format: { type: 'json_schema', json_schema: { name: 'rfp_triage', strict: true, schema: { type: 'object', additionalProperties: false, required: ['title','client_agency','project_type','status','score_percent','verdict_why','verdict_why_not','budget_amount','budget_source','due_at','question_deadline_at','disqualifier_checks','gap_items','compliance_items','questions'], properties: { title: { type: 'string' }, client_agency: { type: 'string' }, project_type: { type: ['string','null'] }, status: { type: 'string', enum: ['go','no_go','maybe'] }, score_percent: { type: 'number' }, verdict_why: { type: 'string' }, verdict_why_not: { type: 'string' }, budget_amount: { type: ['number','null'] }, budget_source: { type: 'string', enum: ['rfp','qa_document','none_listed'] }, due_at: { type: ['string','null'] }, question_deadline_at: { type: ['string','null'] }, disqualifier_checks: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['requirement_text','is_required','result','notes'], properties: { requirement_text: { type: 'string' }, is_required: { type: 'boolean' }, result: { type: 'string', enum: ['pass','fail','not_applicable'] }, notes: { type: ['string','null'] } } } }, gap_items: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['gap_type','description'], properties: { gap_type: { type: 'string', enum: ['experience','sector','certification','staffing','geography','other'] }, description: { type: 'string' } } } }, compliance_items: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['category','label','detail','due_at'], properties: { category: { type: 'string', enum: ['deadline','page_limit','format','submission','insurance','rubric','other'] }, label: { type: 'string' }, detail: { type: ['string','null'] }, due_at: { type: ['string','null'] } } } }, questions: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['lane','question_text'], properties: { lane: { type: 'string', enum: ['public_memo','incumbent_request'] }, question_text: { type: 'string' } } } } } } } } }) }}",
+        "options": { "timeout": 300000 }
+      },
+      "id": "openrouter",
+      "name": "OpenRouter — triage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "OPENROUTER_API_KEY",
+          "name": "OpenRouter API key"
+        }
+      },
+      "notes": "temperature 0 and a strict json_schema — the verdict must be reproducible and parseable, not creative. 5-min timeout because a long solicitation takes a while."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Shape the model's verdict into the intake route's contract.\n//\n// A hard-knockout override lives on the app side, not here: this workflow\n// reports what the solicitation requires and whether Caravann meets it,\n// and Khaled's own knockout flags decide whether a given failure is fatal.\n\nconst prompt = $('Build triage prompt').first().json;\nconst payload = prompt.payload;\nconst response = $input.first().json;\n\nconst raw = response?.choices?.[0]?.message?.content;\nif (!raw) {\n  throw new Error(`OpenRouter returned no content: ${JSON.stringify(response).slice(0, 500)}`);\n}\n\nlet verdict;\ntry {\n  verdict = typeof raw === 'string' ? JSON.parse(raw) : raw;\n} catch (e) {\n  throw new Error(`Could not parse triage JSON: ${e.message} — got: ${String(raw).slice(0, 500)}`);\n}\n\n// Caller-supplied fields win over the model's reading — if the aggregator\n// email already named the agency, that beats an inference from page one.\nconst body = {\n  external_id: payload.external_id,\n  title: payload.title || verdict.title,\n  client_agency: payload.client_agency || verdict.client_agency,\n  project_type: verdict.project_type,\n  source: payload.source || 'manual',\n  source_url: payload.source_url || payload.document_url || null,\n  due_at: verdict.due_at,\n  question_deadline_at: verdict.question_deadline_at,\n  budget_amount: verdict.budget_amount,\n  budget_source: verdict.budget_source,\n  status: verdict.status,\n  score_percent: verdict.score_percent,\n  verdict_why: verdict.verdict_why,\n  verdict_why_not: verdict.verdict_why_not,\n  verdict_set_at: new Date().toISOString(),\n  disqualifier_checks: (verdict.disqualifier_checks || []).map(c => ({\n    requirement_text: c.requirement_text,\n    is_required: c.is_required,\n    result: c.result,\n    notes: c.notes,\n  })),\n  gap_items: verdict.gap_items || [],\n  compliance_items: verdict.compliance_items || [],\n  questions: (verdict.questions || []).map(q => ({ lane: q.lane, question_text: q.question_text })),\n};\n\nreturn [{ json: { body, bid_desk_url: prompt.bid_desk_url, usage: response.usage || null } }];"
+      },
+      "id": "shape-payload",
+      "name": "Shape intake payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.bid_desk_url }}/api/rfps/intake",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "id": "post-intake",
+      "name": "POST to bid desk",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1360, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BID_DESK_API_KEY",
+          "name": "Bid Desk API key"
+        }
+      },
+      "notes": "Idempotent on external_id — a re-triage after an addendum updates the row rather than duplicating it."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, rfp_id: $json.id, verdict: $('Shape intake payload').first().json.body.status, score: $('Shape intake payload').first().json.body.score_percent }) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1580, 300]
+    }
+  ],
+  "connections": {
+    "Intake webhook": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
+    "Config": { "main": [[{ "node": "Load triage context", "type": "main", "index": 0 }]] },
+    "Load triage context": { "main": [[{ "node": "Document is a URL?", "type": "main", "index": 0 }]] },
+    "Document is a URL?": {
+      "main": [
+        [{ "node": "Download solicitation", "type": "main", "index": 0 }],
+        [{ "node": "Build triage prompt", "type": "main", "index": 0 }]
+      ]
+    },
+    "Download solicitation": { "main": [[{ "node": "Extract PDF text", "type": "main", "index": 0 }]] },
+    "Extract PDF text": { "main": [[{ "node": "Build triage prompt", "type": "main", "index": 0 }]] },
+    "Build triage prompt": { "main": [[{ "node": "OpenRouter — triage", "type": "main", "index": 0 }]] },
+    "OpenRouter — triage": { "main": [[{ "node": "Shape intake payload", "type": "main", "index": 0 }]] },
+    "Shape intake payload": { "main": [[{ "node": "POST to bid desk", "type": "main", "index": 0 }]] },
+    "POST to bid desk": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  }
+}

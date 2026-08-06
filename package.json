@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "triage:test": "node n8n/test-triage.mjs",
+    "n8n:validate": "node n8n/deploy.mjs --dry-run",
+    "n8n:deploy": "node n8n/deploy.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

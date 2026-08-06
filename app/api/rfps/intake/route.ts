@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { isAuthorized } from "@/lib/api-auth";
+import { isServiceRoleConfigured } from "@/lib/supabase/config";
 import type { Database } from "@/lib/supabase/types";
 
 // The landing point for n8n's intake → triage pipeline (modules 1-2 of the
@@ -47,13 +49,6 @@ type IntakeBody = Partial<Database["public"]["Tables"]["rfps"]["Insert"]> & {
   questions?: Array<Omit<Database["public"]["Tables"]["rfp_questions"]["Insert"], "rfp_id">>;
 };
 
-function isAuthorized(req: NextRequest): boolean {
-  const key = process.env.RFP_INTAKE_API_KEY;
-  if (!key) return false; // fail closed if the secret was never configured
-  const header = req.headers.get("authorization") ?? "";
-  return header === `Bearer ${key}`;
-}
-
 export async function POST(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -70,6 +65,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "external_id, title, and client_agency are required" },
       { status: 400 }
+    );
+  }
+
+  if (!isServiceRoleConfigured) {
+    return NextResponse.json(
+      { error: "Supabase not configured — set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY" },
+      { status: 503 }
     );
   }
 
