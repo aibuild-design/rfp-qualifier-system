@@ -12,7 +12,8 @@
         "httpMethod": "POST",
         "path": "rfp-intake",
         "responseMode": "responseNode",
-        "options": {}
+        "options": {},
+        "authentication": "headerAuth"
       },
       "id": "webhook-intake",
       "name": "Intake webhook",
@@ -23,7 +24,13 @@
         300
       ],
       "webhookId": "rfp-intake",
-      "notes": "POST { external_id, title?, client_agency?, source?, source_url?, document_url? | document_text? }. document_url is fetched and text-extracted; document_text is used as-is."
+      "notes": "Requires the same Authorization: Bearer <RFP_INTAKE_API_KEY> header the app's machine routes use. Left open, this endpoint let anyone who guessed the URL inject solicitations into the live queue, spend OpenRouter credits a 1M-context call at a time, and use document_url to make n8n fetch arbitrary hosts. POST { external_id, title?, client_agency?, source?, source_url?, document_url? | document_text? }.",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BID_DESK_API_KEY",
+          "name": "Bid Desk API key"
+        }
+      }
     },
     {
       "parameters": {

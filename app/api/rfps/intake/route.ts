@@ -49,6 +49,46 @@ type IntakeBody = Partial<Database["public"]["Tables"]["rfps"]["Insert"]> & {
   questions?: Array<Omit<Database["public"]["Tables"]["rfp_questions"]["Insert"], "rfp_id">>;
 };
 
+// Explicit allowlist rather than spreading the body into the upsert. Spreading
+// let a caller set ANY column on the table — `is_demo` (laundering a fake
+// solicitation into the real queue, or hiding a real one from it), `id`,
+// `created_at`. The service-role client bypasses RLS, so this route's own
+// validation is the only thing standing between the request body and the
+// table. Anything not named here is dropped.
+const RFP_FIELDS = [
+  "external_id",
+  "title",
+  "client_agency",
+  "project_type",
+  "source",
+  "source_url",
+  "drive_folder_url",
+  "received_at",
+  "due_at",
+  "question_deadline_at",
+  "budget_amount",
+  "budget_source",
+  "status",
+  "score_percent",
+  "verdict_why",
+  "verdict_why_not",
+  "verdict_set_at",
+] as const;
+
+type RfpInsert = Database["public"]["Tables"]["rfps"]["Insert"];
+
+function pickRfpFields(body: IntakeBody): RfpInsert {
+  const out: Partial<RfpInsert> = {};
+  for (const k of RFP_FIELDS) {
+    const value = body[k];
+    if (value !== undefined) {
+      (out as Record<string, unknown>)[k] = value;
+    }
+  }
+  // title and client_agency are checked by the caller before this runs.
+  return out as RfpInsert;
+}
+
 export async function POST(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -75,12 +115,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { gap_items, compliance_items, disqualifier_checks, questions, ...rfpFields } = body;
+  const { gap_items, compliance_items, disqualifier_checks, questions } = body;
   const supabase = createServiceRoleClient();
 
   const { data: rfp, error: rfpError } = await supabase
     .from("rfps")
-    .upsert(rfpFields, { onConflict: "external_id" })
+    .upsert(pickRfpFields(body), { onConflict: "external_id" })
     .select()
     .single();
 

@@ -26,8 +26,12 @@
   --rfp-black: #0a0a0a;
   --rfp-black-2: #1a1a18;
   --rfp-black-3: #151513;
-  --rfp-gold: #c9a227;
-  --rfp-gold-bright: #f2c94c;
+  /* Brand yellow sampled from Caravann's own logo (public/brand/*.png).
+     #ffbd36 scores 11.9:1 on the near-black surfaces and only 1.7:1 on white,
+     so it is a dark-surface colour only. --rfp-gold is the accessible sibling
+     for text, borders and focus rings on light surfaces at 5.0:1. */
+  --rfp-gold: #96650f;
+  --rfp-gold-bright: #ffbd36;
   --rfp-cream: #f5f2ea;
 
   /* status (fixed, never themed — kept distinct from --rfp-gold so verdict/

@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -58,18 +59,20 @@ function LoginForm() {
       {/* Left — form */}
       <div className="relative flex items-center justify-center bg-rfp-surface px-8 py-12">
         <div className="w-full max-w-[360px]">
-          <div className="mb-10 flex items-center gap-2.5">
-            <span className="flex h-[30px] w-[30px] items-center justify-center rounded-md bg-rfp-black text-sm font-bold text-rfp-gold-bright">
-              R
-            </span>
-            <div className="leading-tight">
-              <p className="font-display text-[13px] font-semibold tracking-wide text-rfp-ink">
-                RFP QUALIFIER
-              </p>
-              <p className="text-[10px] font-medium uppercase tracking-widest text-rfp-ink-muted">
-                Dashboard
-              </p>
-            </div>
+          <div className="mb-10">
+            {/* Black wordmark on the white form panel; the yellow variant is
+                reserved for the dark half, where it actually has contrast. */}
+            <Image
+              src="/brand/caravann-black.png"
+              alt="Caravann"
+              width={1494}
+              height={205}
+              priority
+              className="h-[26px] w-auto object-contain object-left"
+            />
+            <p className="mt-1.5 text-[10px] font-medium uppercase tracking-widest text-rfp-ink-muted">
+              RFP Bid Desk
+            </p>
           </div>
 
           <h1 className="font-display text-2xl font-semibold text-rfp-ink">Welcome back</h1>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GridIcon, SettingsIcon } from "./icons";
@@ -17,18 +18,20 @@ export function Sidebar({ userEmail }: { userEmail: string | null }) {
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col bg-rfp-black text-white lg:flex">
-      <div className="flex h-16 items-center gap-2.5 border-b border-white/10 px-5">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-rfp-gold-bright text-sm font-bold text-rfp-black">
-          R
-        </span>
-        <div className="leading-tight">
-          <p className="font-display text-[13px] font-semibold tracking-wide">
-            RFP QUALIFIER
-          </p>
-          <p className="text-[10px] font-medium uppercase tracking-widest text-white/50">
-            Dashboard
-          </p>
-        </div>
+      <div className="flex h-16 flex-col justify-center gap-1 border-b border-white/10 px-5">
+        {/* Yellow wordmark on the near-black rail — 11.9:1, the variant
+            Caravann's own site uses on dark. */}
+        <Image
+          src="/brand/caravann-yellow.png"
+          alt="Caravann"
+          width={1500}
+          height={277}
+          priority
+          className="h-[22px] w-auto object-contain object-left"
+        />
+        <p className="text-[10px] font-medium uppercase tracking-widest text-white/50">
+          RFP Bid Desk
+        </p>
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-5">

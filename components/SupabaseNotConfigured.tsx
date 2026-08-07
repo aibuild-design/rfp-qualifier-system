@@ -1,10 +1,16 @@
+import Image from "next/image";
+
 export function SupabaseNotConfigured() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-rfp-page px-4">
       <div className="w-full max-w-md rounded-xl border border-rfp-border bg-rfp-surface p-8 text-center shadow-sm">
-        <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-rfp-black text-sm font-bold text-rfp-gold-bright">
-          R
-        </span>
+        <Image
+          src="/brand/caravann-black.png"
+          alt="Caravann"
+          width={1494}
+          height={205}
+          className="mx-auto h-[22px] w-auto object-contain"
+        />
         <h1 className="mt-4 font-display text-lg font-semibold text-rfp-ink">
           RFP Qualifier isn&rsquo;t connected yet
         </h1>
