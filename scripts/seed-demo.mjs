@@ -38,7 +38,17 @@ async function loadEnv() {
   }
 }
 
-const daysFromNow = (n) => new Date(Date.now() + n * 86400_000).toISOString();
+// Offsets are in days, but the time of day matters: a deadline reads as
+// "Sep 14, 4:39 AM" if you just add 24h increments to the moment you seeded,
+// which is not a time any agency closes a solicitation. Pinned to 2:00 PM
+// Pacific — the most common submission cutoff in the fixtures — so the
+// countdown colours and the exported document both look like real deadlines.
+// 21:00Z is 2pm PDT; an hour out under PST, which does not change the date.
+const daysFromNow = (n) => {
+  const d = new Date(Date.now() + n * 86400_000);
+  d.setUTCHours(21, 0, 0, 0);
+  return d.toISOString();
+};
 
 // PostgREST normalises a bulk insert to the union of keys across the batch and
 // fills the gaps with explicit nulls — so a row that omits is_hard_knockout while

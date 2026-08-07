@@ -66,6 +66,13 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs font-medium">
+          <a
+            href={`/api/rfps/export${demoCount ? "?include_demo=1" : ""}`}
+            className="rounded-lg border border-rfp-border px-3 py-1.5 text-rfp-ink-secondary transition-colors hover:bg-rfp-surface-sunken"
+            title="Opens in Google Sheets or Excel"
+          >
+            Export CSV
+          </a>
           <Link
             href={`/dashboard${sortByDeadline ? "" : "?sort=deadline"}`}
             className="rounded-lg border border-rfp-border px-3 py-1.5 text-rfp-ink-secondary transition-colors hover:bg-rfp-surface-sunken"
