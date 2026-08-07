@@ -34,7 +34,8 @@ service-role key.
 | Schema | applied to Supabase — 13 tables, RLS on every one |
 | RFP queue + detail view | built, verified against live data |
 | Settings (eligibility profile, sector map, team roster) | built, live |
-| n8n intake + triage workflow | deployed, credentials wired, **not yet activated** |
+| App | deployed — https://rfp-qualifier-system.vercel.app |
+| n8n intake + triage workflow | deployed, activated, verified live end to end |
 | Eligibility profile + sector map contents | **empty — Khaled has to fill these in** |
 | Proposal assembly, filing, team match, weekly digest | not built |
 
@@ -44,9 +45,14 @@ dashboard's own queries, including upsert idempotency on re-triage.
 
 **Before trusting any verdict**, fill in the eligibility profile and sector
 experience map in Settings. They ship empty on purpose — those numbers are
-Caravann's to state, not ours to guess — and until they're in, the
-disqualifier gate has nothing to check against and will rule out work
-Caravann is strong in. The dashboard shows a warning banner until then.
+Caravann's to state, not ours to guess.
+
+This is not theoretical. The same SamTrans facilitation solicitation scores
+**go / 92** against a populated profile and **no-go / 10** against the empty
+one, because three mandatory minimums ("5+ years facilitating for public
+agencies", "3 comparable transit engagements") fail on an empty record. The
+engine is right to say so — but until the map is filled in, it will kill bids
+Caravann would win. The dashboard shows a warning banner until then.
 
 ## Getting started
 

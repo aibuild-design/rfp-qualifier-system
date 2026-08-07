@@ -92,20 +92,50 @@ async function main() {
     process.exit(1);
   }
 
+  // n8n Cloud doesn't allow custom instance env vars, so the app's origin is
+  // baked in here rather than read via $env at runtime — which would silently
+  // resolve to undefined and fall back to localhost, leaving the workflow
+  // green while every verdict went nowhere.
+  const bidDeskUrl = process.env.BID_DESK_URL;
+  if (!bidDeskUrl) {
+    console.error("BID_DESK_URL must be set in .env.local (the deployed app's origin)");
+    process.exit(1);
+  }
+  const before = JSON.stringify(payload.nodes);
+  const after = before.replaceAll("__BID_DESK_URL__", bidDeskUrl.replace(/\/$/, ""));
+  if (before === after) {
+    console.error("No __BID_DESK_URL__ placeholder found — the Config node may have been edited.");
+    process.exit(1);
+  }
+  payload.nodes = JSON.parse(after);
+  console.log(`  bid desk → ${bidDeskUrl.replace(/\/$/, "")}`);
+
   await resolveCredentials(payload);
 
   const existing = await api("/workflows?limit=250");
   const match = (existing.data ?? []).find((w) => w.name === payload.name);
 
+  let id;
   if (match) {
     await api(`/workflows/${match.id}`, { method: "PUT", body: JSON.stringify(payload) });
-    console.log(`✓ Updated workflow ${match.id}`);
+    id = match.id;
+    console.log(`✓ Updated workflow ${id}`);
   } else {
     const created = await api("/workflows", { method: "POST", body: JSON.stringify(payload) });
-    console.log(`✓ Created workflow ${created.id}`);
+    id = created.id;
+    console.log(`✓ Created workflow ${id}`);
   }
 
-  console.log("\nStill set by hand in the n8n UI: env var BID_DESK_URL → the deployed app's origin.");
+  // Activation is opt-in: a deploy shouldn't silently start accepting live
+  // solicitations, and an update to an already-active workflow leaves it active.
+  if (process.argv.includes("--activate")) {
+    const state = await api(`/workflows/${id}/activate`, { method: "POST" });
+    console.log(`✓ Activated — webhook live at ${process.env.N8N_BASE_URL.replace(/\/$/, "")}/webhook/rfp-intake`);
+    return state;
+  }
+
+  console.log("\nWorkflow, credentials, and bid desk URL are all set.");
+  console.log("Re-run with --activate when you want it accepting live solicitations.");
 }
 
 // Placeholder credential id in the repo JSON → { env var holding the secret,

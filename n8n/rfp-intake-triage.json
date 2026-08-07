@@ -29,7 +29,7 @@
             {
               "id": "a1",
               "name": "bid_desk_url",
-              "value": "={{ $env.BID_DESK_URL || 'http://localhost:3000' }}",
+              "value": "__BID_DESK_URL__",
               "type": "string"
             },
             {
@@ -53,7 +53,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [-400, 300],
-      "notes": "1M-context model so a full solicitation goes in whole — no chunking, which is what keeps a page-52 disqualifier from being missed."
+      "notes": "bid_desk_url is substituted at deploy time from BID_DESK_URL in .env.local — n8n Cloud doesn't allow custom $env vars, so reading it at runtime would silently fall back to localhost. 1M-context model so a full solicitation goes in whole — no chunking, which is what keeps a page-52 disqualifier from being missed."
     },
     {
       "parameters": {

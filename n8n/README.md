@@ -28,9 +28,19 @@ the verdicts.
 ## Setup
 
 ```bash
-npm run n8n:validate   # check the graph parses and every connection resolves
-npm run n8n:deploy     # create/update the workflow and its credentials
+npm run n8n:validate                    # check the graph parses and every connection resolves
+npm run n8n:deploy                      # create/update the workflow and its credentials
+node n8n/deploy.mjs --activate          # same, and switch it on
 ```
+
+Activation is opt-in — a deploy shouldn't quietly start accepting live
+solicitations. Updating an already-active workflow leaves it active.
+
+`BID_DESK_URL` (the deployed app's origin) is **substituted into the Config
+node at deploy time**, not read at runtime. n8n Cloud doesn't allow custom
+instance env vars, so a runtime `$env.BID_DESK_URL` resolves to undefined and
+falls back to localhost — the workflow goes green while every verdict lands
+nowhere. The deploy fails loudly if the placeholder is missing.
 
 `n8n:deploy` creates two Header Auth credentials on first run — `Bid Desk API
 key` and `OpenRouter API key`, both `Authorization: Bearer <secret>` — from
@@ -41,9 +51,6 @@ so the committed workflow stays instance-agnostic. n8n's public API cannot
 list credentials — if those `N8N_CRED_*_ID` lines are lost, the next deploy
 creates duplicates rather than reusing what's there.
 
-One thing the script can't set: the `BID_DESK_URL` env var on the n8n
-instance, pointing at the deployed app's origin. Set that in the n8n UI before
-activating the workflow.
 
 ## Calling it
 
