@@ -3,13 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GridIcon, SettingsIcon } from "./icons";
+import { CheckCircleIcon, DocumentIcon, GridIcon, SettingsIcon } from "./icons";
 import { SignOutButton } from "./SignOutButton";
 
-// Placeholder nav — only the shell has been scoped so far. Extend this once
-// the real sections (RFPs list, review queue, etc.) are defined.
 const NAV_ITEMS = [
-  { label: "Dashboard", icon: GridIcon, href: "/dashboard" },
+  { label: "RFP queue", icon: GridIcon, href: "/dashboard" },
+  { label: "Approved language", icon: DocumentIcon, href: "/dashboard/library" },
+  { label: "Weekly review", icon: CheckCircleIcon, href: "/dashboard/review" },
   { label: "Settings", icon: SettingsIcon, href: "/dashboard/settings" },
 ];
 

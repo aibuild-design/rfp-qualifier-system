@@ -23,6 +23,9 @@ import {
   DEMO_SECTORS,
   DEMO_TEAM,
   DEMO_RFPS,
+  DEMO_LANGUAGE_BLOCKS,
+  DEMO_EDGE_CASES,
+  DEMO_PORTAL_RULES,
 } from "../data/demo-dataset.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -48,6 +51,7 @@ const TABLE_DEFAULTS = {
   rfp_compliance_items: { is_complete: false, detail: null, due_at: null },
   rfp_questions: { status: "drafted", sent_at: null },
   rfp_gap_items: {},
+  language_blocks: { source: null, won: false, is_boilerplate: false, weight: 0 },
 };
 
 const withDefaults = (table, rows) => rows.map((r) => ({ ...TABLE_DEFAULTS[table], ...r }));
@@ -74,8 +78,15 @@ async function main() {
     .select("id");
   if (delErr) throw new Error(`purge: ${delErr.message}`);
 
+  // These carry no is_demo flag of their own — they are small, wholly
+  // seeded sets, so the seeder owns them outright and clears them on both
+  // paths rather than trying to tell seeded rows from hand-added ones.
+  await supabase.from("language_blocks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabase.from("rfp_edge_cases").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabase.from("portal_rules").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
   if (purge) {
-    console.log(`✓ Removed ${removed?.length ?? 0} demo RFP(s).`);
+    console.log(`✓ Removed ${removed?.length ?? 0} demo RFP(s), plus the language library, edge cases and portal rules.`);
     console.log("\nThe profile and sector map were left in place — they may have");
     console.log("been edited since seeding. Review them in Settings.");
     return;
@@ -158,6 +169,20 @@ async function main() {
     const score = r.score_percent == null ? "—" : `${r.score_percent}%`;
     console.log(`  · ${r.status.padEnd(7)} ${score.padStart(4)}  ${r.title.slice(0, 58)}`);
   }
+
+  const { error: lbErr } = await supabase.from("language_blocks").insert(
+    withDefaults("language_blocks", DEMO_LANGUAGE_BLOCKS)
+  );
+  if (lbErr) throw new Error(`language_blocks: ${lbErr.message}`);
+  console.log(`✓ ${DEMO_LANGUAGE_BLOCKS.length} language blocks`);
+
+  const { error: ecErr } = await supabase.from("rfp_edge_cases").insert(DEMO_EDGE_CASES);
+  if (ecErr) throw new Error(`rfp_edge_cases: ${ecErr.message}`);
+  console.log(`✓ ${DEMO_EDGE_CASES.length} edge cases`);
+
+  const { error: prErr } = await supabase.from("portal_rules").insert(DEMO_PORTAL_RULES);
+  if (prErr) throw new Error(`portal_rules: ${prErr.message}`);
+  console.log(`✓ ${DEMO_PORTAL_RULES.length} portal rules`);
 
   console.log(`\n✓ ${DEMO_RFPS.length} demo RFPs seeded.`);
   console.log("\nThe dashboard now shows a demo-data banner. Remove it all with:");

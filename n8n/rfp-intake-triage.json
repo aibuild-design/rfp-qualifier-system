@@ -298,6 +298,63 @@
       ],
       "notes": "Emits { body: {...} } so the Config node's $json.body works unchanged for both the webhook and the email path.",
       "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Module 10. Builds the Drive destination for this solicitation from the\n// verdict, using the naming convention the SOW fixes:\n//   [Engagement]_[Client]_Caravann Consulting\n// No files move here — the Drive nodes downstream are disabled until a Google\n// account is connected. This runs anyway so the intended path is recorded and\n// visible on the dashboard rather than invented at filing time.\nconst clean = (s) => String(s || '').replace(/[\\\\/:*?\"<>|]/g, '').replace(/\\s+/g, ' ').trim();\n\nreturn $input.all().map((item) => {\n  const v = item.json;\n  const verdict = v.status || 'pending';\n  const folder = verdict === 'no_go' ? 'no-go' : verdict === 'maybe' ? 'maybe' : 'go';\n  const base = `${clean(v.title)}_${clean(v.client_agency)}_Caravann Consulting`;\n  return {\n    json: {\n      ...v,\n      drive_parent_folder: `/RFPs/${folder}/`,\n      drive_subfolder: base,\n      drive_file_base: base,\n    },\n  };\n});"
+      },
+      "id": "build-filing-path",
+      "name": "Build filing path",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        460
+      ],
+      "notes": "Derives the verdict folder and the [Engagement]_[Client]_Caravann Consulting name. Runs regardless of whether Drive is connected."
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $json.drive_subfolder }}",
+        "options": {}
+      },
+      "id": "drive-create-folder",
+      "name": "Drive — create bid folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1580,
+        460
+      ],
+      "disabled": true,
+      "notes": "Disabled: needs a Google OAuth credential, which cannot be created headlessly. Connect the credential and enable this plus the upload node to finish module 10."
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.drive_file_base }}.pdf",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        },
+        "options": {}
+      },
+      "id": "drive-upload",
+      "name": "Drive — file the solicitation",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1800,
+        460
+      ],
+      "disabled": true,
+      "notes": "Disabled with the folder node above. Files the RFP and its addenda into the per-bid subfolder."
     }
   ],
   "connections": {
@@ -414,6 +471,11 @@
             "node": "Respond",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Build filing path",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -434,6 +496,28 @@
         [
           {
             "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build filing path": {
+      "main": [
+        [
+          {
+            "node": "Drive — create bid folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive — create bid folder": {
+      "main": [
+        [
+          {
+            "node": "Drive — file the solicitation",
             "type": "main",
             "index": 0
           }

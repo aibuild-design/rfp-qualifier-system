@@ -33,6 +33,8 @@ export type AssignmentStatus = "recommended" | "confirmed";
 export type FileType = "rfp" | "addendum" | "draft" | "form" | "other";
 export type EdgeCaseStatus = "pending" | "approved" | "rejected";
 export type Bandwidth = "open" | "limited" | "full";
+export type FilingStatus = "not_filed" | "pending" | "filed" | "failed";
+export type SectionStatus = "draft" | "needs_input" | "approved";
 
 export interface Database {
   public: {
@@ -120,6 +122,9 @@ export interface Database {
           verdict_why_not: string | null;
           verdict_set_at: string | null;
           is_demo: boolean;
+          filing_status: FilingStatus;
+          filing_error: string | null;
+          filed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -196,6 +201,8 @@ export interface Database {
           question_text: string;
           status: QuestionStatus;
           sent_at: string | null;
+          approved_at: string | null;
+          approved_by: string | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["rfp_questions"]["Row"]> & {
@@ -214,6 +221,8 @@ export interface Database {
           team_member_id: string;
           status: AssignmentStatus;
           notes: string | null;
+          match_reason: string | null;
+          match_score: number | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["rfp_team_assignments"]["Row"]> & {
@@ -273,6 +282,58 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["portal_rules"]["Row"]>;
         Relationships: [];
       };
+
+      language_blocks: {
+        Row: {
+          id: string;
+          section_type: string;
+          title: string;
+          body: string;
+          source: string | null;
+          won: boolean;
+          is_boilerplate: boolean;
+          weight: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["language_blocks"]["Row"]> & {
+          section_type: string;
+          title: string;
+          body: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["language_blocks"]["Row"]>;
+        Relationships: [];
+      };
+
+      rfp_proposal_sections: {
+        Row: {
+          id: string;
+          rfp_id: string;
+          section_type: string;
+          heading: string;
+          body: string | null;
+          sort_order: number;
+          status: SectionStatus;
+          source_block_ids: string[];
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["rfp_proposal_sections"]["Row"]> & {
+          rfp_id: string;
+          section_type: string;
+          heading: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["rfp_proposal_sections"]["Row"]>;
+        Relationships: [];
+      };
+
+      app_users: {
+        Row: { email: string; note: string | null; added_at: string };
+        Insert: Partial<Database["public"]["Tables"]["app_users"]["Row"]> & { email: string };
+        Update: Partial<Database["public"]["Tables"]["app_users"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -287,3 +348,7 @@ export type RfpGapItemRow = Database["public"]["Tables"]["rfp_gap_items"]["Row"]
 export type RfpComplianceItemRow = Database["public"]["Tables"]["rfp_compliance_items"]["Row"];
 export type RfpDisqualifierCheckRow = Database["public"]["Tables"]["rfp_disqualifier_checks"]["Row"];
 export type RfpQuestionRow = Database["public"]["Tables"]["rfp_questions"]["Row"];
+export type LanguageBlockRow = Database["public"]["Tables"]["language_blocks"]["Row"];
+export type ProposalSectionRow = Database["public"]["Tables"]["rfp_proposal_sections"]["Row"];
+export type EdgeCaseRow = Database["public"]["Tables"]["rfp_edge_cases"]["Row"];
+export type PortalRuleRow = Database["public"]["Tables"]["portal_rules"]["Row"];

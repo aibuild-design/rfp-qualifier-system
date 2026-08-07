@@ -285,3 +285,69 @@ export const DEMO_RFPS = [
     questions: [],
   },
 ];
+
+// ── Approved-language library (module 8) ─────────────────────────────────────
+// Placeholder text in Caravann's register, NOT their real proposal language.
+// Real blocks come from their past submissions — that is the whole point of
+// the library, and why nothing writes to this table automatically.
+export const DEMO_LANGUAGE_BLOCKS = [
+  {
+    section_type: "cover_letter",
+    title: "Standard cover letter opening",
+    body: `Dear Selection Committee,\n\nCaravann Consulting is pleased to submit this proposal for {{ENGAGEMENT}} on behalf of {{CLIENT}}. We have read the solicitation in full, including all addenda issued to date, and confirm our ability to meet the requirements and the {{DUE_DATE}} timeline.\n\nOur practice is built on a single premise: a plan people helped write is a plan they will carry out. We would welcome the opportunity to bring that to {{CLIENT}}.`,
+    source: "Placeholder — replace with Caravann's own cover letter",
+    won: false,
+  },
+  {
+    section_type: "firm_profile",
+    title: "Firm overview",
+    body: `Caravann Consulting is an organizational consulting practice working with public agencies, universities, healthcare systems, and corporations. We specialize in facilitation, strategic planning, and human-centered change management.\n\nOur work is distinguished by process design that produces decisions rather than documents, and by facilitation that holds a room of competing interests without flattening the disagreement that makes a plan durable.`,
+    source: "Placeholder — drawn from caravann.co positioning",
+    won: false,
+    is_boilerplate: true,
+  },
+  {
+    section_type: "approach",
+    title: "Four-phase facilitation methodology",
+    body: `Our approach to {{PROJECT_TYPE}} proceeds in four phases.\n\nDiscovery. We review existing plans, performance data, and prior engagement efforts, and interview leadership and a cross-section of staff to surface what the organization already knows about itself.\n\nEngagement. We design and facilitate sessions calibrated to each audience — governing body, staff, and public — so that participation is genuine rather than ceremonial.\n\nSynthesis. We return what we heard, including where it conflicts, and work with leadership to make the trade-offs explicit rather than deferring them.\n\nAdoption. We deliver a plan written to be used: specific owners, measurable commitments, and a review cadence the organization can sustain.`,
+    source: "Placeholder — replace with the real methodology section",
+    won: true,
+  },
+  {
+    section_type: "relevant_experience",
+    title: "Public agency facilitation experience",
+    body: `Caravann has facilitated strategic planning and organizational review processes for public agencies including transit districts, county departments, and municipal governments. These engagements share the characteristics {{CLIENT}} describes: multiple stakeholder groups with competing priorities, an elected or appointed governing body that must ultimately adopt the plan, and a public record obligation throughout.`,
+    source: "Placeholder — replace with named engagements and outcomes",
+    won: true,
+  },
+  {
+    section_type: "references",
+    title: "Reference format note",
+    body: `References are provided on the following page in the format requested by the solicitation. Where the portal accepts only a single upload, all references are merged into one PDF in the order listed.`,
+    source: "Placeholder",
+    won: false,
+    is_boilerplate: true,
+  },
+];
+
+// ── Edge cases awaiting review (module 11) ───────────────────────────────────
+export const DEMO_EDGE_CASES = [
+  {
+    description:
+      'A solicitation listed "bilingual facilitation capability" under Desirable Qualifications but the evaluation rubric scored it at 15 points — heavier than some stated minimums. Triage treated it as a preference and scored it as a minor miss.',
+    proposed_rule_change:
+      "When a preference carries 10 or more rubric points, weight it like a requirement in the score even though it does not hard-gate.",
+  },
+  {
+    description:
+      "An addendum moved the question deadline forward by a week. The original deadline was already on the compliance checklist and was not updated, so the countdown was wrong for two days.",
+    proposed_rule_change:
+      "Re-run compliance extraction whenever an addendum is filed, and mark superseded deadlines rather than leaving both.",
+  },
+];
+
+export const DEMO_PORTAL_RULES = [
+  { portal_name: "PlanetBids", rule_text: "References must be merged into a single PDF — only one upload slot is provided." },
+  { portal_name: "Omaha Public Schools", rule_text: "Resumes are excluded from the narrative page count; confirm before trimming." },
+  { portal_name: "SamTrans e-procurement", rule_text: "Cost proposal must be a separate sealed PDF. Cost figures in the technical volume are grounds for rejection." },
+];

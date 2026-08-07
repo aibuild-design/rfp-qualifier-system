@@ -16,7 +16,8 @@
     "seed:profile": "node scripts/seed-profile.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
     "live-check": "node scripts/live-check.mjs",
-    "access": "node scripts/manage-access.mjs"
+    "access": "node scripts/manage-access.mjs",
+    "test:modules": "node --experimental-strip-types scripts/test-modules.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

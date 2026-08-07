@@ -3,7 +3,12 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { DemoTag } from "@/components/DemoBanner";
-import { daysUntil, deadlineColor, formatBudget, formatDate } from "@/lib/rfp";
+import { QuestionMemo } from "@/components/QuestionMemo";
+import { TeamMatch } from "@/components/TeamMatch";
+import { ProposalDraft } from "@/components/ProposalDraft";
+import { FilingStatusCard } from "@/components/FilingStatusCard";
+import { proposalFileName } from "@/lib/proposal";
+import { daysUntil, deadlineColor, formatBudget, formatDate, formatDeadline } from "@/lib/rfp";
 
 const GAP_TYPE_LABEL: Record<string, string> = {
   experience: "Experience",
@@ -28,8 +33,17 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: rfp }, { data: gaps }, { data: compliance }, { data: disqualifiers }, { data: questions }] =
-    await Promise.all([
+  const [
+    { data: rfp },
+    { data: gaps },
+    { data: compliance },
+    { data: disqualifiers },
+    { data: questions },
+    { data: sections },
+    { data: assignmentRows },
+    { data: roster },
+    { count: libraryCount },
+  ] = await Promise.all([
       supabase.from("rfps").select("*").eq("id", id).maybeSingle(),
       supabase.from("rfp_gap_items").select("*").eq("rfp_id", id).order("created_at"),
       supabase
@@ -39,6 +53,17 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         .order("due_at", { ascending: true, nullsFirst: false }),
       supabase.from("rfp_disqualifier_checks").select("*").eq("rfp_id", id).order("created_at"),
       supabase.from("rfp_questions").select("*").eq("rfp_id", id).order("created_at"),
+      supabase.from("rfp_proposal_sections").select("*").eq("rfp_id", id).order("sort_order"),
+      // Fetched flat and stitched below rather than via PostgREST embedding:
+      // the hand-written Database types carry no Relationships metadata, so an
+      // embedded select resolves to `never` at compile time.
+      supabase
+        .from("rfp_team_assignments")
+        .select("*")
+        .eq("rfp_id", id)
+        .order("match_score", { ascending: false, nullsFirst: false }),
+      supabase.from("team_members").select("*"),
+      supabase.from("language_blocks").select("*", { count: "exact", head: true }),
     ]);
 
   if (!rfp) {
@@ -81,12 +106,12 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">Due</p>
             <p className="mt-1 text-sm font-medium" style={{ color: deadlineColor(daysUntil(rfp.due_at)) }}>
-              {formatDate(rfp.due_at)}
+              {formatDeadline(rfp.due_at)}
             </p>
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">Question deadline</p>
-            <p className="mt-1 text-sm font-medium text-rfp-ink">{formatDate(rfp.question_deadline_at)}</p>
+            <p className="mt-1 text-sm font-medium text-rfp-ink">{formatDeadline(rfp.question_deadline_at)}</p>
           </div>
         </div>
 
@@ -207,28 +232,39 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         )}
       </Section>
 
-      {/* Question memo */}
-      <Section title="Question memo" subtitle="Public strategic questions, plus the private incumbent-request lane.">
-        {!questions || questions.length === 0 ? (
-          <EmptyRow text="No questions drafted yet." />
-        ) : (
-          <ul className="divide-y divide-rfp-border">
-            {questions.map((q) => (
-              <li key={q.id} className="flex items-start justify-between gap-3 px-5 py-3">
-                <div>
-                  <p className="text-sm text-rfp-ink">{q.question_text}</p>
-                  <p className="mt-0.5 text-[11px] uppercase tracking-wide text-rfp-ink-muted">
-                    {q.lane === "public_memo" ? "Public memo" : "Incumbent request"}
-                  </p>
-                </div>
-                <span className="shrink-0 rounded-full bg-rfp-surface-sunken px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-rfp-ink-secondary">
-                  {q.status}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+      {/* Question memo — approve / mark sent (module 7) */}
+      {questions && questions.length > 0 && (
+        <QuestionMemo rfpId={rfp.id} questions={questions} questionDeadline={rfp.question_deadline_at} />
+      )}
+
+      {/* Team match (module 9) */}
+      <TeamMatch
+        rfpId={rfp.id}
+        assignments={(assignmentRows ?? []).map((a) => {
+          const m = (roster ?? []).find((r) => r.id === a.team_member_id);
+          return {
+            id: a.id,
+            status: a.status,
+            match_reason: a.match_reason,
+            match_score: a.match_score,
+            member_name: m?.name ?? "Unknown",
+            member_role: m?.role ?? null,
+            member_rate: m?.rate ?? null,
+          };
+        })}
+      />
+
+      {/* Proposal assembly (module 8) */}
+      <ProposalDraft
+        rfpId={rfp.id}
+        sections={sections ?? []}
+        fileName={proposalFileName(rfp)}
+        libraryCount={libraryCount ?? 0}
+      />
+
+      {/* Filing (module 10) */}
+      <FilingStatusCard rfp={rfp} />
+
     </div>
   );
 }
