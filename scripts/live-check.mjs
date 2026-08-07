@@ -39,11 +39,14 @@ function record(name, ok, detail) {
   console.log(`  ${ok ? "✓" : "✗"} ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
-async function hitWebhook(body) {
+async function hitWebhook(body, { auth = true } = {}) {
   const started = Date.now();
   const res = await fetch(`${process.env.N8N_BASE_URL.replace(/\/$/, "")}/webhook/rfp-intake`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(auth ? { Authorization: `Bearer ${process.env.RFP_INTAKE_API_KEY}` } : {}),
+    },
     body: JSON.stringify(body),
   });
   const text = await res.text();
@@ -114,7 +117,31 @@ async function main() {
     );
   }
 
-  // ── 2. Every fixture through the live webhook ───────────────────────────
+  // ── 2. The webhook refuses anonymous callers ────────────────────────────
+  // This was open once. n8n only re-registers a webhook on activation, so a
+  // config change alone can leave the old, unauthenticated behaviour live —
+  // which is exactly how it went unnoticed. Assert it rather than trust it.
+  console.log("\nWebhook authentication");
+  {
+    const anon = await hitWebhook({ external_id: `${PREFIX}anon-probe`, document_text: "probe" }, { auth: false });
+    record("webhook rejects an unauthenticated request", anon.status === 403, `http ${anon.status}`);
+
+    const badKey = await fetch(`${process.env.N8N_BASE_URL.replace(/\/$/, "")}/webhook/rfp-intake`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer not-the-key" },
+      body: JSON.stringify({ external_id: `${PREFIX}badkey-probe`, document_text: "probe" }),
+    });
+    record("webhook rejects a wrong key", badKey.status === 403, `http ${badKey.status}`);
+
+    // If either probe got through it will have created a row; prove it didn't.
+    const { count } = await supabase
+      .from("rfps")
+      .select("*", { count: "exact", head: true })
+      .in("external_id", [`${PREFIX}anon-probe`, `${PREFIX}badkey-probe`]);
+    record("no row reached the database from a rejected request", count === 0, `${count} row(s)`);
+  }
+
+  // ── 3. Every fixture through the live webhook ───────────────────────────
   console.log("\nTriage — full pipeline per fixture");
   const seen = [];
   for (const f of FIXTURES) {
@@ -126,7 +153,7 @@ async function main() {
     if (ok) seen.push({ externalId, verdict, score: r.json.score, expected: f.expected });
   }
 
-  // ── 3. Idempotency ──────────────────────────────────────────────────────
+  // ── 4. Idempotency ──────────────────────────────────────────────────────
   // n8n re-runs on addenda and rescoring. A second pass for the same
   // solicitation must update the row, not create a twin.
   console.log("\nIdempotency");
@@ -152,7 +179,7 @@ async function main() {
     }
   }
 
-  // ── 4. The document_url branch ──────────────────────────────────────────
+  // ── 5. The document_url branch ──────────────────────────────────────────
   // Everything above feeds document_text. Real intake mostly sends a link, so
   // the download + PDF-extract path needs exercising separately. A deliberately
   // non-solicitation PDF also answers a question that will come up in practice:
@@ -172,7 +199,7 @@ async function main() {
     );
   }
 
-  // ── 5. What actually landed ─────────────────────────────────────────────
+  // ── 6. What actually landed ─────────────────────────────────────────────
   console.log("\nPersisted rows");
   for (const s of seen) {
     const { data: rfp } = await supabase
@@ -198,7 +225,7 @@ async function main() {
     );
   }
 
-  // ── 6. Dashboard queries ────────────────────────────────────────────────
+  // ── 7. Dashboard queries ────────────────────────────────────────────────
   console.log("\nDashboard queries");
   {
     const { data: ranked } = await supabase
