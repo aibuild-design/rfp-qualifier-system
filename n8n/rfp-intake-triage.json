@@ -18,7 +18,10 @@
       "name": "Intake webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-620, 300],
+      "position": [
+        -620,
+        300
+      ],
       "webhookId": "rfp-intake",
       "notes": "POST { external_id, title?, client_agency?, source?, source_url?, document_url? | document_text? }. document_url is fetched and text-extracted; document_text is used as-is."
     },
@@ -52,7 +55,10 @@
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [-400, 300],
+      "position": [
+        -400,
+        300
+      ],
       "notes": "bid_desk_url is substituted at deploy time from BID_DESK_URL in .env.local — n8n Cloud doesn't allow custom $env vars, so reading it at runtime would silently fall back to localhost. 1M-context model so a full solicitation goes in whole — no chunking, which is what keeps a page-52 disqualifier from being missed."
     },
     {
@@ -66,7 +72,10 @@
       "name": "Load triage context",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-180, 300],
+      "position": [
+        -180,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "BID_DESK_API_KEY",
@@ -78,13 +87,20 @@
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "version": 2 },
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
           "conditions": [
             {
               "id": "has-url",
               "leftValue": "={{ $('Config').item.json.payload.document_url }}",
               "rightValue": "",
-              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -95,18 +111,30 @@
       "name": "Document is a URL?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [40, 300]
+      "position": [
+        40,
+        300
+      ]
     },
     {
       "parameters": {
         "url": "={{ $('Config').item.json.payload.document_url }}",
-        "options": { "response": { "response": { "responseFormat": "file" } } }
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
       },
       "id": "download-doc",
       "name": "Download solicitation",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [260, 200],
+      "position": [
+        260,
+        200
+      ],
       "notes": "Publicly posted solicitations only. Portal-gated ones are dropped in by hand as document_text — no portal logins in Phase 1."
     },
     {
@@ -119,7 +147,10 @@
       "name": "Extract PDF text",
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
-      "position": [480, 200]
+      "position": [
+        480,
+        200
+      ]
     },
     {
       "parameters": {
@@ -129,7 +160,10 @@
       "name": "Build triage prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [700, 300]
+      "position": [
+        700,
+        300
+      ]
     },
     {
       "parameters": {
@@ -140,13 +174,18 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ model: $json.model, temperature: 0, messages: [ { role: 'system', content: $json.system }, { role: 'user', content: $json.user } ], response_format: { type: 'json_schema', json_schema: { name: 'rfp_triage', strict: true, schema: { type: 'object', additionalProperties: false, required: ['title','client_agency','project_type','status','score_percent','verdict_why','verdict_why_not','budget_amount','budget_source','due_at','question_deadline_at','disqualifier_checks','gap_items','compliance_items','questions'], properties: { title: { type: 'string' }, client_agency: { type: 'string' }, project_type: { type: ['string','null'] }, status: { type: 'string', enum: ['go','no_go','maybe'] }, score_percent: { type: 'number' }, verdict_why: { type: 'string' }, verdict_why_not: { type: 'string' }, budget_amount: { type: ['number','null'] }, budget_source: { type: 'string', enum: ['rfp','qa_document','none_listed'] }, due_at: { type: ['string','null'] }, question_deadline_at: { type: ['string','null'] }, disqualifier_checks: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['requirement_text','is_required','result','notes'], properties: { requirement_text: { type: 'string' }, is_required: { type: 'boolean' }, result: { type: 'string', enum: ['pass','fail','not_applicable'] }, notes: { type: ['string','null'] } } } }, gap_items: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['gap_type','description'], properties: { gap_type: { type: 'string', enum: ['experience','sector','certification','staffing','geography','other'] }, description: { type: 'string' } } } }, compliance_items: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['category','label','detail','due_at'], properties: { category: { type: 'string', enum: ['deadline','page_limit','format','submission','insurance','rubric','other'] }, label: { type: 'string' }, detail: { type: ['string','null'] }, due_at: { type: ['string','null'] } } } }, questions: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['lane','question_text'], properties: { lane: { type: 'string', enum: ['public_memo','incumbent_request'] }, question_text: { type: 'string' } } } } } } } } }) }}",
-        "options": { "timeout": 300000 }
+        "options": {
+          "timeout": 300000
+        }
       },
       "id": "openrouter",
       "name": "OpenRouter — triage",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [920, 300],
+      "position": [
+        920,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "OPENROUTER_API_KEY",
@@ -163,7 +202,10 @@
       "name": "Shape intake payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1140, 300]
+      "position": [
+        1140,
+        300
+      ]
     },
     {
       "parameters": {
@@ -180,7 +222,10 @@
       "name": "POST to bid desk",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1360, 300],
+      "position": [
+        1360,
+        300
+      ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "BID_DESK_API_KEY",
@@ -199,24 +244,194 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1580, 300]
+      "position": [
+        1580,
+        300
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Only meaningful for the webhook entry point. A Gmail-triggered run has no HTTP request to answer, so this node would fail and mark the whole execution red even though the RFP was already saved by the previous node. continueRegularOutput keeps those runs green; a genuine webhook response failure is still visible in the execution log."
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "__GMAIL_QUERY__"
+        },
+        "options": {}
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail — new solicitation",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        -860,
+        520
+      ],
+      "notes": "Polls every minute. The SOW promises a solicitation posted at 9pm is scored before Khaled opens his laptop, which a daily pass cannot do. Polling only costs a Gmail API call; the model only runs when an email actually matches. Search query is substituted at deploy time from GMAIL_SEARCH_QUERY. Needs a Gmail OAuth credential connected in the UI.",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turns a Gmail message into the same payload shape the webhook accepts, so\n// everything downstream of Config is identical for both entry points.\n//\n// Preference order for what actually gets triaged:\n//   1. A linked PDF  — the solicitation itself, the only authoritative source.\n//   2. A portal/bid link — likely to resolve to the solicitation.\n//   3. The email body — a fallback. Aggregator summaries paraphrase, and their\n//      dollar estimates are often well off the real not-to-exceed figure, so a\n//      verdict built from one is weaker. Flagged so it is visible downstream.\n\nconst LINK_NOISE = /unsubscribe|list-manage|mailchimp|sendgrid|sparkpost|hubspot|googleusercontent|\\.gif|\\.png|\\.jpg|mailto:|utm_|\\/track\\/|click\\.|email\\./i;\nconst PORTALish = /bid|solicit|procure|rfp|rfq|opportunit|contract|planetbids|bidnet|bonfire|periscope|demandstar|sam\\.gov/i;\n\nfunction urlsIn(text) {\n  const found = text.match(/https?:\\/\\/[^\\s\"'<>)\\]]+/g) || [];\n  return found\n    .map((u) => u.replace(/[.,;:]+$/, \"\"))\n    .filter((u) => !LINK_NOISE.test(u));\n}\n\nconst out = [];\n\nfor (const item of $input.all()) {\n  const m = item.json;\n\n  const subject = (m.subject || \"(no subject)\").trim();\n  const bodyText = m.text || m.textPlain || m.snippet || \"\";\n  const bodyHtml = m.html || m.textHtml || \"\";\n  const haystack = `${bodyText}\\n${bodyHtml}`;\n\n  const links = urlsIn(haystack);\n  const pdf = links.find((u) => /\\.pdf(\\?|$)/i.test(u));\n  const portal = links.find((u) => PORTALish.test(u));\n  const chosen = pdf || portal || null;\n\n  // Gmail's message id is stable and unique, so re-processing the same email\n  // upserts the same RFP row rather than creating a duplicate.\n  const externalId = `gmail-${m.id || m.messageId || Date.now()}`;\n\n  const payload = {\n    external_id: externalId,\n    source: \"email\",\n    source_url: chosen || undefined,\n    email_subject: subject,\n    email_from: m.from?.value?.[0]?.address || m.From || null,\n  };\n\n  if (chosen) {\n    payload.document_url = chosen;\n  } else {\n    payload.document_text = [\n      `Subject: ${subject}`,\n      \"\",\n      bodyText || \"(no plain-text body)\",\n      \"\",\n      \"[NOTE FOR TRIAGE: no solicitation link was found in this email, so the\",\n      \"text above is an aggregator summary rather than the solicitation itself.\",\n      \"Treat any budget figure as unconfirmed unless the RFP is attached, and\",\n      \"prefer 'maybe' over a confident verdict where the summary is thin.]\",\n    ].join(\"\\n\");\n  }\n\n  out.push({ json: { body: payload } });\n}\n\nreturn out;"
+      },
+      "id": "gmail-normalise",
+      "name": "Email → intake payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -620,
+        520
+      ],
+      "notes": "Emits { body: {...} } so the Config node's $json.body works unchanged for both the webhook and the email path.",
+      "disabled": true
     }
   ],
   "connections": {
-    "Intake webhook": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
-    "Config": { "main": [[{ "node": "Load triage context", "type": "main", "index": 0 }]] },
-    "Load triage context": { "main": [[{ "node": "Document is a URL?", "type": "main", "index": 0 }]] },
-    "Document is a URL?": {
+    "Intake webhook": {
       "main": [
-        [{ "node": "Download solicitation", "type": "main", "index": 0 }],
-        [{ "node": "Build triage prompt", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Download solicitation": { "main": [[{ "node": "Extract PDF text", "type": "main", "index": 0 }]] },
-    "Extract PDF text": { "main": [[{ "node": "Build triage prompt", "type": "main", "index": 0 }]] },
-    "Build triage prompt": { "main": [[{ "node": "OpenRouter — triage", "type": "main", "index": 0 }]] },
-    "OpenRouter — triage": { "main": [[{ "node": "Shape intake payload", "type": "main", "index": 0 }]] },
-    "Shape intake payload": { "main": [[{ "node": "POST to bid desk", "type": "main", "index": 0 }]] },
-    "POST to bid desk": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Load triage context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load triage context": {
+      "main": [
+        [
+          {
+            "node": "Document is a URL?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Document is a URL?": {
+      "main": [
+        [
+          {
+            "node": "Download solicitation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build triage prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download solicitation": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF text": {
+      "main": [
+        [
+          {
+            "node": "Build triage prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build triage prompt": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter — triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter — triage": {
+      "main": [
+        [
+          {
+            "node": "Shape intake payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape intake payload": {
+      "main": [
+        [
+          {
+            "node": "POST to bid desk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST to bid desk": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail — new solicitation": {
+      "main": [
+        [
+          {
+            "node": "Email → intake payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email → intake payload": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   }
 }

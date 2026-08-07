@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { VerdictBadge } from "@/components/VerdictBadge";
+import { DemoTag } from "@/components/DemoBanner";
 import { daysUntil, deadlineColor, formatBudget, formatDate } from "@/lib/rfp";
 
 const GAP_TYPE_LABEL: Record<string, string> = {
@@ -54,7 +55,10 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
       <div className="mt-3 rounded-xl border border-rfp-border bg-rfp-surface p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="font-display text-xl font-semibold text-rfp-ink">{rfp.title}</h1>
+            <h1 className="font-display text-xl font-semibold text-rfp-ink">
+              {rfp.title}
+              {rfp.is_demo && <DemoTag />}
+            </h1>
             <p className="mt-1 text-sm text-rfp-ink-secondary">
               {rfp.client_agency}
               {rfp.project_type ? ` · ${rfp.project_type}` : ""}

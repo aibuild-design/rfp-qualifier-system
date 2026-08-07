@@ -119,6 +119,7 @@ export interface Database {
           verdict_why: string | null;
           verdict_why_not: string | null;
           verdict_set_at: string | null;
+          is_demo: boolean;
           created_at: string;
           updated_at: string;
         };

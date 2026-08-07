@@ -101,14 +101,24 @@ async function main() {
     console.error("BID_DESK_URL must be set in .env.local (the deployed app's origin)");
     process.exit(1);
   }
+  // Broad by design: better to triage a few irrelevant emails than to miss a
+  // solicitation because the filter was too clever. Narrow it to the
+  // aggregator's sender address once that's confirmed.
+  const gmailQuery =
+    process.env.GMAIL_SEARCH_QUERY ||
+    'subject:(RFP OR RFQ OR solicitation OR "request for proposal" OR "request for qualifications")';
+
   const before = JSON.stringify(payload.nodes);
-  const after = before.replaceAll("__BID_DESK_URL__", bidDeskUrl.replace(/\/$/, ""));
+  let after = before.replaceAll("__BID_DESK_URL__", bidDeskUrl.replace(/\/$/, ""));
   if (before === after) {
     console.error("No __BID_DESK_URL__ placeholder found — the Config node may have been edited.");
     process.exit(1);
   }
+  // JSON.stringify escaping keeps the embedded quotes valid inside the string literal.
+  after = after.replaceAll("__GMAIL_QUERY__", JSON.stringify(gmailQuery).slice(1, -1));
   payload.nodes = JSON.parse(after);
   console.log(`  bid desk → ${bidDeskUrl.replace(/\/$/, "")}`);
+  console.log(`  gmail q  → ${gmailQuery}`);
 
   await resolveCredentials(payload);
 

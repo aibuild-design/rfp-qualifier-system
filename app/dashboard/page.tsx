@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { StatCard } from "@/components/StatCard";
 import { ProfileIncompleteBanner } from "@/components/ProfileIncompleteBanner";
+import { DemoBanner, DemoTag } from "@/components/DemoBanner";
 import { ChartIcon, CheckCircleIcon, ClockIcon, DocumentIcon } from "@/components/icons";
 import { daysUntil, deadlineColor, formatBudget, formatDate, isoDaysFromNow } from "@/lib/rfp";
 
@@ -45,10 +46,16 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     .from("sector_experience")
     .select("*", { count: "exact", head: true });
 
+  const { count: demoCount } = await supabase
+    .from("rfps")
+    .select("*", { count: "exact", head: true })
+    .eq("is_demo", true);
+
   const rows = rfps ?? [];
 
   return (
     <div className="mx-auto max-w-6xl">
+      <DemoBanner count={demoCount ?? 0} />
       {!sectorCount && <ProfileIncompleteBanner />}
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -111,7 +118,10 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                   <tr key={rfp.id} className="border-b border-rfp-border last:border-0 hover:bg-rfp-surface-sunken/60">
                     <td className="px-5 py-3.5">
                       <Link href={`/dashboard/rfps/${rfp.id}`} className="block">
-                        <p className="font-medium text-rfp-ink">{rfp.title}</p>
+                        <p className="font-medium text-rfp-ink">
+                          {rfp.title}
+                          {rfp.is_demo && <DemoTag />}
+                        </p>
                         <p className="text-xs text-rfp-ink-muted">
                           {rfp.client_agency}
                           {rfp.project_type ? ` · ${rfp.project_type}` : ""}
