@@ -78,6 +78,7 @@ export interface Database {
           deadline_critical_days: number;
           preferred_misses_are_fatal: boolean;
           max_score_spread: number;
+          rubric_weights: Record<string, number> | null;
           notes: string | null;
           updated_at: string;
         };
@@ -136,6 +137,7 @@ export interface Database {
           status: RfpStatus;
           score_percent: number | null;
           score_samples: number[] | null;
+          score_breakdown: Record<string, { level: string; note?: string | null }> | null;
           verdict_why: string | null;
           verdict_why_not: string | null;
           verdict_set_at: string | null;

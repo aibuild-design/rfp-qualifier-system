@@ -4,6 +4,7 @@ import { isAuthorized } from "@/lib/api-auth";
 import { isServiceRoleConfigured } from "@/lib/supabase/config";
 import { toTimestamp } from "@/lib/rfp";
 import { decideVerdict, thresholdsFromSettings } from "@/lib/verdict";
+import { scoreFromRubric, type RubricBreakdown, type RubricWeights } from "@/lib/rubric";
 import type { Database, TableInsert } from "@/lib/supabase/types";
 
 // The landing point for n8n's intake → triage pipeline (modules 1-2 of the
@@ -77,6 +78,7 @@ const RFP_FIELDS = [
   "status",
   "score_percent",
   "score_samples",
+  "score_breakdown",
   "verdict_why",
   "verdict_why_not",
   "verdict_set_at",
@@ -137,9 +139,30 @@ export async function POST(req: NextRequest) {
     // applies to the next solicitation without a deploy.
     const { data: settings } = await supabase
       .from("scoring_settings")
-      .select("go_threshold,maybe_threshold,preferred_misses_are_fatal,max_score_spread")
+      .select("go_threshold,maybe_threshold,preferred_misses_are_fatal,max_score_spread,rubric_weights")
       .eq("id", true)
       .maybeSingle();
+
+    // The score is computed here from the rubric classifications, not taken
+    // from the model. Asking for an open-ended 0-100 is what produced the
+    // variance; classifying five anchored dimensions and doing the arithmetic
+    // ourselves is the same fix already applied to the label.
+    //
+    // A payload without a rubric still works and keeps whatever score it
+    // carried — the old shape has to stay valid, or a half-deployed workflow
+    // would silently stop producing verdicts.
+    const rubric = scoreFromRubric(
+      body.score_breakdown as RubricBreakdown | null,
+      (settings?.rubric_weights as RubricWeights | null) ?? undefined
+    );
+    if (rubric) {
+      if (body.score_percent !== undefined && body.score_percent !== null && Math.abs(body.score_percent - rubric.score) > 10) {
+        console.info(
+          `[intake ${body.external_id}] model volunteered ${body.score_percent}%, rubric computes ${rubric.score}% — using the rubric`
+        );
+      }
+      body.score_percent = rubric.score;
+    }
     decision = decideVerdict(
       body.score_percent,
       disqualifier_checks ?? [],

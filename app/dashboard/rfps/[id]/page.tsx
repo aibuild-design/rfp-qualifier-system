@@ -10,6 +10,7 @@ import { FilingStatusCard } from "@/components/FilingStatusCard";
 import { proposalFileName } from "@/lib/proposal";
 import { daysUntil, deadlineColor, deadlineWindowsFrom, formatBudget, formatDate, formatDeadline } from "@/lib/rfp";
 import { consensusGap } from "@/lib/verdict";
+import { scoreFromRubric, type RubricBreakdown } from "@/lib/rubric";
 
 const GAP_TYPE_LABEL: Record<string, string> = {
   experience: "Experience",
@@ -66,7 +67,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         .order("match_score", { ascending: false, nullsFirst: false }),
       supabase.from("team_members").select("*"),
       supabase.from("language_blocks").select("*", { count: "exact", head: true }),
-      supabase.from("scoring_settings").select("deadline_warning_days,deadline_critical_days").eq("id", true).maybeSingle(),
+      supabase.from("scoring_settings").select("deadline_warning_days,deadline_critical_days,rubric_weights").eq("id", true).maybeSingle(),
     ]);
 
   const windows = deadlineWindowsFrom(scoring);
@@ -74,6 +75,8 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
   if (!rfp) {
     notFound();
   }
+
+  const rubric = scoreFromRubric(rfp.score_breakdown as RubricBreakdown | null, scoring?.rubric_weights ?? undefined);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -162,6 +165,44 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
           </a>
         )}
       </div>
+
+      {rubric && (
+        <Section
+          title="How the score was reached"
+          subtitle="Each dimension is judged against a fixed standard; the percentage is the arithmetic, not a guess."
+        >
+          <ul className="divide-y divide-rfp-border">
+            {rubric.dimensions.map((d) => (
+              <li key={d.key} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-3">
+                <span className="min-w-[9rem] text-sm font-medium text-rfp-ink">{d.label}</span>
+                <span
+                  className="rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
+                  style={{
+                    background: d.points === 0 ? "var(--rfp-surface-sunken)" : "color-mix(in srgb, var(--rfp-good) 12%, transparent)",
+                    color: d.points === 0 ? "var(--rfp-ink-muted)" : "var(--rfp-good)",
+                  }}
+                >
+                  {d.level.replace(/_/g, " ")}
+                </span>
+                <span className="tabular text-xs font-semibold text-rfp-ink-secondary">
+                  {d.points}/{d.maxPoints}
+                </span>
+                {d.note && <span className="w-full text-xs leading-relaxed text-rfp-ink-muted">{d.note}</span>}
+              </li>
+            ))}
+            <li className="flex items-baseline justify-between gap-3 bg-rfp-surface-sunken/60 px-5 py-3">
+              <span className="text-sm font-semibold text-rfp-ink">Total</span>
+              <span className="tabular text-sm font-semibold text-rfp-ink">{rubric.score}%</span>
+            </li>
+          </ul>
+          {rubric.missing.length > 0 && (
+            <p className="border-t border-rfp-border px-5 py-2.5 text-xs text-rfp-ink-muted">
+              {rubric.missing.length} dimension{rubric.missing.length > 1 ? "s" : ""} went unjudged
+              ({rubric.missing.join(", ")}); the score is scaled over the rest rather than counting them as zero.
+            </p>
+          )}
+        </Section>
+      )}
 
       {/* Gap list */}
       <Section title="Gap list" subtitle="What Caravann is short on for this RFP — the teaming shopping list.">

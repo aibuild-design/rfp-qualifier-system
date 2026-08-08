@@ -13,6 +13,7 @@ import { recommendTeam } from "../lib/team-match.ts";
 import { toTimestamp } from "../lib/rfp.ts";
 import { checkDocumentUrl, isBlockedHost } from "../lib/url-guard.ts";
 import { consensusGap, decideVerdict, spreadOf } from "../lib/verdict.ts";
+import { DEFAULT_WEIGHTS, RUBRIC, RUBRIC_MAX, rubricSchema, scoreFromRubric } from "../lib/rubric.ts";
 
 let passed = 0;
 const failures = [];
@@ -162,6 +163,56 @@ console.log("\nTimestamp coercion");
   for (const ref of ["see section 4", "Section 4", "4"]) {
     check(`"${ref}" is a cross-reference, not a date`, toTimestamp(ref) === null, String(toTimestamp(ref)));
   }
+}
+
+console.log("\nScoring rubric");
+{
+  check("a perfect fit is exactly 100", RUBRIC_MAX === 100, String(RUBRIC_MAX));
+
+  const best = Object.fromEntries(RUBRIC.map((d) => [d.key, { level: d.levels.at(-1).value }]));
+  const worst = Object.fromEntries(RUBRIC.map((d) => [d.key, { level: d.levels[0].value }]));
+  check("every dimension at its best scores 100", scoreFromRubric(best).score === 100);
+  check("every dimension at its worst scores 0", scoreFromRubric(worst).score === 0);
+
+  // The real shape: strong in sector, no local presence.
+  const realistic = {
+    sector_depth: { level: "strong" },
+    comparable_engagements: { level: "many" },
+    geographic_fit: { level: "none" },
+    timeline: { level: "comfortable" },
+    budget_vs_effort: { level: "adequate" },
+  };
+  const scored = scoreFromRubric(realistic);
+  check("a realistic mix scores 30+25+0+15+8 = 78", scored.score === 78, String(scored.score));
+  check("every dimension is explained", scored.dimensions.length === 5);
+  check("the zero dimension is named, not hidden",
+    scored.dimensions.find((d) => d.key === "geographic_fit").points === 0);
+
+  // The whole point: same classifications always give the same number.
+  const repeated = new Set(Array.from({ length: 50 }, () => scoreFromRubric(realistic).score));
+  check("identical classifications always give one score", repeated.size === 1, [...repeated].join(","));
+
+  // A partial answer must not be punished for dimensions it never saw.
+  const partial = scoreFromRubric({ sector_depth: { level: "strong" }, timeline: { level: "comfortable" } });
+  check("a partial rubric rescales rather than scoring low", partial.score === 100, String(partial.score));
+  check("...and says which dimensions were missing", partial.missing.length === 3, partial.missing.join(","));
+
+  check("an unknown level is ignored, not guessed",
+    scoreFromRubric({ sector_depth: { level: "excellent" }, timeline: { level: "tight" } }).dimensions.length === 1);
+  check("no rubric returns null so the caller can fall back", scoreFromRubric(null) === null);
+  check("an empty rubric returns null", scoreFromRubric({}) === null);
+
+  // Weights are Khaled's to change without touching the prompt.
+  const heavyGeo = scoreFromRubric(realistic, { ...DEFAULT_WEIGHTS, geographic_fit: 40 });
+  check("raising a weight lowers a score that fails that dimension",
+    heavyGeo.score < scored.score, `${heavyGeo.score} vs ${scored.score}`);
+
+  // The prompt's enum and the scorer's levels come from one definition, so
+  // they cannot drift into silently unscoreable answers.
+  const schema = rubricSchema();
+  check("the schema covers every dimension", Object.keys(schema.properties).length === RUBRIC.length);
+  check("schema levels match the scorer's levels", RUBRIC.every((d) =>
+    JSON.stringify(schema.properties[d.key].properties.level.enum) === JSON.stringify(d.levels.map((l) => l.value))));
 }
 
 console.log("\nDisagreement between triage runs");
