@@ -2,13 +2,11 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/supabase/types";
-
-type Row = Database["public"]["Tables"]["team_members"]["Row"];
+import type { TeamMemberRow } from "@/lib/supabase/types";
 
 // The private roster module 9's team match recommends against — Khaled
 // confirms every assignment, nothing here auto-assigns.
-export function TeamRosterEditor({ initial }: { initial: Row[] }) {
+export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
   const [rows, setRows] = useState(initial);
   const [newName, setNewName] = useState("");
 
@@ -22,7 +20,7 @@ export function TeamRosterEditor({ initial }: { initial: Row[] }) {
     }
   }
 
-  async function update(id: string, patch: Partial<Row>) {
+  async function update(id: string, patch: Partial<TeamMemberRow>) {
     setRows(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
     const supabase = createClient();
     await supabase.from("team_members").update(patch).eq("id", id);
@@ -63,7 +61,7 @@ export function TeamRosterEditor({ initial }: { initial: Row[] }) {
               <td className="px-4 py-2">
                 <select
                   value={row.bandwidth}
-                  onChange={(e) => update(row.id, { bandwidth: e.target.value as Row["bandwidth"] })}
+                  onChange={(e) => update(row.id, { bandwidth: e.target.value as TeamMemberRow["bandwidth"] })}
                   className="rounded border border-transparent bg-transparent px-1.5 py-1 text-rfp-ink hover:border-rfp-border focus:border-rfp-gold focus:bg-rfp-surface-sunken focus:outline-none"
                 >
                   <option value="open">Open</option>

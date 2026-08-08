@@ -61,6 +61,62 @@ The shared secret was compared with `===`, which returns as soon as two bytes
 differ. **Fix:** constant-time comparison over SHA-256 digests, which also
 avoids leaking length.
 
+## Findings from the 2026-08-08 pass, and what was done
+
+The first review predates the manual-submission form, the CSV export and the
+Word export. This pass covered those and re-tested everything above.
+
+Re-verified adversarially, not read: 44 checks run as an outsider holding only
+the public anon key — every table returns nothing, every write is rejected, the
+allowlist cannot be self-granted, and every route answers 401 or redirects.
+
+### 5. SSRF through `document_url` — **closed at the app boundary**
+
+Previously listed below as a known limitation. It stopped being theoretical
+when the dashboard form began accepting a link from a person and handing it to
+n8n to fetch: `http://169.254.169.254/…` would have had n8n retrieve the cloud
+metadata service, which on AWS, GCP and Azure serves the instance's own
+credentials.
+
+**Fix:** `lib/url-guard.ts` rejects non-http(s) schemes, embedded credentials,
+loopback, link-local, unique-local, CGNAT, multicast and every private IPv4
+range, `.local`/`.internal`/`.localhost` names, and IPv4-mapped IPv6. The
+hostname is then resolved and each returned address re-checked, so a public
+name pointing at a private address is caught too.
+
+Verified twice: 23 blocked targets and 6 legitimate links in the unit suite,
+plus five real attempts driven through the live form, including the metadata
+address and the obfuscated `http://2130706433/` spelling of 127.0.0.1.
+
+**Residual:** the name is resolved here and fetched by n8n a moment later, so
+DNS rebinding is still possible. Closing that needs the fetcher to pin the
+address it resolved, which is n8n's side of the wire. The bar is raised, not
+sealed.
+
+### 6. Server actions ran before checking for a session — **fixed**
+
+RLS meant an anonymous caller read nothing and wrote nothing, and that was
+verified. But a server action is a POST endpoint anyone who knows its id can
+invoke, and each one still ran: issuing queries and answering with a
+domain-shaped message like "RFP not found" that confirms the endpoint is live.
+
+**Fix:** every action now opens with `requireUser()` and returns before doing
+work. Authorisation no longer rests on RLS alone.
+
+### 7. Postgres error text was returned to the browser — **fixed**
+
+Failed writes answered with the raw driver message, which names tables, columns
+and constraints — a free schema map, and meaningless to whoever clicked the
+button. **Fix:** `safeError()` logs the detail server-side and returns a
+sentence.
+
+### 8. Intake silently discarded child rows — **fixed** (see git history)
+
+Not an access-control bug but a trust one: a compliance item whose `due_at` the
+model phrased as prose failed its cast, and the route answered `200 ok` with
+the whole compliance checklist missing. Errors are now surfaced and dates
+coerced. This is the finding most likely to have caused a real bad decision.
+
 ## Still open — needs the Supabase dashboard
 
 **Turn off public signup.** Authentication → Providers → Email → disable
@@ -118,10 +174,10 @@ verdict. The mitigations are that nothing auto-submits, every verdict is
 advisory, and the reasoning is shown so a manipulated conclusion is visible
 rather than silent. Worth revisiting if the system ever acts without review.
 
-**SSRF via `document_url`.** n8n fetches whatever URL it's handed. Now that the
-webhook requires authentication this is reachable only by a credential holder,
-but the fetch itself is still unrestricted. Add private-range blocking before
-opening intake to any less-trusted source.
+**DNS rebinding on `document_url`.** The private-range blocking described in
+finding 5 runs when the link is submitted; n8n fetches moments later. A record
+that changes in between still gets through. Pinning the resolved address is
+n8n's side of the wire.
 
 **Verdict variance.** The same solicitation can score differently across runs
 even at temperature 0 — observed go/90 and maybe/78 on identical input. This is

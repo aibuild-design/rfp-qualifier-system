@@ -340,12 +340,15 @@ export interface Database {
   };
 }
 
+/** Row/Insert shorthands. `TableInsert` keeps the machine routes readable —
+ *  `TableInsert<"rfp_gap_items">` rather than the four-level index. */
+export type TableInsert<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Insert"];
+
 export type OrgProfileRow = Database["public"]["Tables"]["org_profile"]["Row"];
 export type SectorExperienceRow = Database["public"]["Tables"]["sector_experience"]["Row"];
 export type TeamMemberRow = Database["public"]["Tables"]["team_members"]["Row"];
 export type RfpRow = Database["public"]["Tables"]["rfps"]["Row"];
-export type RfpGapItemRow = Database["public"]["Tables"]["rfp_gap_items"]["Row"];
-export type RfpComplianceItemRow = Database["public"]["Tables"]["rfp_compliance_items"]["Row"];
 export type RfpDisqualifierCheckRow = Database["public"]["Tables"]["rfp_disqualifier_checks"]["Row"];
 export type RfpQuestionRow = Database["public"]["Tables"]["rfp_questions"]["Row"];
 export type LanguageBlockRow = Database["public"]["Tables"]["language_blocks"]["Row"];

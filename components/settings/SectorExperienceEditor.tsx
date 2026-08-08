@@ -2,13 +2,11 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/supabase/types";
-
-type Row = Database["public"]["Tables"]["sector_experience"]["Row"];
+import type { SectorExperienceRow } from "@/lib/supabase/types";
 
 // "It knows your depth, sector by sector" (module 3) — the disqualifier gate
 // and scoring both read this table per RFP.
-export function SectorExperienceEditor({ initial }: { initial: Row[] }) {
+export function SectorExperienceEditor({ initial }: { initial: SectorExperienceRow[] }) {
   const [rows, setRows] = useState(initial);
   const [newSector, setNewSector] = useState("");
 
@@ -26,7 +24,7 @@ export function SectorExperienceEditor({ initial }: { initial: Row[] }) {
     }
   }
 
-  async function update(id: string, patch: Partial<Row>) {
+  async function update(id: string, patch: Partial<SectorExperienceRow>) {
     setRows(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
     const supabase = createClient();
     await supabase.from("sector_experience").update(patch).eq("id", id);

@@ -3,7 +3,7 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { isAuthorized } from "@/lib/api-auth";
 import { isServiceRoleConfigured } from "@/lib/supabase/config";
 import { toTimestamp } from "@/lib/rfp";
-import type { Database } from "@/lib/supabase/types";
+import type { Database, TableInsert } from "@/lib/supabase/types";
 
 // The landing point for n8n's intake → triage pipeline (modules 1-2 of the
 // SOW). n8n parses a solicitation, runs it through OpenRouter, and POSTs the
@@ -40,14 +40,18 @@ import type { Database } from "@/lib/supabase/types";
 //   "questions": [{ "lane": "public_memo|incumbent_request", "question_text": "...", "status": "?" }]
 // }
 
-type IntakeBody = Partial<Database["public"]["Tables"]["rfps"]["Insert"]> & {
+/** A child row as the caller sends it — the parent link is set by this route,
+ *  never taken from the body. */
+type Child<T extends keyof Database["public"]["Tables"]> = Omit<TableInsert<T>, "rfp_id">;
+
+type IntakeBody = Partial<TableInsert<"rfps">> & {
   external_id: string;
   title: string;
   client_agency: string;
-  gap_items?: Array<Omit<Database["public"]["Tables"]["rfp_gap_items"]["Insert"], "rfp_id">>;
-  compliance_items?: Array<Omit<Database["public"]["Tables"]["rfp_compliance_items"]["Insert"], "rfp_id">>;
-  disqualifier_checks?: Array<Omit<Database["public"]["Tables"]["rfp_disqualifier_checks"]["Insert"], "rfp_id">>;
-  questions?: Array<Omit<Database["public"]["Tables"]["rfp_questions"]["Insert"], "rfp_id">>;
+  gap_items?: Array<Child<"rfp_gap_items">>;
+  compliance_items?: Array<Child<"rfp_compliance_items">>;
+  disqualifier_checks?: Array<Child<"rfp_disqualifier_checks">>;
+  questions?: Array<Child<"rfp_questions">>;
 };
 
 // Explicit allowlist rather than spreading the body into the upsert. Spreading
@@ -76,7 +80,7 @@ const RFP_FIELDS = [
   "verdict_set_at",
 ] as const;
 
-type RfpInsert = Database["public"]["Tables"]["rfps"]["Insert"];
+type RfpInsert = TableInsert<"rfps">;
 
 function pickRfpFields(body: IntakeBody): RfpInsert {
   const out: Partial<RfpInsert> = {};

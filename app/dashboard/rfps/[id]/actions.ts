@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser, safeError, type ActionResult } from "@/lib/auth";
 import { assembleDraft, DEFAULT_SECTIONS } from "@/lib/proposal";
 import { recommendTeam } from "@/lib/team-match";
 
@@ -10,8 +10,9 @@ import { recommendTeam } from "@/lib/team-match";
 // the RLS allowlist. The service-role client is reserved for n8n's machine
 // path, where there is no user to act as.
 
-export async function buildDraft(rfpId: string) {
-  const supabase = await createClient();
+export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted: number; needsInput: number; preserved: number }>> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
 
   const [{ data: rfp }, { data: blocks }] = await Promise.all([
     supabase.from("rfps").select("*").eq("id", rfpId).maybeSingle(),
@@ -46,7 +47,7 @@ export async function buildDraft(rfpId: string) {
 
   if (rows.length) {
     const { error } = await supabase.from("rfp_proposal_sections").insert(rows);
-    if (error) return { error: error.message };
+    if (error) return safeError("build the draft", error);
   }
 
   revalidatePath(`/dashboard/rfps/${rfpId}`);
@@ -58,19 +59,21 @@ export async function buildDraft(rfpId: string) {
   };
 }
 
-export async function approveSection(rfpId: string, sectionId: string) {
-  const supabase = await createClient();
+export async function approveSection(rfpId: string, sectionId: string): Promise<ActionResult> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
   const { error } = await supabase
     .from("rfp_proposal_sections")
     .update({ status: "approved" })
     .eq("id", sectionId);
-  if (error) return { error: error.message };
+  if (error) return safeError("approve the section", error);
   revalidatePath(`/dashboard/rfps/${rfpId}`);
   return { ok: true };
 }
 
-export async function matchTeam(rfpId: string) {
-  const supabase = await createClient();
+export async function matchTeam(rfpId: string): Promise<ActionResult<{ recommended: number }>> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
 
   const [{ data: members }, { data: checks }] = await Promise.all([
     supabase.from("team_members").select("*"),
@@ -106,20 +109,21 @@ export async function matchTeam(rfpId: string) {
 
   if (rows.length) {
     const { error } = await supabase.from("rfp_team_assignments").insert(rows);
-    if (error) return { error: error.message };
+    if (error) return safeError("save the recommendations", error);
   }
 
   revalidatePath(`/dashboard/rfps/${rfpId}`);
   return { ok: true, recommended: rows.length };
 }
 
-export async function confirmAssignment(rfpId: string, assignmentId: string) {
-  const supabase = await createClient();
+export async function confirmAssignment(rfpId: string, assignmentId: string): Promise<ActionResult> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
   const { error } = await supabase
     .from("rfp_team_assignments")
     .update({ status: "confirmed" })
     .eq("id", assignmentId);
-  if (error) return { error: error.message };
+  if (error) return safeError("confirm the assignment", error);
   revalidatePath(`/dashboard/rfps/${rfpId}`);
   return { ok: true };
 }
@@ -127,11 +131,9 @@ export async function confirmAssignment(rfpId: string, assignmentId: string) {
 /** Approving a question is a human act and is recorded as one. Sending is
  *  separate and not wired: the SOW requires Khaled to send the records-request
  *  lane himself, and there is no mail credential in this build. */
-export async function approveQuestion(rfpId: string, questionId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export async function approveQuestion(rfpId: string, questionId: string): Promise<ActionResult> {
+  const { supabase, user, denied } = await requireUser();
+  if (denied) return denied;
 
   const { error } = await supabase
     .from("rfp_questions")
@@ -141,7 +143,7 @@ export async function approveQuestion(rfpId: string, questionId: string) {
       approved_by: user?.email ?? null,
     })
     .eq("id", questionId);
-  if (error) return { error: error.message };
+  if (error) return safeError("approve the question", error);
   revalidatePath(`/dashboard/rfps/${rfpId}`);
   return { ok: true };
 }
@@ -149,13 +151,14 @@ export async function approveQuestion(rfpId: string, questionId: string) {
 /** Records that an approved question was sent by hand. No mail is dispatched
  *  from here — this marks what a human already did, so the memo doesn't get
  *  sent twice. */
-export async function markQuestionSent(rfpId: string, questionId: string) {
-  const supabase = await createClient();
+export async function markQuestionSent(rfpId: string, questionId: string): Promise<ActionResult> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
   const { error } = await supabase
     .from("rfp_questions")
     .update({ status: "sent", sent_at: new Date().toISOString() })
     .eq("id", questionId);
-  if (error) return { error: error.message };
+  if (error) return safeError("mark the question sent", error);
   revalidatePath(`/dashboard/rfps/${rfpId}`);
   return { ok: true };
 }

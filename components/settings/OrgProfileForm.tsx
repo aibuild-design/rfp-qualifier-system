@@ -2,18 +2,16 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/supabase/types";
-
-type OrgProfile = Database["public"]["Tables"]["org_profile"]["Row"];
+import type { OrgProfileRow } from "@/lib/supabase/types";
 
 // The org-wide eligibility profile (module 3) — confirmed once, read by the
 // disqualifier gate on every RFP. A singleton row (id is always `true`).
-export function OrgProfileForm({ initial }: { initial: OrgProfile }) {
+export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
   const [profile, setProfile] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
-  async function save(next: OrgProfile) {
+  async function save(next: OrgProfileRow) {
     setProfile(next);
     setSaving(true);
     const supabase = createClient();

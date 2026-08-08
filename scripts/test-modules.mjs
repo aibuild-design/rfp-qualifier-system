@@ -11,6 +11,7 @@
 import { assembleDraft, fillPlaceholders, proposalFileName, rankBlocks } from "../lib/proposal.ts";
 import { recommendTeam } from "../lib/team-match.ts";
 import { toTimestamp } from "../lib/rfp.ts";
+import { checkDocumentUrl, isBlockedHost } from "../lib/url-guard.ts";
 
 let passed = 0;
 const failures = [];
@@ -160,6 +161,74 @@ console.log("\nTimestamp coercion");
   for (const ref of ["see section 4", "Section 4", "4"]) {
     check(`"${ref}" is a cross-reference, not a date`, toTimestamp(ref) === null, String(toTimestamp(ref)));
   }
+}
+
+console.log("\nDocument URL guard (SSRF)");
+{
+  // These are the addresses that must never be fetched. 169.254.169.254 is the
+  // one that matters most: on AWS, GCP and Azure it serves instance
+  // credentials to anything that asks.
+  const mustBlock = [
+    "http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+    "http://metadata.google.internal/computeMetadata/v1/",
+    "http://localhost:3000/admin",
+    "http://127.0.0.1/",
+    "http://127.63.31.9/",
+    "http://10.0.0.5/internal.pdf",
+    "http://192.168.1.1/",
+    "http://172.16.4.4/",
+    "http://172.31.255.255/",
+    "http://0.0.0.0/",
+    "http://100.64.0.1/",
+    "http://[::1]/",
+    "http://[fd00::1]/",
+    "http://[fe80::1]/",
+    "http://[::ffff:127.0.0.1]/",
+    "http://[::ffff:7f00:1]/",
+    "http://[0:0:0:0:0:ffff:a00:5]/",
+    "http://intranet.local/rfp.pdf",
+    "http://fileserver.internal/rfp.pdf",
+    "http://localhost./",
+    // Obfuscated spellings of 127.0.0.1 — the URL parser normalises these, so
+    // the guard sees dotted decimal by the time it runs.
+    "http://2130706433/",
+    "http://0x7f000001/",
+    "http://127.1/",
+  ];
+  const blocked = mustBlock.filter((u) => checkDocumentUrl(u).ok === false);
+  check(
+    `blocks all ${mustBlock.length} private/loopback/metadata targets`,
+    blocked.length === mustBlock.length,
+    mustBlock.filter((u) => checkDocumentUrl(u).ok).join(", ") || ""
+  );
+
+  const mustAllow = [
+    "https://www.samtrans.com/rfp/2026-04.pdf",
+    "http://agency.gov/solicitation.pdf",
+    "https://bids.example.org:8443/doc.pdf",
+    "https://11.0.0.1/public.pdf", // 11.x is public space, not private
+    "https://172.15.0.1/x.pdf", // just outside 172.16/12
+    "https://172.32.0.1/x.pdf", // just above 172.31
+  ];
+  const allowed = mustAllow.filter((u) => checkDocumentUrl(u).ok === true);
+  check(
+    `allows all ${mustAllow.length} legitimate public document links`,
+    allowed.length === mustAllow.length,
+    mustAllow.filter((u) => !checkDocumentUrl(u).ok).join(", ") || ""
+  );
+
+  check("rejects a non-http scheme", checkDocumentUrl("file:///etc/passwd").ok === false);
+  check("rejects gopher", checkDocumentUrl("gopher://host/1").ok === false);
+  check(
+    "rejects credentials embedded in the link",
+    checkDocumentUrl("https://user:pass@agency.gov/x.pdf").ok === false
+  );
+  check("rejects an empty link", checkDocumentUrl("   ").ok === false);
+  check("rejects unparseable text", checkDocumentUrl("not a url").ok === false);
+  check(
+    "the guard is reusable against a resolved IP",
+    isBlockedHost("169.254.169.254") && !isBlockedHost("93.184.216.34")
+  );
 }
 
 console.log(`\n${passed}/${passed + failures.length} checks passed.`);

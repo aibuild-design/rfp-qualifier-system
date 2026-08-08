@@ -2,7 +2,10 @@
 
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { lookup } from "node:dns/promises";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { requireUser, safeError, type ActionResult } from "@/lib/auth";
+import { checkDocumentUrl, isBlockedHost } from "@/lib/url-guard";
 
 /**
  * Submits a solicitation for triage from the dashboard.
@@ -27,21 +30,41 @@ export async function submitSolicitation(input: {
   client_agency: string;
   document_url?: string;
   document_text?: string;
-}) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not signed in" };
+}): Promise<ActionResult<{ id: string; warning: string }>> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
 
   const title = input.title.trim();
   const agency = input.client_agency.trim();
-  const url = input.document_url?.trim();
+  const rawUrl = input.document_url?.trim();
   const text = input.document_text?.trim();
 
   if (!title || !agency) return { error: "Title and agency are required" };
-  if (!url && !text) return { error: "Paste the solicitation text or give a link to the document" };
-  if (url && !/^https?:\/\//i.test(url)) return { error: "The link must start with http:// or https://" };
+  if (!rawUrl && !text) {
+    return { error: "Paste the solicitation text or give a link to the document" };
+  }
+
+  // n8n fetches whatever link it is handed, so the check happens before the
+  // link is stored — not at fetch time, when it is already someone else's
+  // process. See lib/url-guard.ts for what this does and does not cover.
+  let url: string | undefined;
+  if (rawUrl) {
+    const checked = checkDocumentUrl(rawUrl);
+    if (!checked.ok) return { error: checked.error };
+    url = checked.url;
+
+    // A public name is allowed to resolve to a private address. Resolving it
+    // here catches the ordinary version of that; it cannot catch a record that
+    // changes between this lookup and n8n's fetch.
+    try {
+      const addresses = await lookup(new URL(url).hostname, { all: true });
+      if (addresses.some((a) => isBlockedHost(a.address))) {
+        return { error: "That link resolves to a private address, so it cannot be fetched" };
+      }
+    } catch {
+      return { error: "That link's host could not be found" };
+    }
+  }
 
   // Distinct from anything n8n generates, so a manual submission can never
   // collide with an email- or aggregator-sourced one for the same solicitation.
@@ -60,7 +83,7 @@ export async function submitSolicitation(input: {
     .select("id")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return safeError("submit the solicitation", error);
 
   const base = process.env.N8N_BASE_URL?.replace(/\/$/, "");
   const key = process.env.RFP_INTAKE_API_KEY;
