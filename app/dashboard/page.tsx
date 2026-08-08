@@ -20,36 +20,36 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   const supabase = await createClient();
 
   const baseQuery = supabase.from("rfps").select("*");
-  const query = showNoGo ? baseQuery.eq("status", "no_go") : baseQuery.neq("status", "no_go");
+  const listQuery = showNoGo ? baseQuery.eq("status", "no_go") : baseQuery.neq("status", "no_go");
 
-  const { data: rfps } = sortByDeadline
-    ? await query.order("due_at", { ascending: true, nullsFirst: false })
-    : await query.order("score_percent", { ascending: false, nullsFirst: false });
-
-  const { count: totalCount } = await supabase.from("rfps").select("*", { count: "exact", head: true });
-  const { count: goCount } = await supabase
-    .from("rfps")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "go");
-  const { count: pendingCount } = await supabase
-    .from("rfps")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "pending");
-  const { count: dueThisWeekCount } = await supabase
-    .from("rfp_compliance_items")
-    .select("*", { count: "exact", head: true })
-    .eq("is_complete", false)
-    .not("due_at", "is", null)
-    .lte("due_at", isoDaysFromNow(7));
-
-  const { count: sectorCount } = await supabase
-    .from("sector_experience")
-    .select("*", { count: "exact", head: true });
-
-  const { count: demoCount } = await supabase
-    .from("rfps")
-    .select("*", { count: "exact", head: true })
-    .eq("is_demo", true);
+  // None of these depend on each other, so they go out together. Run in
+  // sequence this page paid six round trips to Supabase before rendering a
+  // single row; the counts are `head: true`, so they return a number and no
+  // rows.
+  const [
+    { data: rfps },
+    { count: totalCount },
+    { count: goCount },
+    { count: pendingCount },
+    { count: dueThisWeekCount },
+    { count: sectorCount },
+    { count: demoCount },
+  ] = await Promise.all([
+    sortByDeadline
+      ? listQuery.order("due_at", { ascending: true, nullsFirst: false })
+      : listQuery.order("score_percent", { ascending: false, nullsFirst: false }),
+    supabase.from("rfps").select("*", { count: "exact", head: true }),
+    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "go"),
+    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase
+      .from("rfp_compliance_items")
+      .select("*", { count: "exact", head: true })
+      .eq("is_complete", false)
+      .not("due_at", "is", null)
+      .lte("due_at", isoDaysFromNow(7)),
+    supabase.from("sector_experience").select("*", { count: "exact", head: true }),
+    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("is_demo", true),
+  ]);
 
   const rows = rfps ?? [];
 
@@ -85,6 +85,12 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           >
             {showNoGo ? "Back to queue" : "View no-go folder"}
           </Link>
+          <Link
+            href="/dashboard/new"
+            className="rounded-lg bg-rfp-black px-3 py-1.5 font-semibold text-white transition-colors hover:bg-rfp-black-2"
+          >
+            Add a solicitation
+          </Link>
         </div>
       </div>
 
@@ -104,8 +110,16 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             <p className="mx-auto mt-1.5 max-w-md text-sm text-rfp-ink-secondary">
               {showNoGo
                 ? "Once triage rules an RFP out, it lands here with its reasoning — nothing gets deleted."
-                : "Waiting on the first intake from n8n. Once a solicitation is parsed and triaged, it shows up here ranked by score."}
+                : "Solicitations arrive by email, or you can add one yourself. Either way it is read in full and comes back with a verdict in about a minute."}
             </p>
+            {!showNoGo && (
+              <Link
+                href="/dashboard/new"
+                className="mt-4 inline-block rounded-lg bg-rfp-black px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2"
+              >
+                Add a solicitation
+              </Link>
+            )}
           </div>
         ) : (
           <table className="w-full text-left text-sm">

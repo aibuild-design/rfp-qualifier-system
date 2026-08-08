@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { isAuthorized } from "@/lib/api-auth";
 import { isServiceRoleConfigured } from "@/lib/supabase/config";
+import { toTimestamp } from "@/lib/rfp";
 import type { Database } from "@/lib/supabase/types";
 
 // The landing point for n8n's intake → triage pipeline (modules 1-2 of the
@@ -115,8 +116,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { gap_items, compliance_items, disqualifier_checks, questions } = body;
+  const { gap_items, disqualifier_checks, questions } = body;
   const supabase = createServiceRoleClient();
+
+  // The only child field Postgres can reject on content. Normalised here rather
+  // than trusted, because an unparseable date used to take the whole compliance
+  // checklist down with it — see toTimestamp.
+  const compliance_items = body.compliance_items?.map((item) => ({
+    ...item,
+    due_at: toTimestamp(item.due_at),
+  }));
 
   const { data: rfp, error: rfpError } = await supabase
     .from("rfps")
@@ -134,14 +143,32 @@ export async function POST(req: NextRequest) {
   // when n8n re-triages the same solicitation (an addendum lands, a rescore
   // runs). Cheap at this volume; revisit if a table grows large enough for
   // delete+reinsert to matter.
+  //
+  // Every outcome is collected rather than ignored. Swallowing these errors
+  // meant a rejected insert returned `200 {"status":"ok"}` with the compliance
+  // checklist quietly missing — the worst possible failure on a bid desk,
+  // because the RFP looks triaged and the technicalities that disqualify are
+  // simply absent.
+  const failures: string[] = [];
+
   async function replaceChildren<T extends { rfp_id: string }>(
     table: "rfp_gap_items" | "rfp_compliance_items" | "rfp_disqualifier_checks" | "rfp_questions",
     rows: Omit<T, "rfp_id">[] | undefined
   ) {
     if (rows === undefined) return; // omitted entirely = leave existing rows alone
-    await supabase.from(table).delete().eq("rfp_id", rfpId);
-    if (rows.length > 0) {
-      await supabase.from(table).insert(rows.map((r) => ({ ...r, rfp_id: rfpId })) as never);
+
+    const { error: deleteError } = await supabase.from(table).delete().eq("rfp_id", rfpId);
+    if (deleteError) {
+      failures.push(`${table}: ${deleteError.message}`);
+      return;
+    }
+    if (rows.length === 0) return;
+
+    const { error: insertError } = await supabase
+      .from(table)
+      .insert(rows.map((r) => ({ ...r, rfp_id: rfpId })) as never);
+    if (insertError) {
+      failures.push(`${table} (${rows.length} row(s)): ${insertError.message}`);
     }
   }
 
@@ -151,6 +178,16 @@ export async function POST(req: NextRequest) {
     replaceChildren("rfp_disqualifier_checks", disqualifier_checks),
     replaceChildren("rfp_questions", questions),
   ]);
+
+  if (failures.length > 0) {
+    // The rfp row itself is already saved and correct, so the id is returned —
+    // but this is a 500 so n8n's run is marked failed and the dashboard's
+    // submit path records it on the row instead of showing a complete verdict.
+    return NextResponse.json(
+      { id: rfpId, error: "Some triage detail could not be saved", failed: failures },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ id: rfpId, status: "ok" });
 }

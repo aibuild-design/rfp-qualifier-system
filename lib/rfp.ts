@@ -65,6 +65,48 @@ export function formatBudget(row: Pick<RfpRow, "budget_amount" | "budget_source"
  */
 export const DISPLAY_TIME_ZONE = process.env.NEXT_PUBLIC_DISPLAY_TZ || "America/Los_Angeles";
 
+/**
+ * Coerce a value to an ISO timestamp, or null if it isn't one.
+ *
+ * Postgres rejects anything it cannot cast to timestamptz, and the triage model
+ * sometimes echoes a deadline the way the solicitation phrased it — "October
+ * 30, 2026 at 4:00 PM Pacific". Sent straight to Supabase that fails the whole
+ * insert, which took the entire compliance checklist with it.
+ *
+ * Dropping the date is the right trade: "Proposals due" with no timestamp still
+ * belongs on the checklist and is still visible to a human. Dropping the item
+ * means a page limit or an insurance minimum silently never appears.
+ */
+export function toTimestamp(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+
+  // Date.parse alone is not safe here. V8 falls back to a lenient parser that
+  // reads "see section 4" as 1 April 2001 — a compliance item that would then
+  // render as a deadline six years past due, in red, on the detail page.
+  // Requiring a four-digit year is what separates a real date from a
+  // cross-reference the model copied out of the document.
+  if (!/\b(19|20|21)\d{2}\b/.test(value)) return null;
+
+  const ms = Date.parse(value);
+  if (Number.isNaN(ms)) return null;
+
+  // A date with no time parses at local midnight, which on a UTC host lands
+  // earlier in Pacific than the real deadline. That is the safe direction to
+  // be wrong in — see formatDeadline for why late is the one unacceptable one.
+  return new Date(ms).toISOString();
+}
+
+/** The zone abbreviation currently in force (e.g. "PDT"), for labelling the UI
+ *  once instead of repeating it on every date. Derived rather than hardcoded so
+ *  it stays correct across a daylight-saving change. */
+export function timeZoneLabel(): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: DISPLAY_TIME_ZONE,
+    timeZoneName: "short",
+  }).formatToParts(new Date());
+  return parts.find((p) => p.type === "timeZoneName")?.value ?? "";
+}
+
 export function formatDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-US", {

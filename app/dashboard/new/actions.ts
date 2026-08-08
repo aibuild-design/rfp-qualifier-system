@@ -2,8 +2,7 @@
 
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { createServiceRoleClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 
 /**
  * Submits a solicitation for triage from the dashboard.
@@ -110,6 +109,8 @@ export async function submitSolicitation(input: {
     }
   });
 
+  // Both surfaces show the new row: the queue lists it, the overview counts it.
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/overview");
   return { ok: true, id: row.id };
 }

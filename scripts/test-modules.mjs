@@ -10,6 +10,7 @@
 
 import { assembleDraft, fillPlaceholders, proposalFileName, rankBlocks } from "../lib/proposal.ts";
 import { recommendTeam } from "../lib/team-match.ts";
+import { toTimestamp } from "../lib/rfp.ts";
 
 let passed = 0;
 const failures = [];
@@ -136,6 +137,29 @@ console.log("\nTeam match");
 
   check("empty roster returns nothing rather than throwing", recommendTeam([], checks).length === 0);
   check("no extracted requirements still returns people", recommendTeam(members, []).length > 0);
+}
+
+console.log("\nTimestamp coercion");
+{
+  // The regression this exists for: the model echoed a deadline the way the
+  // solicitation phrased it, Postgres rejected the cast, and the intake route
+  // dropped the entire compliance checklist while still answering 200 OK.
+  check(
+    "a human-phrased deadline becomes null rather than breaking the insert",
+    toTimestamp("October 30, 2026 at 4:00 PM Pacific") === null
+  );
+  check("an ISO timestamp survives", toTimestamp("2026-10-30T23:00:00.000Z") === "2026-10-30T23:00:00.000Z");
+  check("a plain date is accepted", typeof toTimestamp("October 30, 2026") === "string");
+  check("null stays null", toTimestamp(null) === null);
+  check("an empty string is not a date", toTimestamp("   ") === null);
+  check("a number is not a date", toTimestamp(1786190481658) === null);
+  check("\"TBD\" is not a date", toTimestamp("TBD") === null);
+
+  // V8's lenient parser reads all three of these as 1 April 2001, which would
+  // put a six-years-overdue deadline on the compliance checklist in red.
+  for (const ref of ["see section 4", "Section 4", "4"]) {
+    check(`"${ref}" is a cross-reference, not a date`, toTimestamp(ref) === null, String(toTimestamp(ref)));
+  }
 }
 
 console.log(`\n${passed}/${passed + failures.length} checks passed.`);
