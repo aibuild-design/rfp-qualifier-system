@@ -9,6 +9,7 @@ import { ProposalDraft } from "@/components/ProposalDraft";
 import { FilingStatusCard } from "@/components/FilingStatusCard";
 import { proposalFileName } from "@/lib/proposal";
 import { daysUntil, deadlineColor, deadlineWindowsFrom, formatBudget, formatDate, formatDeadline } from "@/lib/rfp";
+import { consensusGap } from "@/lib/verdict";
 
 const GAP_TYPE_LABEL: Record<string, string> = {
   experience: "Experience",
@@ -102,6 +103,20 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
             <p className="tabular mt-1 text-lg font-semibold text-rfp-ink">
               {rfp.score_percent !== null ? `${Math.round(rfp.score_percent)}%` : "—"}
             </p>
+            {/* The document is read several times and the median is kept. When
+                the reads agreed there is nothing to say; when they did not,
+                that is the most important thing on the card. */}
+            {rfp.score_samples && rfp.score_samples.length > 1 && (
+              <p className="tabular mt-0.5 text-[11px] text-rfp-ink-muted">
+                {consensusGap(rfp.score_samples) > 20 ? (
+                  <span className="font-medium text-rfp-warning">
+                    reads disagreed — {[...rfp.score_samples].sort((a, b) => a - b).join(", ")}
+                  </span>
+                ) : (
+                  <>median of {[...rfp.score_samples].sort((a, b) => a - b).join(", ")}</>
+                )}
+              </p>
+            )}
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">Budget</p>

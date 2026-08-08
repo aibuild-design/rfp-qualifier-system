@@ -12,7 +12,7 @@ import { assembleDraft, fillPlaceholders, proposalFileName, rankBlocks } from ".
 import { recommendTeam } from "../lib/team-match.ts";
 import { toTimestamp } from "../lib/rfp.ts";
 import { checkDocumentUrl, isBlockedHost } from "../lib/url-guard.ts";
-import { decideVerdict } from "../lib/verdict.ts";
+import { consensusGap, decideVerdict, spreadOf } from "../lib/verdict.ts";
 
 let passed = 0;
 const failures = [];
@@ -162,6 +162,42 @@ console.log("\nTimestamp coercion");
   for (const ref of ["see section 4", "Section 4", "4"]) {
     check(`"${ref}" is a cross-reference, not a date`, toTimestamp(ref) === null, String(toTimestamp(ref)));
   }
+}
+
+console.log("\nDisagreement between triage runs");
+{
+  const T = { go: 85, maybe: 60, maxSpread: 20 };
+  const pass = [{ is_required: true, result: "pass" }];
+
+  check("spread of a tight cluster is small", spreadOf([86, 88, 90]) === 4);
+  check("spread catches the outlier", spreadOf([55, 88, 90]) === 35);
+  check("a single sample has no spread", spreadOf([88]) === 0);
+  check("no samples has no spread", spreadOf(null) === 0);
+
+  // A real run returned 58, 87, 88. Spread is 30, but two reads agree to
+  // within a point — the median is well supported and the 58 is just a bad
+  // read. Treating that as uncertain would demote a clear go every time the
+  // model has an off run.
+  check("two reads agreeing closely is a consensus", consensusGap([58, 87, 88]) === 1);
+  check("scattered reads have no consensus", consensusGap([30, 60, 90]) === 30);
+
+  const outlierButAgreed = decideVerdict(87, pass, T, [58, 87, 88]);
+  check("one bad read among two that agree stays a go", outlierButAgreed.status === "go", outlierButAgreed.status);
+
+  const scattered = decideVerdict(60, pass, T, [30, 60, 90]);
+  check("reads that agree on nothing are capped at maybe", scattered.status === "maybe", scattered.status);
+  check("...and say why", scattered.reason.includes("No two of the 3 reads agreed"), scattered.reason.slice(0, 50));
+
+  const tight = decideVerdict(88, pass, T, [86, 88, 90]);
+  check("agreement leaves a go as a go", tight.status === "go", tight.status);
+
+  // A failed mandatory requirement is a gate, not a matter of degree — it
+  // closes the bid no matter how much the reads disagreed.
+  const gated = decideVerdict(88, [{ is_required: true, result: "fail", requirement_text: "behavioral health" }], T, [30, 60, 90]);
+  check("a failed requirement still forces no-go despite disagreement", gated.status === "no_go", gated.status);
+
+  check("no samples behaves exactly as before", decideVerdict(88, pass, T, null).status === "go");
+  check("the tolerance is configurable", decideVerdict(60, pass, { ...T, maxSpread: 40 }, [30, 60, 90]).status === "maybe");
 }
 
 console.log("\nDocument URL guard (SSRF)");

@@ -76,6 +76,7 @@ const RFP_FIELDS = [
   "budget_source",
   "status",
   "score_percent",
+  "score_samples",
   "verdict_why",
   "verdict_why_not",
   "verdict_set_at",
@@ -136,10 +137,15 @@ export async function POST(req: NextRequest) {
     // applies to the next solicitation without a deploy.
     const { data: settings } = await supabase
       .from("scoring_settings")
-      .select("go_threshold,maybe_threshold,preferred_misses_are_fatal")
+      .select("go_threshold,maybe_threshold,preferred_misses_are_fatal,max_score_spread")
       .eq("id", true)
       .maybeSingle();
-    decision = decideVerdict(body.score_percent, disqualifier_checks ?? [], thresholdsFromSettings(settings));
+    decision = decideVerdict(
+      body.score_percent,
+      disqualifier_checks ?? [],
+      thresholdsFromSettings(settings),
+      body.score_samples ?? null
+    );
   }
   if (decision && decision.status !== "pending") {
     if (body.status && body.status !== decision.status) {

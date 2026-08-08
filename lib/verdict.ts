@@ -27,6 +27,9 @@ export type GateCheck = {
 export type Thresholds = {
   go: number;
   maybe: number;
+  /** How far the individual reads may disagree before the desk stops claiming
+   *  confidence. Beyond this the verdict is capped at "maybe". */
+  maxSpread?: number;
   /** When true, a missed *preferred* requirement also closes the bid. Off by
    *  default — the SOW is explicit that preferred lowers the score rather than
    *  killing it, and turning it on will rule out winnable work. */
@@ -38,7 +41,12 @@ export type Thresholds = {
  *  failed read degrades to sane behaviour rather than to no verdicts at all. */
 export function thresholdsFromSettings(
   row:
-    | { go_threshold?: number | null; maybe_threshold?: number | null; preferred_misses_are_fatal?: boolean | null }
+    | {
+        go_threshold?: number | null;
+        maybe_threshold?: number | null;
+        preferred_misses_are_fatal?: boolean | null;
+        max_score_spread?: number | null;
+      }
     | null
     | undefined
 ): Thresholds {
@@ -46,7 +54,40 @@ export function thresholdsFromSettings(
     go: row?.go_threshold ?? THRESHOLDS.go,
     maybe: row?.maybe_threshold ?? THRESHOLDS.maybe,
     preferredIsFatal: row?.preferred_misses_are_fatal ?? false,
+    maxSpread: row?.max_score_spread ?? DEFAULT_MAX_SPREAD,
   };
+}
+
+/** Default disagreement tolerance. Twenty points is wide enough that ordinary
+ *  model wobble passes, and narrow enough to catch the 55-among-90s case. */
+export const DEFAULT_MAX_SPREAD = 20;
+
+/** How far apart the furthest two reads were. Useful to display; a poor basis
+ *  for a decision — see consensusGap. */
+export function spreadOf(samples: readonly number[] | null | undefined): number {
+  if (!samples || samples.length < 2) return 0;
+  return Math.max(...samples) - Math.min(...samples);
+}
+
+/**
+ * The tightest agreement any two reads reached.
+ *
+ * Total spread is the wrong test with three samples. A real run returned
+ * 58, 87 and 88: the spread is 30, but two reads agree to within a point and
+ * the third is simply a bad read that the median already discards. Calling
+ * that "uncertain" would push a clear go into maybe every time the model has
+ * an off run — which is often.
+ *
+ * What actually signals uncertainty is *no two reads agreeing at all*:
+ * 30, 60, 90 has the same shape as 58, 87, 88 by spread, but nothing to stand
+ * on. So the test is the smallest gap between neighbouring reads.
+ */
+export function consensusGap(samples: readonly number[] | null | undefined): number {
+  if (!samples || samples.length < 2) return 0;
+  const sorted = [...samples].sort((a, b) => a - b);
+  let smallest = Infinity;
+  for (let i = 1; i < sorted.length; i++) smallest = Math.min(smallest, sorted[i] - sorted[i - 1]);
+  return smallest;
 }
 
 /**
@@ -80,7 +121,10 @@ export type Decision = {
 export function decideVerdict(
   scorePercent: number | null | undefined,
   checks: readonly GateCheck[] = [],
-  thresholds: Thresholds = THRESHOLDS
+  thresholds: Thresholds = THRESHOLDS,
+  /** Every score the triage runs returned. When they disagree badly, the
+   *  honest verdict is "look at this yourself" rather than a confident call. */
+  samples: readonly number[] | null = null
 ): Decision {
   const failed = checks.filter((c) => c.result === "fail");
 
@@ -107,6 +151,21 @@ export function decideVerdict(
   const score = Math.round(scorePercent);
   const softMisses = failed.length;
   const note = softMisses > 0 ? ` ${softMisses} preferred requirement${softMisses > 1 ? "s" : ""} not met.` : "";
+
+  // The gate above has already passed, so nothing here is disqualifying — the
+  // only question left is degree of fit, and that is exactly the judgement the
+  // reads disagreed about. Claiming go or no-go on a 35-point spread would be
+  // inventing a confidence the evidence does not support.
+  const limit = thresholds.maxSpread ?? DEFAULT_MAX_SPREAD;
+  if (samples && samples.length > 1 && consensusGap(samples) > limit) {
+    return {
+      status: "maybe",
+      reason:
+        `No two of the ${samples.length} reads agreed on this solicitation ` +
+        `(${[...samples].sort((a, b) => a - b).join(", ")}) — the closest were ${consensusGap(samples)} points apart, ` +
+        `past the ${limit}-point tolerance. Median is ${score}%, but read it yourself before deciding.`,
+    };
+  }
 
   if (score >= thresholds.go) {
     return { status: "go", reason: `Clears every mandatory requirement and scores ${score}%.${note}` };

@@ -77,6 +77,7 @@ export interface Database {
           deadline_warning_days: number;
           deadline_critical_days: number;
           preferred_misses_are_fatal: boolean;
+          max_score_spread: number;
           notes: string | null;
           updated_at: string;
         };
@@ -134,6 +135,7 @@ export interface Database {
           budget_source: BudgetSource;
           status: RfpStatus;
           score_percent: number | null;
+          score_samples: number[] | null;
           verdict_why: string | null;
           verdict_why_not: string | null;
           verdict_set_at: string | null;
