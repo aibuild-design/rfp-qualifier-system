@@ -95,7 +95,7 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
           onChange={(e) => setProfile({ ...profile, notes: e.target.value })}
           onBlur={() => save(profile)}
           rows={3}
-          className="w-full rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-sm text-rfp-ink focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/20"
+          className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-base sm:text-sm text-rfp-ink focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
         />
       </div>
 
@@ -138,7 +138,7 @@ function ListField({
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
         placeholder="Comma-separated"
-        className="w-full rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/20"
+        className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
       />
     </div>
   );

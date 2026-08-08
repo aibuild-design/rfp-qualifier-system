@@ -34,7 +34,8 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
-      <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[34rem] text-left text-base sm:text-sm">
         <thead>
           <tr className="border-b border-rfp-border text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">
             <th className="px-4 py-2.5">Name</th>
@@ -62,7 +63,7 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
                 <select
                   value={row.bandwidth}
                   onChange={(e) => update(row.id, { bandwidth: e.target.value as TeamMemberRow["bandwidth"] })}
-                  className="rounded border border-transparent bg-transparent px-1.5 py-1 text-rfp-ink hover:border-rfp-border focus:border-rfp-gold focus:bg-rfp-surface-sunken focus:outline-none"
+                  className="min-h-11 rounded border border-transparent bg-transparent px-1.5 py-1 text-rfp-ink hover:border-rfp-border focus:border-rfp-gold focus:bg-rfp-surface-sunken focus:outline-none"
                 >
                   <option value="open">Open</option>
                   <option value="limited">Limited</option>
@@ -70,7 +71,7 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
                 </select>
               </td>
               <td className="px-4 py-2 text-right">
-                <button onClick={() => remove(row.id)} className="text-xs text-rfp-ink-muted hover:text-rfp-critical">
+                <button onClick={() => remove(row.id)} className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-medium text-rfp-ink-muted transition-colors hover:bg-rfp-critical/10 hover:text-rfp-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-critical">
                   Remove
                 </button>
               </td>
@@ -79,6 +80,8 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
         </tbody>
       </table>
 
+      </div>
+
       <div className="flex items-center gap-2 border-t border-rfp-border p-3">
         <input
           type="text"
@@ -86,11 +89,11 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addMember()}
           placeholder="Add a team member"
-          className="flex-1 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/20"
+          className="min-h-11 flex-1 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
         />
         <button
           onClick={addMember}
-          className="rounded-lg bg-rfp-black px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2"
+          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-rfp-black px-4 text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
         >
           Add
         </button>
@@ -113,7 +116,7 @@ function Cell({
       type={type}
       defaultValue={value}
       onBlur={(e) => onChange(e.target.value)}
-      className="w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-rfp-ink hover:border-rfp-border focus:border-rfp-gold focus:bg-rfp-surface-sunken focus:outline-none"
+      className="w-full min-h-11 rounded border border-transparent bg-transparent px-1.5 py-1 text-rfp-ink hover:border-rfp-border focus:border-rfp-gold focus:bg-rfp-surface-sunken focus:outline-none"
     />
   );
 }

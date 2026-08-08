@@ -4,7 +4,7 @@ import { StatCard } from "@/components/StatCard";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { DemoBanner, DemoTag } from "@/components/DemoBanner";
 import { ChartIcon, CheckCircleIcon, ClockIcon, DocumentIcon } from "@/components/icons";
-import { daysUntil, deadlineColor, formatDate, isoDaysFromNow } from "@/lib/rfp";
+import { daysUntil, deadlineColor, deadlineWindowsFrom, formatDate, isoDaysFromNow } from "@/lib/rfp";
 
 /**
  * The "what is this thing and is it working" page.
@@ -22,6 +22,13 @@ export default async function OverviewPage() {
   // of that address is missing, submissions will queue and never get a verdict
   // — worth saying out loud rather than letting it look live.
   const triageConfigured = Boolean(process.env.N8N_BASE_URL && process.env.RFP_INTAKE_API_KEY);
+
+  const { data: scoring } = await supabase
+    .from("scoring_settings")
+    .select("*")
+    .eq("id", true)
+    .maybeSingle();
+  const windows = deadlineWindowsFrom(scoring);
 
   const [
     { count: totalCount },
@@ -45,7 +52,7 @@ export default async function OverviewPage() {
       .select("*", { count: "exact", head: true })
       .eq("is_complete", false)
       .not("due_at", "is", null)
-      .lte("due_at", isoDaysFromNow(7)),
+      .lte("due_at", isoDaysFromNow(windows.warningDays)),
     supabase.from("sector_experience").select("*", { count: "exact", head: true }),
     supabase.from("language_blocks").select("*", { count: "exact", head: true }),
     supabase.from("team_members").select("*", { count: "exact", head: true }).eq("active", true),
@@ -100,7 +107,7 @@ export default async function OverviewPage() {
           accent="#8f8d84"
         />
         <StatCard
-          label="Due within 7 days"
+          label={`Due within ${windows.warningDays} days`}
           value={dueThisWeekCount ?? 0}
           subtext="Open compliance items"
           icon={ClockIcon}
@@ -138,9 +145,11 @@ export default async function OverviewPage() {
               </Warn>
             )}
             <Aside>
-              The email trigger itself is deployed but sits disabled — Gmail needs a one-time
-              browser sign-in that cannot be done from code. That switch is in n8n, not here, so
-              this page cannot report on it.
+              The Gmail account is connected and the trigger is switched on. It watches for
+              subjects mentioning an RFP, RFQ or solicitation — deliberately broad, because
+              triaging a few irrelevant emails costs less than missing a real one. That switch
+              lives in n8n rather than here, so this page reports what was last deployed, not
+              live state.
             </Aside>
           </Step>
 
@@ -167,6 +176,24 @@ export default async function OverviewPage() {
             The same pass pulls out the budget, the gap list, the compliance checklist with its
             deadlines, the disqualifier checks, and the questions worth asking the agency before
             the question deadline. No-go RFPs drop into their own folder rather than disappearing.
+            <span className="block rounded-lg border border-rfp-border bg-rfp-surface-sunken p-3">
+              <span className="block text-[11px] font-semibold uppercase tracking-wide text-rfp-ink-muted">
+                Where the line sits right now
+              </span>
+              <span className="tabular mt-1.5 block text-[13px] text-rfp-ink-secondary">
+                <strong className="font-semibold text-rfp-good">Go</strong> at{" "}
+                {scoring?.go_threshold ?? 85}% and above ·{" "}
+                <strong className="font-semibold text-rfp-warning">Maybe</strong> from{" "}
+                {scoring?.maybe_threshold ?? 60}% ·{" "}
+                <strong className="font-semibold text-rfp-critical">No-go</strong> below that, or
+                whenever a mandatory requirement fails.
+              </span>
+              <span className="mt-1.5 block text-xs">
+                The model reports the score; these numbers decide the label, so the same
+                solicitation always gets the same verdict.{" "}
+                <Nav href="/dashboard/settings">Change them in Settings</Nav>.
+              </span>
+            </span>
             {!profileReady && (
               <Warn>
                 The sector experience map in <Nav href="/dashboard/settings">Settings</Nav> is
@@ -304,7 +331,7 @@ export default async function OverviewPage() {
                       </span>
                       <span
                         className="hidden shrink-0 text-xs font-medium sm:block"
-                        style={{ color: deadlineColor(days) }}
+                        style={{ color: deadlineColor(days, windows) }}
                       >
                         {formatDate(rfp.due_at)}
                       </span>

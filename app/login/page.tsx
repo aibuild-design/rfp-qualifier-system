@@ -93,7 +93,7 @@ function LoginForm() {
                 required
                 autoComplete="email"
                 placeholder="you@company.com"
-                className="w-full rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/20"
+                className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
               />
             </div>
 
@@ -106,7 +106,7 @@ function LoginForm() {
                   type="button"
                   onClick={handleForgotPassword}
                   disabled={resetLoading}
-                  className="text-xs font-medium text-rfp-ink-muted transition-colors hover:text-rfp-gold disabled:opacity-50"
+                  className="-mr-2 inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-medium text-rfp-ink-muted transition-colors hover:text-rfp-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold disabled:opacity-50"
                 >
                   {resetLoading ? "Sending…" : resetSent ? "Email sent ✓" : "Forgot password?"}
                 </button>
@@ -119,7 +119,7 @@ function LoginForm() {
                 required
                 autoComplete="current-password"
                 placeholder="••••••••"
-                className="w-full rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/20"
+                className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
               />
             </div>
 
@@ -128,7 +128,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full rounded-lg bg-rfp-black py-2.5 text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2 disabled:opacity-50"
+              className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-rfp-black px-4 text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>

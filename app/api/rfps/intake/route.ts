@@ -3,7 +3,7 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { isAuthorized } from "@/lib/api-auth";
 import { isServiceRoleConfigured } from "@/lib/supabase/config";
 import { toTimestamp } from "@/lib/rfp";
-import { decideVerdict } from "@/lib/verdict";
+import { decideVerdict, thresholdsFromSettings } from "@/lib/verdict";
 import type { Database, TableInsert } from "@/lib/supabase/types";
 
 // The landing point for n8n's intake → triage pipeline (modules 1-2 of the
@@ -130,9 +130,17 @@ export async function POST(req: NextRequest) {
   // for why. Only applied once triage has actually run — a freshly submitted
   // row with no checks and no score stays `pending`.
   const triaged = (disqualifier_checks?.length ?? 0) > 0 || body.score_percent !== undefined;
-  const decision = triaged
-    ? decideVerdict(body.score_percent, disqualifier_checks ?? [])
-    : null;
+  let decision = null;
+  if (triaged) {
+    // Thresholds are Khaled's, read fresh per verdict so a change in Settings
+    // applies to the next solicitation without a deploy.
+    const { data: settings } = await supabase
+      .from("scoring_settings")
+      .select("go_threshold,maybe_threshold,preferred_misses_are_fatal")
+      .eq("id", true)
+      .maybeSingle();
+    decision = decideVerdict(body.score_percent, disqualifier_checks ?? [], thresholdsFromSettings(settings));
+  }
   if (decision && decision.status !== "pending") {
     if (body.status && body.status !== decision.status) {
       console.info(

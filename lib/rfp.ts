@@ -28,13 +28,33 @@ export function daysUntil(iso: string | null): number | null {
   return Math.ceil(ms / (1000 * 60 * 60 * 24));
 }
 
-/** Countdown color per the SOW: yellow inside 7 days, red inside 3. */
-export function deadlineColor(days: number | null): string {
+/** How close is too close. The SOW's defaults — yellow inside a week, red
+ *  inside three days — are the starting point, but the windows live in
+ *  Settings because how much runway a bid needs is Caravann's call. */
+export type DeadlineWindows = { warningDays: number; criticalDays: number };
+
+export const DEFAULT_DEADLINE_WINDOWS: DeadlineWindows = { warningDays: 7, criticalDays: 3 };
+
+export function deadlineColor(
+  days: number | null,
+  windows: DeadlineWindows = DEFAULT_DEADLINE_WINDOWS
+): string {
   if (days === null) return "var(--rfp-ink-muted)";
   if (days < 0) return "var(--rfp-critical)";
-  if (days <= 3) return "var(--rfp-critical)";
-  if (days <= 7) return "var(--rfp-warning)";
+  if (days <= windows.criticalDays) return "var(--rfp-critical)";
+  if (days <= windows.warningDays) return "var(--rfp-warning)";
   return "var(--rfp-ink-secondary)";
+}
+
+/** Maps the settings row onto the windows, falling back to the SOW defaults so
+ *  a missing row degrades to correct behaviour rather than to no colour. */
+export function deadlineWindowsFrom(
+  row: { deadline_warning_days?: number | null; deadline_critical_days?: number | null } | null | undefined
+): DeadlineWindows {
+  return {
+    warningDays: row?.deadline_warning_days ?? DEFAULT_DEADLINE_WINDOWS.warningDays,
+    criticalDays: row?.deadline_critical_days ?? DEFAULT_DEADLINE_WINDOWS.criticalDays,
+  };
 }
 
 export function formatBudget(row: Pick<RfpRow, "budget_amount" | "budget_source">): string {

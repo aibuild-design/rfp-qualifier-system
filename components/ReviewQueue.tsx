@@ -99,14 +99,14 @@ export function PortalRules({ rules }: { rules: PortalRuleRow[] }) {
           value={portal}
           onChange={(e) => setPortal(e.target.value)}
           placeholder="Portal or agency"
-          className="w-44 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/20"
+          className="w-44 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
         />
         <input
           value={rule}
           onChange={(e) => setRule(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder="The rule to remember"
-          className="min-w-0 flex-1 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/20"
+          className="min-w-0 flex-1 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
         />
         <button
           onClick={submit}

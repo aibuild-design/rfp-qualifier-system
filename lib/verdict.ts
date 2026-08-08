@@ -24,7 +24,30 @@ export type GateCheck = {
   requirement_text?: string | null;
 };
 
-export type Thresholds = { go: number; maybe: number };
+export type Thresholds = {
+  go: number;
+  maybe: number;
+  /** When true, a missed *preferred* requirement also closes the bid. Off by
+   *  default — the SOW is explicit that preferred lowers the score rather than
+   *  killing it, and turning it on will rule out winnable work. */
+  preferredIsFatal?: boolean;
+};
+
+/** The shape the settings row arrives in, mapped to what the decision reads.
+ *  Falls back to the defaults if the row is missing, so a fresh database or a
+ *  failed read degrades to sane behaviour rather than to no verdicts at all. */
+export function thresholdsFromSettings(
+  row:
+    | { go_threshold?: number | null; maybe_threshold?: number | null; preferred_misses_are_fatal?: boolean | null }
+    | null
+    | undefined
+): Thresholds {
+  return {
+    go: row?.go_threshold ?? THRESHOLDS.go,
+    maybe: row?.maybe_threshold ?? THRESHOLDS.maybe,
+    preferredIsFatal: row?.preferred_misses_are_fatal ?? false,
+  };
+}
 
 /**
  * Defaults until Caravann sets its own. Overridable per deployment so the
@@ -61,8 +84,11 @@ export function decideVerdict(
 ): Decision {
   const failed = checks.filter((c) => c.result === "fail");
 
-  // "Preferred but not met" costs score; it never closes the door on its own.
-  const blocking = failed.filter((c) => c.is_required === true || c.is_hard_knockout === true);
+  // "Preferred but not met" costs score; it never closes the door on its own —
+  // unless Khaled has said otherwise for his own firm.
+  const blocking = failed.filter(
+    (c) => c.is_required === true || c.is_hard_knockout === true || thresholds.preferredIsFatal === true
+  );
   if (blocking.length > 0) {
     const first = blocking[0].requirement_text?.trim();
     return {

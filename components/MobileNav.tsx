@@ -23,7 +23,7 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
             key={item.key}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+            className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold ${
               active
                 ? "bg-rfp-black text-white"
                 : "text-rfp-ink-secondary hover:bg-rfp-surface-sunken"

@@ -52,7 +52,7 @@ export function LanguageLibrary({ blocks }: { blocks: LanguageBlockRow[] }) {
             <select
               value={form.section_type}
               onChange={(e) => setForm({ ...form, section_type: e.target.value })}
-              className="rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-sm text-rfp-ink focus:border-rfp-gold focus:outline-none"
+              className="rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-base sm:text-sm text-rfp-ink focus:border-rfp-gold focus:outline-none"
             >
               {DEFAULT_SECTIONS.map((s) => (
                 <option key={s.section_type} value={s.section_type}>
@@ -64,7 +64,7 @@ export function LanguageLibrary({ blocks }: { blocks: LanguageBlockRow[] }) {
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="Short title"
-              className="min-w-0 flex-1 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none"
+              className="min-w-0 flex-1 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none"
             />
           </div>
           <textarea
@@ -72,14 +72,14 @@ export function LanguageLibrary({ blocks }: { blocks: LanguageBlockRow[] }) {
             onChange={(e) => setForm({ ...form, body: e.target.value })}
             rows={6}
             placeholder="The approved text. Use {{CLIENT}}, {{ENGAGEMENT}}, {{PROJECT_TYPE}} and {{DUE_DATE}} where the wording should change per bid."
-            className="w-full rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-sm leading-relaxed text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none"
+            className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-sm leading-relaxed text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none"
           />
           <div className="flex flex-wrap items-center gap-4">
             <input
               value={form.source}
               onChange={(e) => setForm({ ...form, source: e.target.value })}
               placeholder="Which proposal it came from"
-              className="min-w-0 flex-1 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none"
+              className="min-w-0 flex-1 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none"
             />
             <label className="flex items-center gap-2 text-sm text-rfp-ink-secondary">
               <input

@@ -8,7 +8,7 @@ import { TeamMatch } from "@/components/TeamMatch";
 import { ProposalDraft } from "@/components/ProposalDraft";
 import { FilingStatusCard } from "@/components/FilingStatusCard";
 import { proposalFileName } from "@/lib/proposal";
-import { daysUntil, deadlineColor, formatBudget, formatDate, formatDeadline } from "@/lib/rfp";
+import { daysUntil, deadlineColor, deadlineWindowsFrom, formatBudget, formatDate, formatDeadline } from "@/lib/rfp";
 
 const GAP_TYPE_LABEL: Record<string, string> = {
   experience: "Experience",
@@ -43,6 +43,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
     { data: assignmentRows },
     { data: roster },
     { count: libraryCount },
+    { data: scoring },
   ] = await Promise.all([
       supabase.from("rfps").select("*").eq("id", id).maybeSingle(),
       supabase.from("rfp_gap_items").select("*").eq("rfp_id", id).order("created_at"),
@@ -64,7 +65,10 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         .order("match_score", { ascending: false, nullsFirst: false }),
       supabase.from("team_members").select("*"),
       supabase.from("language_blocks").select("*", { count: "exact", head: true }),
+      supabase.from("scoring_settings").select("deadline_warning_days,deadline_critical_days").eq("id", true).maybeSingle(),
     ]);
+
+  const windows = deadlineWindowsFrom(scoring);
 
   if (!rfp) {
     notFound();
@@ -105,7 +109,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">Due</p>
-            <p className="mt-1 text-sm font-medium" style={{ color: deadlineColor(daysUntil(rfp.due_at)) }}>
+            <p className="mt-1 text-sm font-medium" style={{ color: deadlineColor(daysUntil(rfp.due_at), windows) }}>
               {formatDeadline(rfp.due_at)}
             </p>
           </div>
@@ -187,7 +191,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
                     </div>
                   </div>
                   {item.due_at && (
-                    <span className="shrink-0 text-xs font-medium" style={{ color: deadlineColor(days) }}>
+                    <span className="shrink-0 text-xs font-medium" style={{ color: deadlineColor(days, windows) }}>
                       {formatDate(item.due_at)}
                     </span>
                   )}

@@ -75,7 +75,7 @@ function ResetPasswordForm() {
                 minLength={8}
                 autoComplete="new-password"
                 placeholder="••••••••"
-                className="w-full rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/20"
+                className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
               />
             </div>
 
@@ -84,7 +84,7 @@ function ResetPasswordForm() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full rounded-lg bg-rfp-black py-2.5 text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2 disabled:opacity-50"
+              className="mt-2 w-full rounded-lg bg-rfp-black text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold focus-visible:ring-offset-2 disabled:opacity-50"
             >
               {loading ? "Updating…" : "Update password"}
             </button>

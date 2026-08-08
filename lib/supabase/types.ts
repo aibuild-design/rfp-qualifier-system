@@ -69,6 +69,22 @@ export interface Database {
         Relationships: [];
       };
 
+      scoring_settings: {
+        Row: {
+          id: boolean;
+          go_threshold: number;
+          maybe_threshold: number;
+          deadline_warning_days: number;
+          deadline_critical_days: number;
+          preferred_misses_are_fatal: boolean;
+          notes: string | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["scoring_settings"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["scoring_settings"]["Row"]>;
+        Relationships: [];
+      };
+
       sector_experience: {
         Row: {
           id: string;
@@ -346,6 +362,7 @@ export type TableInsert<T extends keyof Database["public"]["Tables"]> =
   Database["public"]["Tables"][T]["Insert"];
 
 export type OrgProfileRow = Database["public"]["Tables"]["org_profile"]["Row"];
+export type ScoringSettingsRow = Database["public"]["Tables"]["scoring_settings"]["Row"];
 export type SectorExperienceRow = Database["public"]["Tables"]["sector_experience"]["Row"];
 export type TeamMemberRow = Database["public"]["Tables"]["team_members"]["Row"];
 export type RfpRow = Database["public"]["Tables"]["rfps"]["Row"];
