@@ -157,7 +157,8 @@
       "position": [
         480,
         200
-      ]
+      ],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -281,8 +282,7 @@
         -860,
         520
       ],
-      "notes": "Polls every minute. The SOW promises a solicitation posted at 9pm is scored before Khaled opens his laptop, which a daily pass cannot do. Polling only costs a Gmail API call; the model only runs when an email actually matches. Search query is substituted at deploy time from GMAIL_SEARCH_QUERY. Needs a Gmail OAuth credential connected in the UI.",
-      "disabled": true
+      "notes": "Polls every minute. The SOW promises a solicitation posted at 9pm is scored before Khaled opens his laptop, which a daily pass cannot do. Polling only costs a Gmail API call; the model only runs when an email actually matches. Search query is substituted at deploy time from GMAIL_SEARCH_QUERY. Needs a Gmail OAuth credential connected in the UI."
     },
     {
       "parameters": {
@@ -296,8 +296,7 @@
         -620,
         520
       ],
-      "notes": "Emits { body: {...} } so the Config node's $json.body works unchanged for both the webhook and the email path.",
-      "disabled": true
+      "notes": "Emits { body: {...} } so the Config node's $json.body works unchanged for both the webhook and the email path."
     },
     {
       "parameters": {
@@ -327,7 +326,6 @@
         1580,
         460
       ],
-      "disabled": true,
       "notes": "Disabled: needs a Google OAuth credential, which cannot be created headlessly. Connect the credential and enable this plus the upload node to finish module 10."
     },
     {
@@ -353,8 +351,66 @@
         1800,
         460
       ],
-      "disabled": true,
       "notes": "Disabled with the folder node above. Files the RFP and its addenda into the per-bid subfolder."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "is-pdf",
+              "leftValue": "={{ $binary.data.mimeType + \" \" + ($binary.data.fileExtension || \"\") }}",
+              "rightValue": "pdf",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-by-file-type",
+      "name": "Is it a PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $(\"Config\").first().json.bid_desk_url }}/api/rfps/extract",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ document_url: $(\"Config\").first().json.payload.document_url }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "extract-via-bid-desk",
+      "name": "Extract Word/other via bid desk",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        390
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BID_DESK_API_KEY",
+          "name": "Bid Desk API key"
+        }
+      }
     }
   ],
   "connections": {
@@ -413,7 +469,7 @@
       "main": [
         [
           {
-            "node": "Extract PDF text",
+            "node": "Is it a PDF?",
             "type": "main",
             "index": 0
           }
@@ -425,6 +481,13 @@
         [
           {
             "node": "Build triage prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Word/other via bid desk",
             "type": "main",
             "index": 0
           }
@@ -518,6 +581,35 @@
         [
           {
             "node": "Drive — file the solicitation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is it a PDF?": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Word/other via bid desk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Word/other via bid desk": {
+      "main": [
+        [
+          {
+            "node": "Build triage prompt",
             "type": "main",
             "index": 0
           }
