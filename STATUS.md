@@ -62,39 +62,67 @@ surfaced either:
 
 ---
 
-## The one thing that isn't fixed
+## The verdict instability — fixed and measured
 
-The label is now decided in code, so **a given score always produces the same verdict**. That
-part is solid and tested 100 ways.
-
-**The score itself is not stable.** Five runs of a byte-identical document, same profile, same
-settings:
+**Before.** Five runs of a byte-identical document, one read each:
 
 ```
-55, 82, 86, 88, 90        spread: 35 points
+55, 82, 86, 88, 90        spread 35 points
+verdicts: no_go, maybe, go, go, go
 ```
 
-Four of those five are `go` or `maybe`. One is `no_go`. Same document.
+Four go-or-maybe, one `no_go`. Roughly **one solicitation in five was being dropped into the
+no-go folder** — the one place nobody looks again — with nothing to notice.
 
-So roughly **one solicitation in five would be silently binned** — and the no-go folder is
-exactly where nobody looks again. This is not a plumbing failure; every layer did its job. It
-is the model returning a materially different read of the same text.
+**What changed.** Each solicitation is now read **three times** and the results reconciled:
 
-Two credible causes, and they compound: OpenRouter routes across providers (a previous run was
-served by Amazon Bedrock and another 500'd mid-generation), and the model is not deterministic
-even at temperature 0.
+- **Score** — the median, so one bad read cannot move it.
+- **Compliance items and gaps** — the union across all three, deduped. Missing a page limit
+  loses a bid; a spare checklist line costs nothing, and recall is the weak axis on every
+  frontier model.
+- **The gate** — a required failure only closes the bid when a **majority** of reads agree. A
+  lone dissenting read does not get to kill a winnable bid.
+- **Provider pinned** to Anthropic with fallbacks off, so routing stops varying (an earlier run
+  was served by Amazon Bedrock and another 500'd mid-generation). Reasoning is on, and a
+  transient upstream error costs a retry rather than the solicitation.
 
-### What I'd do about it
+**After.** Same document, three runs of the full pipeline:
 
-1. **Pin the provider.** Removes the routing variable. Costs nothing.
-2. **Score three times and take the median.** The classic fix for exactly this shape of
-   problem, and the numbers above show why it works — the outlier is one of five, so the median
-   of three lands in the 82–90 cluster nearly every time. Roughly **$0.27 per solicitation**
-   instead of $0.09.
-3. **Then measure it** against Khaled's real decided RFPs before believing it is fixed.
+```
+run 1: reads [78, 90, 90] -> median 90% -> GO
+run 2: reads [78, 85, 90] -> median 85% -> GO
+run 3: reads [85, 85, 86] -> median 85% -> GO
 
-I have not built any of these yet — flagging the problem is more useful than quietly picking a
-remedy for something this load-bearing.
+verdict spread: 35 points -> 5 points        all three verdicts identical
+```
+
+Individual reads still wobble — that is the model, and it has not gone away. The point is that
+the wobble no longer reaches the verdict.
+
+**Every sample is stored**, not just the median, so disagreement stays visible on the card and
+we can tell over time whether the model is steadying rather than guessing.
+
+### One correction worth recording
+
+The first cut capped the verdict at `maybe` whenever total spread exceeded a tolerance. Then a
+real run returned **58, 87, 88** — spread 30, but two reads agree to within a point and the
+median is well supported. That rule would have demoted a clear `go` every time the model had an
+off run, which is often.
+
+The test is now the **smallest gap between neighbouring reads**, so it fires only when no two
+reads agree on anything: `58, 87, 88` is a confident go, `30, 60, 90` is a genuine "read this
+yourself". Tolerance is configurable in Settings.
+
+### What this costs
+
+Three reads instead of one, with reasoning on: roughly **$0.30 per solicitation** rather than
+$0.09, and 25–55 seconds rather than ~40. Against $855 of principal time per solicitation, that
+is the easiest trade on the board.
+
+### Still worth doing
+
+Measure it against Khaled's real decided RFPs. Three runs of one synthetic document proves the
+mechanism works; it does not prove the verdicts are *right*.
 
 ---
 

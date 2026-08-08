@@ -318,16 +318,48 @@ RFP No. VTD-2026-01
    General liability insurance of $2,000,000 required.
 `.trim();
 
+    // Triage reads the document three times, so this is a minutes-long
+    // request over a long-lived connection. A transient reset should cost a
+    // retry, not the whole suite — and the run may well have completed
+    // server-side even when the response never arrived, so the database is
+    // checked before giving up.
     const started = Date.now();
-    const res = await fetch(`${N8N}/webhook/rfp-intake`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
-      body: JSON.stringify({ external_id: `${PREFIX}live`, source: "manual", title: "Verify Live Solicitation", client_agency: "Verify Transit District", document_text: DOC }),
-    });
+    let res = null;
+    let json = null;
+    let transport = null;
+    for (let attempt = 1; attempt <= 2 && !json?.verdict; attempt++) {
+      try {
+        res = await fetch(`${N8N}/webhook/rfp-intake`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
+          body: JSON.stringify({ external_id: `${PREFIX}live`, source: "manual", title: "Verify Live Solicitation", client_agency: "Verify Transit District", document_text: DOC }),
+          signal: AbortSignal.timeout(300000),
+        });
+        json = await res.json().catch(() => null);
+      } catch (err) {
+        transport = err.cause?.code || err.name || err.message;
+      }
+    }
     const seconds = Math.round((Date.now() - started) / 1000);
-    const json = await res.json().catch(() => null);
-    const worked = ok("a solicitation goes in and a verdict comes back", res.status === 200 && Boolean(json?.verdict),
-      json?.verdict ? `${json.verdict} @ ${json.score}% in ${seconds}s` : `http ${res.status}`);
+
+    // Fall back to the row itself: the verdict landing is what matters, not
+    // whether we managed to hold the connection open to hear about it.
+    const { data: landed } = await admin.from("rfps").select("status,score_percent,score_samples").eq("external_id", `${PREFIX}live`).maybeSingle();
+    const worked = ok(
+      "a solicitation goes in and a verdict comes back",
+      Boolean(json?.verdict) || Boolean(landed && landed.status !== "pending"),
+      json?.verdict
+        ? `${json.verdict} @ ${json.score}% in ${seconds}s`
+        : landed
+          ? `${landed.status} @ ${landed.score_percent}% in ${seconds}s (response dropped: ${transport})`
+          : `no verdict — ${transport ?? `http ${res?.status}`}`
+    );
+    if (landed?.score_samples?.length > 1) {
+      const s = [...landed.score_samples].sort((a, b) => a - b);
+      const gap = Math.min(...s.slice(1).map((v, i) => v - s[i]));
+      ok("the document was read more than once", s.length >= 3, `reads ${s.join(", ")}`);
+      ok("at least two reads agree, so the median is supported", gap <= 20, `closest two ${gap} apart`);
+    }
 
     if (worked) {
       const { data: row } = await admin.from("rfps").select("*").eq("external_id", `${PREFIX}live`).maybeSingle();
