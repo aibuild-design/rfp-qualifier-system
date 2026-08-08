@@ -3,7 +3,13 @@
 Where the build stands, and the order to finish it in.
 
 **Dashboard:** https://rfp-qualifier-system.vercel.app
-**Login:** `d4nielm7@gmail.com` / `CvMTlw3DyHyPSc1u`
+**Login:** `khaled@caravann.co` — password handed over separately. **Change it on
+first sign-in** (Supabase → Authentication → Users, or the reset-password link
+on the login page).
+
+This is now the only account. The build account has been deleted, and the
+allowlist has exactly one entry, so nothing else can read the pipeline even
+with a valid Supabase login. Add people with `npm run access add`.
 
 Six example solicitations are loaded so there is something to look at. They are
 marked **Demo** and covered by a warning banner — they are invented. Clear them

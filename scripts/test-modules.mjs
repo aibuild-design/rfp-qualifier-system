@@ -12,6 +12,7 @@ import { assembleDraft, fillPlaceholders, proposalFileName, rankBlocks } from ".
 import { recommendTeam } from "../lib/team-match.ts";
 import { toTimestamp } from "../lib/rfp.ts";
 import { checkDocumentUrl, isBlockedHost } from "../lib/url-guard.ts";
+import { decideVerdict } from "../lib/verdict.ts";
 
 let passed = 0;
 const failures = [];
@@ -229,6 +230,47 @@ console.log("\nDocument URL guard (SSRF)");
     "the guard is reusable against a resolved IP",
     isBlockedHost("169.254.169.254") && !isBlockedHost("93.184.216.34")
   );
+}
+
+console.log("\nVerdict thresholds");
+{
+  const T = { go: 85, maybe: 60 };
+  const pass = { is_required: true, result: "pass", requirement_text: "5+ years public agency" };
+  const requiredFail = { is_required: true, result: "fail", requirement_text: "3 years behavioral health" };
+  const preferredFail = { is_required: false, result: "fail", requirement_text: "Local Omaha presence preferred" };
+
+  // The regression this exists for: three runs of one document returned
+  // maybe/83, go/87, go/88. Same numbers must now always give the same label.
+  check("83 is a maybe, every time", decideVerdict(83, [pass], T).status === "maybe");
+  check("87 is a go, every time", decideVerdict(87, [pass], T).status === "go");
+  check("exactly 85 clears the bar", decideVerdict(85, [pass], T).status === "go");
+  check("exactly 60 is still a maybe", decideVerdict(60, [pass], T).status === "maybe");
+  check("59 falls below the floor", decideVerdict(59, [pass], T).status === "no_go");
+
+  // A failed mandatory requirement closes the door regardless of overlap —
+  // the behavioral-health case that motivated the whole product.
+  check("a failed requirement beats a 99% score", decideVerdict(99, [requiredFail], T).status === "no_go");
+  check("...and says which one", decideVerdict(99, [requiredFail], T).reason.includes("behavioral health"));
+  check("a hard knockout closes it even if not worded 'required'",
+    decideVerdict(95, [{ is_required: false, is_hard_knockout: true, result: "fail" }], T).status === "no_go");
+
+  // "Preferred" costs score, never the bid — the SOW is explicit about this.
+  check("a preferred miss does not force no-go", decideVerdict(90, [pass, preferredFail], T).status === "go");
+  check("...but is surfaced in the reason", decideVerdict(90, [pass, preferredFail], T).reason.includes("preferred"));
+
+  check("no score means pending, not no-go", decideVerdict(null, [pass], T).status === "pending");
+  check("a non-numeric score means pending", decideVerdict(Number.NaN, [pass], T).status === "pending");
+  check("no checks at all still scores", decideVerdict(92, [], T).status === "go");
+  check("a not_applicable check is not a failure", decideVerdict(92, [{ is_required: true, result: "not_applicable" }], T).status === "go");
+
+  // Khaled can move the line without touching the model.
+  const strict = { go: 95, maybe: 80 };
+  check("raising the bar re-labels the same score", decideVerdict(87, [pass], strict).status === "maybe");
+  check("thresholds are stated in the reason", decideVerdict(87, [pass], strict).reason.includes("95%"));
+
+  // Determinism, stated as an assertion rather than assumed.
+  const runs = new Set(Array.from({ length: 50 }, () => decideVerdict(83, [pass, preferredFail], T).status));
+  check("50 identical inputs give exactly one answer", runs.size === 1, [...runs].join(","));
 }
 
 console.log(`\n${passed}/${passed + failures.length} checks passed.`);

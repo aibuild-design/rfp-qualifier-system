@@ -3,6 +3,7 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { isAuthorized } from "@/lib/api-auth";
 import { isServiceRoleConfigured } from "@/lib/supabase/config";
 import { toTimestamp } from "@/lib/rfp";
+import { decideVerdict } from "@/lib/verdict";
 import type { Database, TableInsert } from "@/lib/supabase/types";
 
 // The landing point for n8n's intake → triage pipeline (modules 1-2 of the
@@ -122,6 +123,24 @@ export async function POST(req: NextRequest) {
 
   const { gap_items, disqualifier_checks, questions } = body;
   const supabase = createServiceRoleClient();
+
+  // The label is decided here, not by the model. Whatever `status` arrived is
+  // discarded and recomputed from the score and the gate results, so the same
+  // solicitation always lands on the same side of the line. See lib/verdict.ts
+  // for why. Only applied once triage has actually run — a freshly submitted
+  // row with no checks and no score stays `pending`.
+  const triaged = (disqualifier_checks?.length ?? 0) > 0 || body.score_percent !== undefined;
+  const decision = triaged
+    ? decideVerdict(body.score_percent, disqualifier_checks ?? [])
+    : null;
+  if (decision && decision.status !== "pending") {
+    if (body.status && body.status !== decision.status) {
+      console.info(
+        `[intake ${body.external_id}] model said "${body.status}", thresholds say "${decision.status}" — ${decision.reason}`
+      );
+    }
+    body.status = decision.status;
+  }
 
   // The only child field Postgres can reject on content. Normalised here rather
   // than trusted, because an unparseable date used to take the whole compliance
