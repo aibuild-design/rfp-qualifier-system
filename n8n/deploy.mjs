@@ -125,6 +125,8 @@ async function main() {
   const existing = await api("/workflows?limit=250");
   const match = (existing.data ?? []).find((w) => w.name === payload.name);
 
+  if (match) await preserveLiveCredentials(payload, match.id);
+
   let id;
   if (match) {
     await api(`/workflows/${match.id}`, { method: "PUT", body: JSON.stringify(payload) });
@@ -188,6 +190,46 @@ async function resolveCredentials(payload) {
         if (cred.id === placeholder) cred.id = id;
       }
     }
+  }
+}
+
+/**
+ * Carry across any credential the live workflow already has.
+ *
+ * Gmail and Google Drive are OAuth: they can only be connected by a human
+ * clicking through a consent screen in the n8n UI, so their credentials exist
+ * on the instance and never in this repo. Without this, every deploy would push
+ * nodes with no credential attached and undo that consent — n8n now refuses the
+ * publish outright, which is how this was caught, but the older failure mode was
+ * a silently disconnected trigger.
+ *
+ * Repo wins where it specifies a credential; live fills in the rest.
+ */
+async function preserveLiveCredentials(payload, workflowId) {
+  const live = await api(`/workflows/${workflowId}`);
+
+  // Read the PUBLISHED version, not the working copy. n8n keeps a draft
+  // alongside the active version, and a deploy that failed to publish leaves a
+  // credential-less draft sitting in `nodes` — reading that would carry nothing
+  // across and quietly confirm the loss. `activeVersion` is what is actually
+  // running, so it is the source of truth for what a human has connected.
+  const source = live.activeVersion?.nodes?.length ? live.activeVersion.nodes : live.nodes;
+  const liveByName = new Map((source ?? []).map((n) => [n.name, n]));
+
+  const carried = [];
+  for (const node of payload.nodes) {
+    const existing = liveByName.get(node.name);
+    if (!existing?.credentials) continue;
+    for (const [type, cred] of Object.entries(existing.credentials)) {
+      if (node.credentials?.[type]) continue; // the repo named one — it wins
+      node.credentials = { ...(node.credentials ?? {}), [type]: cred };
+      carried.push(`${node.name} (${type})`);
+    }
+  }
+
+  if (carried.length) {
+    console.log(`  kept live credentials on ${carried.length} node(s):`);
+    carried.forEach((c) => console.log(`    · ${c}`));
   }
 }
 
