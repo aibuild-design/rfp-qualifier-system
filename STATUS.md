@@ -49,7 +49,7 @@ demo rows or the eligibility profile, and it restores any setting it changes.
 | 6 | Verdict logic | A failed mandatory requirement beats a 99% score; 100 identical inputs give exactly one answer; an *unanswered* mandatory requirement holds at maybe and names itself, while a genuine miss still closes the bid | 11/11 |
 | 7 | Intake integrity | The model's label is discarded and recomputed; child rows persist; an unparseable date is nulled rather than invented; a genuinely broken row returns 500 rather than a false OK; re-posting updates in place | 8/8 |
 | 8 | Settings drive the verdict | At go=85 a score of 80 is a maybe; lower the bar to 75 and the same 80 becomes a go | 3/3 |
-| 9 | **Live triage** | A solicitation goes into n8n and a verdict comes back in ~40s, with the budget read from the document, both deadlines, 4 gate checks, 5 compliance items and 3 drafted questions | 9/9 |
+| 9 | **Live triage** | A solicitation goes into n8n and a verdict comes back in ~40s, with the budget read from the document, both deadlines, 4 gate checks, 9 compliance items and 3 drafted questions | 9/9 |
 | 10 | Downstream modules | Proposal assembly, team match, portal rules, filing status | 6/6 |
 | 11 | Exports | CSV neutralises formula injection; the Word export is a real Office file | 3/3 |
 | 12 | The dashboard | All 6 pages plus an RFP detail page render signed-in with no runtime errors; nothing scrolls sideways on an iPhone; every input ≥16px and every touch target ≥44px | 19/19 |
@@ -84,8 +84,9 @@ no-go folder** — the one place nobody looks again — with nothing to notice.
 - **Compliance items and gaps** — the union across all three, deduped. Missing a page limit
   loses a bid; a spare checklist line costs nothing, and recall is the weak axis on every
   frontier model.
-- **The gate** — a required failure only closes the bid when a **majority** of reads agree. A
-  lone dissenting read does not get to kill a winnable bid.
+- **The gate** — a required failure only closes the bid when the reads agree. A lone dissenting
+  read does not get to kill a winnable bid. (This started as a majority vote and was later
+  tightened to unanimity — see [the gate section](#the-gate-silence-was-being-read-as-failure).)
 - **Provider pinned** to Anthropic with fallbacks off, so routing stops varying (an earlier run
   was served by Amazon Bedrock and another 500'd mid-generation). Reasoning is on, and a
   transient upstream error costs a retry rather than the solicitation.
