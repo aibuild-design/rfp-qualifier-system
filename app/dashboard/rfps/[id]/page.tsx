@@ -78,6 +78,11 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
 
   const rubric = scoreFromRubric(rfp.score_breakdown as RubricBreakdown | null, scoring?.rubric_weights ?? undefined);
 
+  // Mandatory requirements triage could not settle either way. These are the
+  // reason a bid sits at maybe instead of go, and each one is answerable once
+  // in the profile rather than re-litigated per solicitation.
+  const unresolved = (disqualifiers ?? []).filter((c) => c.result === "unclear" && c.is_required);
+
   return (
     <div className="mx-auto max-w-4xl">
       <Link href="/dashboard" className="text-xs font-medium text-rfp-ink-muted hover:text-rfp-gold">
@@ -263,32 +268,57 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         {!disqualifiers || disqualifiers.length === 0 ? (
           <EmptyRow text="No disqualifier checks recorded." />
         ) : (
-          <ul className="divide-y divide-rfp-border">
-            {disqualifiers.map((check) => (
-              <li key={check.id} className="flex items-start justify-between gap-3 px-5 py-3">
-                <div>
-                  <p className="text-sm text-rfp-ink">{check.requirement_text}</p>
-                  <p className="mt-0.5 text-[11px] uppercase tracking-wide text-rfp-ink-muted">
-                    {check.is_required ? "Required" : "Preferred"}
-                    {check.is_hard_knockout ? " · Hard knockout" : ""}
-                  </p>
-                </div>
-                <span
-                  className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
-                  style={{
-                    color:
-                      check.result === "pass"
-                        ? "var(--rfp-good)"
-                        : check.result === "fail"
-                          ? "var(--rfp-critical)"
-                          : "var(--rfp-ink-muted)",
-                  }}
-                >
-                  {check.result.replace("_", " ")}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <>
+            {/* Unanswered mandatory requirements are the only thing on this card
+                that a person can act on, so they get said once, plainly, at the
+                top — rather than left for the reader to spot among the passes. */}
+            {unresolved.length > 0 && (
+              <div className="mx-5 mt-4 rounded-lg border border-rfp-warning/40 bg-rfp-warning/5 px-4 py-3">
+                <p className="text-sm font-semibold text-rfp-ink">
+                  {unresolved.length} mandatory requirement{unresolved.length > 1 ? "s" : ""} the profile does not answer
+                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-rfp-ink-muted">
+                  Not a failure — triage could not tell either way, so this is held at{" "}
+                  <span className="font-medium text-rfp-ink">maybe</span> rather than closed. Record the answer in{" "}
+                  <Link href="/dashboard/settings" className="underline underline-offset-2 hover:text-rfp-ink">
+                    the eligibility profile
+                  </Link>{" "}
+                  and future solicitations decide themselves.
+                </p>
+              </div>
+            )}
+            <ul className="divide-y divide-rfp-border">
+              {disqualifiers.map((check) => (
+                <li key={check.id} className="flex items-start justify-between gap-3 px-5 py-3">
+                  <div>
+                    <p className="text-sm text-rfp-ink">{check.requirement_text}</p>
+                    <p className="mt-0.5 text-[11px] uppercase tracking-wide text-rfp-ink-muted">
+                      {check.is_required ? "Required" : "Preferred"}
+                      {check.is_hard_knockout ? " · Hard knockout" : ""}
+                    </p>
+                    {check.result === "unclear" && check.notes && (
+                      <p className="mt-1 text-[13px] leading-relaxed text-rfp-ink-muted">{check.notes}</p>
+                    )}
+                  </div>
+                  <span
+                    className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
+                    style={{
+                      color:
+                        check.result === "pass"
+                          ? "var(--rfp-good)"
+                          : check.result === "fail"
+                            ? "var(--rfp-critical)"
+                            : check.result === "unclear"
+                              ? "var(--rfp-warning)"
+                              : "var(--rfp-ink-muted)",
+                    }}
+                  >
+                    {check.result === "unclear" ? "unconfirmed" : check.result.replace("_", " ")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </Section>
 

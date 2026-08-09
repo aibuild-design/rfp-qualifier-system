@@ -11,7 +11,7 @@
 export type RfpSource = "aggregator" | "email" | "manual" | "portal";
 export type BudgetSource = "rfp" | "qa_document" | "none_listed";
 export type RfpStatus = "pending" | "go" | "no_go" | "maybe";
-export type DisqualifierResult = "pass" | "fail" | "not_applicable";
+export type DisqualifierResult = "pass" | "fail" | "not_applicable" | "unclear";
 export type GapType =
   | "experience"
   | "sector"

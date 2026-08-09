@@ -199,6 +199,29 @@ heading("6 · Verdict logic");
   const runs = new Set(Array.from({ length: 100 }, () => decideVerdict(83, pass, T).status));
   ok("100 identical inputs give one answer", runs.size === 1, [...runs].join(","));
 
+  // The distinction the gate previously could not draw: a requirement the
+  // profile shows Caravann misses, versus one the profile never mentions.
+  // Both used to be "fail", and both closed the bid.
+  const unclear = [
+    { is_required: true, result: "pass", requirement_text: "5 years public agency" },
+    { is_required: true, result: "unclear", requirement_text: "Experience facilitating elected or appointed governing bodies" },
+  ];
+  const held = decideVerdict(92, unclear, T);
+  ok("an unanswered mandatory requirement holds at maybe, not no-go", held.status === "maybe", `got ${held.status}`);
+  ok(
+    "and the verdict names the requirement to confirm",
+    held.reason.includes("elected or appointed governing bodies"),
+    held.reason.slice(0, 80)
+  );
+  ok(
+    "a genuine miss still outranks an unanswered one",
+    decideVerdict(92, [...unclear, ...fail], T).status === "no_go"
+  );
+  ok(
+    "an unanswered PREFERRED requirement changes nothing",
+    decideVerdict(92, [{ is_required: false, result: "unclear", requirement_text: "MBE cert" }], T).status === "go"
+  );
+
   const { data: cfg } = await admin.from("scoring_settings").select("*").eq("id", true).maybeSingle();
   ok("scoring settings row exists", Boolean(cfg), cfg ? `go ${cfg.go_threshold} / maybe ${cfg.maybe_threshold}` : "missing");
   ok("thresholds are coherent", !cfg || cfg.maybe_threshold <= cfg.go_threshold);

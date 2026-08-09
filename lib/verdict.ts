@@ -148,6 +148,28 @@ export function decideVerdict(
     return { status: "pending", reason: "No score yet — triage has not returned." };
   }
 
+  // A requirement the profile is silent on is not a requirement Caravann
+  // fails. It used to be treated as one, because "fail" was the only answer
+  // available for "the profile does not say" — and that closed winnable bids
+  // on gaps in our own data. Now it caps the verdict at maybe and names the
+  // question, which is both the honest answer and the useful one: every
+  // unclear here is a specific line Khaled can add to the profile once and
+  // never be asked about again.
+  const unclear = checks.filter((c) => c.result === "unclear" && c.is_required === true);
+  if (unclear.length > 0) {
+    const list = unclear
+      .map((c) => c.requirement_text?.trim())
+      .filter(Boolean)
+      .map((text) => truncate(text as string, 90));
+    return {
+      status: "maybe",
+      reason:
+        `Scores ${Math.round(scorePercent)}% and fails nothing outright, but the eligibility profile does not say ` +
+        `whether Caravann meets ${unclear.length} mandatory requirement${unclear.length > 1 ? "s" : ""}: ` +
+        `${list.join("; ")}. Confirm ${unclear.length > 1 ? "these" : "this"} and the verdict settles.`,
+    };
+  }
+
   const score = Math.round(scorePercent);
   const softMisses = failed.length;
   const note = softMisses > 0 ? ` ${softMisses} preferred requirement${softMisses > 1 ? "s" : ""} not met.` : "";
