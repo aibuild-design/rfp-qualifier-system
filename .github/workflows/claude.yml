@@ -1,0 +1,67 @@
+name: Claude Code
+
+# Mention @claude in an issue, a pull request, or a review comment and Claude
+# picks up the work and opens a PR. The point of this file is that it works from
+# the GitHub mobile app — no laptop, no terminal.
+#
+# Who can trigger it: the action only responds to users with **write access** to
+# the repository. That default matters here because this repo is public, so
+# without it anyone could spend the API key by commenting. `allowed_bots` is
+# deliberately not set — setting it to '*' would let any external GitHub App
+# invoke Claude with a prompt it controls.
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    # Only wake up when actually summoned — otherwise every comment on the repo
+    # starts a runner.
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read # so Claude can read failing CI results on a PR
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+          # The tool allowlist is the safety boundary, and it is deliberately
+          # short. Everything here is read-only against this checkout: no
+          # network, no spend, no database.
+          #
+          # Deliberately NOT allowed, because a phone-triggered agent should not
+          # be able to run them unattended:
+          #   npm run verify      — spends OpenRouter credit and writes rows to
+          #                         the live Supabase with the service-role key
+          #   npm run migrate     — alters the production schema
+          #   npm run n8n:deploy  — republishes the live triage workflow
+          #   npm run seed:*      — overwrites the eligibility profile and demo data
+          #
+          # Those stay manual, from a laptop, on purpose. Claude can still read
+          # every file and write code that touches them; it just cannot fire them.
+          claude_args: |
+            --model claude-sonnet-5
+            --allowedTools "Bash(npm run lint),Bash(npx tsc --noEmit),Bash(npm ci),Bash(git diff:*),Bash(git log:*)"
