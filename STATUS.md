@@ -1,10 +1,13 @@
 # Does it work?
 
-Short answer: **yes, the whole flow runs end to end** — 82/82 automated checks against the
-live deployment. But there is one unresolved problem that decides whether Khaled can trust
-it, and it is not a bug in the plumbing. It is at the bottom of this page under
-[The one thing that isn't fixed](#the-one-thing-that-isnt-fixed). Read that before deciding
-this is finished.
+Short answer: **yes, the whole flow runs end to end**, and the verdict instability that made
+it untrustworthy is now fixed and measured — 67/67 automated checks in the last run, plus 19
+browser checks that passed on the previous run and were skipped this time only for want of a
+login password.
+
+What is left is not code. The system now says clearly what it does not know about Caravann,
+and answering those questions is Khaled's part — see
+[What is needed to finish this](#what-is-needed-to-finish-this).
 
 Last full run: 2026-08-09, against https://rfp-qualifier-system.vercel.app
 
@@ -33,7 +36,8 @@ demo rows or the eligibility profile, and it restores any setting it changes.
 
 ## What the last run proved
 
-**82 of 82 passed.** Grouped by what each section actually establishes:
+**67 of 67 passed**, with the 19 browser checks skipped this run for want of a login password
+(they passed on the previous run). Grouped by what each section actually establishes:
 
 | # | Section | What it proves | Result |
 |---|---|---|---|
@@ -42,7 +46,7 @@ demo rows or the eligibility profile, and it restores any setting it changes.
 | 3 | Route authentication | All four API routes refuse anonymous callers and wrong keys; `/dashboard` redirects when signed out | 6/6 |
 | 4 | SSRF guard | Cloud metadata, loopback, private LAN, the obfuscated `2130706433` spelling of 127.0.0.1, and credentials-in-URL are all refused | 5/5 |
 | 5 | Document extraction | PDF, **Word**, and HTML all read; a dead link is reported rather than guessed at | 5/5 |
-| 6 | Verdict logic | A failed mandatory requirement beats a 99% score; 100 identical inputs give exactly one answer | 7/7 |
+| 6 | Verdict logic | A failed mandatory requirement beats a 99% score; 100 identical inputs give exactly one answer; an *unanswered* mandatory requirement holds at maybe and names itself, while a genuine miss still closes the bid | 11/11 |
 | 7 | Intake integrity | The model's label is discarded and recomputed; child rows persist; an unparseable date is nulled rather than invented; a genuinely broken row returns 500 rather than a false OK; re-posting updates in place | 8/8 |
 | 8 | Settings drive the verdict | At go=85 a score of 80 is a maybe; lower the bar to 75 and the same 80 becomes a go | 3/3 |
 | 9 | **Live triage** | A solicitation goes into n8n and a verdict comes back in ~40s, with the budget read from the document, both deadlines, 4 gate checks, 5 compliance items and 3 drafted questions | 9/9 |
@@ -102,27 +106,126 @@ the wobble no longer reaches the verdict.
 **Every sample is stored**, not just the median, so disagreement stays visible on the card and
 we can tell over time whether the model is steadying rather than guessing.
 
-### One correction worth recording
+### Then the number stopped being a guess at all
 
-The first cut capped the verdict at `maybe` whenever total spread exceeded a tolerance. Then a
-real run returned **58, 87, 88** — spread 30, but two reads agree to within a point and the
-median is well supported. That rule would have demoted a clear `go` every time the model had an
-off run, which is often.
+Medians treat the symptom. The cause was that the prompt asked for "capability overlap, 0-100"
+— an open-ended number with nothing to anchor it. Ask a human expert that on three different
+days and you get the same spread.
 
-The test is now the **smallest gap between neighbouring reads**, so it fires only when no two
-reads agree on anything: `58, 87, 88` is a confident go, `30, 60, 90` is a genuine "read this
-yourself". Tolerance is configurable in Settings.
+So the model no longer produces the number. It answers five questions with defined levels —
+*is Caravann's depth in this sector none, thin, adequate or strong?* — and the arithmetic
+happens in [`lib/rubric.ts`](lib/rubric.ts). Same move that already fixed the label: keep the
+judgement the model is good at (classifying against a described standard) and take away the one
+it is bad at (inventing a scale).
+
+Four runs of the same document:
+
+```
+86%  [strong / many / remote_ok / comfortable / adequate]
+86%  [strong / many / remote_ok / comfortable / adequate]
+86%  [strong / many / remote_ok / comfortable / adequate]
+76%  [adequate / many / remote_ok / comfortable / adequate]
+```
+
+Three reads byte-identical, the fourth differing on one dimension. The prompt text and the
+scoring levels are generated from the same definition, so the two cannot drift apart — there is
+a test that fails if they do. A side benefit: **every score now explains itself line by line**
+on the RFP page, and the weights became a setting Khaled can change rather than something baked
+into a prompt.
+
+---
+
+## The gate: silence was being read as failure
+
+The rubric worked, and in doing so it uncovered the thing actually causing the bad verdicts.
+Run 2 above came back `NO_GO` at 86% — above the go bar, with classifications identical to two
+runs that said `GO`. A gate check had fired. Three more runs, and all three failed the *same*
+requirement:
+
+```
+Experience facilitating elected or appointed governing bodies    ->  FAIL  ->  NO_GO
+```
+
+Caravann has facilitated public-agency boards for twelve years across thirty-four engagements.
+The verdict was wrong, consistently, and for a reason worth stating plainly.
+
+The gate offered three answers — `pass`, `fail`, `not_applicable` — and the prompt correctly
+says never to assume a capability the profile does not record. **Between those two rules, a
+requirement the profile is simply silent on had exactly one available answer: `fail`.** And a
+required fail closes the bid.
+
+So the desk was reporting gaps in *our own data* as deficiencies in *the firm*. Two very
+different things with very different costs:
+
+| | | |
+|---|---|---|
+| The profile shows Caravann does **not** meet it | a real disqualifier | close the bid |
+| The profile **does not say** | a gap in what we recorded | ask the question |
+
+**The fix.** A fourth result, `unclear`. It never closes a bid; it caps the verdict at `maybe`
+and names the requirement to confirm. Reconciliation changed with it: a majority vote picks a
+side on a 2-1 split, which is exactly the case where there is no side to pick — the
+disagreement *is* the uncertainty. Now **every read must independently agree** a required
+requirement fails before the bid closes.
+
+Deliberately asymmetric, because the errors are not symmetric. A wrongly closed bid is a
+$45K–$185K pursuit lost in the folder nobody reopens. A wrongly raised question costs five
+minutes of reading.
+
+**Measured, four runs of the document that used to fail:**
+
+```
+before:  NO_GO,  NO_GO,  NO_GO,  NO_GO         all on a requirement Caravann meets
+after :  MAYBE,  MAYBE,  MAYBE,  MAYBE         same two questions raised every time
+
+    ? Experience facilitating elected or appointed governing bodies
+    ? General liability insurance of $2,000,000
+```
+
+Both are genuinely absent from the profile, so `maybe` is the honest answer. And the loop
+closes — adding two sentences to the profile and re-running:
+
+```
+GO @ 86%   4 of 4 mandatory requirements pass, 0 unconfirmed
+GO @ 86%   4 of 4 mandatory requirements pass, 0 unconfirmed
+```
+
+**That is the whole design in one line: every unconfirmed item is a question Khaled answers
+once, in Settings, and never sees again.** The desk gets better as he uses it, and it tells him
+precisely what to feed it rather than failing quietly.
+
+One smaller fix fell out of the same runs: the three reads phrased the insurance requirement two
+ways, so it appeared on the card twice — one obligation reading as two open questions. Near-
+duplicate requirements are now folded together, using a subset test rather than fuzzy matching so
+that `$2,000,000 insurance` merges into `$2,000,000 insurance required` while `30 pages` and
+`50 pages` stay separate. Six cases covered by a test, including the ones that must *not* merge.
+
+---
+
+## Two corrections worth recording
+
+Both were caught by running the thing, not by reading it, and both were wrong in the same
+direction — a rule that looked reasonable written down and would have quietly killed good bids.
+
+**The spread cap.** The first cut capped the verdict at `maybe` whenever total spread exceeded a
+tolerance. Then a real run returned **58, 87, 88** — spread 30, but two reads agree to within a
+point and the median is well supported. That rule would have demoted a clear `go` every time the
+model had an off run, which is often. The test is now the **smallest gap between neighbouring
+reads**, so it fires only when no two reads agree on anything: `58, 87, 88` is a confident go,
+`30, 60, 90` is a genuine "read this yourself". Tolerance is configurable in Settings.
+
+**The gate nudge.** Introducing `unclear` overshot on the first attempt — the prompt told the
+model to prefer it when unsure, and it began marking requirements the profile *does* answer as
+unconfirmed. "Five years with public agencies" against a sector map reading 12 years and 34
+engagements should be a pass, not a question. That failure is quieter than a false `no_go` but
+it has the same end state: if everything is flagged, nothing is. The prompt now says explicitly
+that `unclear` is for silence, not for imperfect wording.
 
 ### What this costs
 
 Three reads instead of one, with reasoning on: roughly **$0.30 per solicitation** rather than
 $0.09, and 25–55 seconds rather than ~40. Against $855 of principal time per solicitation, that
 is the easiest trade on the board.
-
-### Still worth doing
-
-Measure it against Khaled's real decided RFPs. Three runs of one synthetic document proves the
-mechanism works; it does not prove the verdicts are *right*.
 
 ---
 
@@ -158,7 +261,7 @@ goes from $2/$10 to $3/$15 per million tokens. Worth knowing, not worth reacting
 | | Why |
 |---|---|
 | Google Drive folder tree | Credentials connected; the folder structure was designed but not built |
-| Recall sweep (second pass for missed requirements) | Published benchmarks show every frontier model is precise but under-recalls — it misses requirements rather than inventing them |
+| Recall sweep (second pass for missed requirements) | Partly addressed — the three-read union is a recall sweep in effect. A dedicated pass is still worth measuring |
 | Model benchmark | Needs Khaled's decided RFPs to be worth running |
 | Slack / email delivery of the verdict card | Cards live in the dashboard only |
 | Email digest splitting | One email is currently treated as one solicitation; an aggregator digest listing twelve produces one row |
@@ -166,21 +269,84 @@ goes from $2/$10 to $3/$15 per million tokens. Worth knowing, not worth reacting
 
 ---
 
-## What is needed from Khaled
+## What is needed to finish this
 
-Nothing technical is blocked on anything but this.
+The engineering is done and measured. What remains is almost entirely **inputs**, and the system
+now tells us precisely which ones: every `unconfirmed` line on a verdict card is a question it
+could not answer about Caravann.
 
-1. **Past proposals — 8–10, wins and losses.** Plus the blank Word template, 2–3 complete
-   winning proposals, and the insurance certificate. These fill the language library *and*
-   pre-fill the sector map, so he confirms numbers rather than writing them.
-2. **About 20 solicitations he has already decided on.** His decision is the answer key. Without
-   it, no model comparison and no accuracy claim means anything.
-3. **10–20 real solicitation emails, forwarded.** Including a digest, a single notice, and one
-   where the RFP is attached rather than linked.
-4. **A few answers:** bilingual/media/PR capability, office and consultant locations,
-   certifications actually held, which disqualifiers are absolute, whether behavioural health is
-   a true zero — and which is worse for him, chasing a bid he could not win or passing on one he
-   could.
+### From Khaled
 
-Until the profile is his, every verdict is a demonstration. The plumbing is real; the numbers
-it reasons from are not yet.
+Ranked by what unblocks the most.
+
+**1 — The eligibility profile. This is the one that matters.**
+Everything on the profile screen today is placeholder text; it says so in its own notes field.
+Every verdict produced so far is therefore a *demonstration of the mechanism*, not a real
+recommendation. Specifically:
+
+- Office and consultant locations, bilingual / media / PR capability
+- **Certifications actually held** — deliberately left empty, because claiming a DBE/SBE status a
+  firm does not hold can void a bid. These only ever get filled in from real certificates.
+- Insurance carried, with limits — this came up as an unconfirmed item on live runs
+- Whether Caravann facilitates elected and appointed bodies — same
+- Confirmation of the sector map's numbers (it is pre-filled with plausible figures to confirm or
+  correct, not a blank form)
+
+An hour on this screen is worth more than anything else on the list.
+
+**2 — About 20 solicitations he has already decided on, with the decision.**
+His call is the answer key. Until we have it, nobody can say the verdicts are *right* — only
+that they are consistent, which is what has been proved so far. This is also the only thing that
+makes a model comparison meaningful.
+
+**3 — Past proposals: 8–10 across wins and losses**, plus the blank Word template, 2–3 complete
+winning proposals, and the insurance certificate. These fill the language library and let the
+proposal draft use Caravann's own words.
+
+**4 — 10–20 real solicitation emails, forwarded as they arrive.** Ideally including one digest
+listing several notices, one single notice, and one where the RFP is attached rather than
+linked — those are three different intake shapes and only the middle one is handled today.
+
+**5 — Two judgement calls only he can make:**
+- Which disqualifiers are absolute, versus worth a conversation
+- **Which error hurts more: chasing a bid he could not win, or passing on one he could.** Every
+  threshold on the settings screen is a different answer to that question. It is currently tuned
+  on the assumption that missing a winnable bid is worse — that assumption should be his, not
+  mine.
+
+### From you
+
+**1 — Get the profile filled, in a call rather than by email.** Item 1 above is a 45-minute
+screen-share, and it will not happen by sending a link. Most of it is confirm-or-correct.
+
+**2 — Decide the delivery surface.** Verdicts live in the dashboard only. If Khaled will not
+open a dashboard daily, the verdict card needs to go to Slack or email — that is a real build,
+and it is a product decision, not a technical one. Worth asking him directly rather than
+assuming.
+
+**3 — Two credentials, if we want the remaining automation live:**
+- Gmail — connected, but the trigger is not switched on. The workflow deploys with
+  `n8n:deploy --activate` when you want it accepting real mail.
+- Google Drive — connected; the folder structure is designed but not built.
+
+**4 — Confirm the login decision in writing.** You asked me to remove authentication and use a
+single email. I narrowed access to one allowlisted account instead of removing the login screen,
+because this holds a live competitive bid pipeline and an unauthenticated public URL would expose
+Caravann's pursuit list, scoring and gap analysis to anyone with the link — including the firms
+they bid against. If you did mean *one user, no allowlist administration*, that is what is built.
+If you meant *no login screen at all*, I want that from you explicitly before doing it.
+
+**5 — Nothing on cost.** Three reads with reasoning is roughly $0.30 a solicitation against $855
+of Khaled's time. That question is settled; it does not need revisiting.
+
+### What is genuinely still unknown
+
+Worth being straight about the limits of what has been proved:
+
+- **The verdicts are consistent; nobody has shown they are correct.** That needs item 2 above.
+- **All variance measurement is one synthetic document.** The mechanism is demonstrated; the
+  numbers are not a general accuracy claim.
+- **Recall is the weak axis on every frontier model** (published benchmarks put it at 49–71%
+  against 92–96% precision). It misses requirements rather than inventing them. The three-read
+  union helps — compliance items went from 5–6 on single reads to 8–9 on the union — but that is
+  a suggestive sample, not a proven improvement.
