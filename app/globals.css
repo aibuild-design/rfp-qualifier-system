@@ -338,6 +338,51 @@ body {
 
 /* Indeterminate progress for a save or a fetch - a sheen rather than a spinner,
    so it does not compete with the content for attention. */
+/* The score bar grows from nothing on load. transform-origin left so it fills
+   left-to-right like a gauge rather than expanding from its middle. */
+.score-fill {
+  transform-origin: left center;
+  animation: score-grow var(--dur-slow) var(--ease-out) both;
+}
+
+@keyframes score-grow {
+  from {
+    transform: scaleX(0) !important;
+  }
+}
+
+/* The five overview steps are a pipeline, so they get a line that draws down
+   through them. Structure, not decoration: it says these happen in order and
+   each one feeds the next, which no amount of vertical spacing conveys. */
+.pipeline {
+  position: relative;
+}
+
+.pipeline::before {
+  content: "";
+  position: absolute;
+  left: 2.4rem;
+  top: 1.5rem;
+  bottom: 1.5rem;
+  width: 1px;
+  background: linear-gradient(to bottom, var(--rfp-border-strong), var(--rfp-border));
+  transform-origin: top center;
+  animation: draw-down var(--dur-slow) var(--ease-out) both;
+  animation-delay: 120ms;
+}
+
+@keyframes draw-down {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@media (max-width: 34rem) {
+  .pipeline::before {
+    display: none;
+  }
+}
+
 @keyframes shimmer {
   from {
     background-position: 200% 0;
@@ -372,6 +417,8 @@ body {
     animation: none !important;
   }
 
+  .score-fill,
+  .pipeline::before,
   .dialog[open],
   .dialog[open]::backdrop,
   .nav-rail::before,

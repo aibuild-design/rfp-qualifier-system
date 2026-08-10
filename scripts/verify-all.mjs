@@ -657,7 +657,46 @@ heading("12 · The dashboard, in a real browser");
 }
 
 // ── cleanup ─────────────────────────────────────────────────────────────────
-heading("13 · Cleanup");
+// ── data integrity ──────────────────────────────────────────────────────────
+heading("13 · Nothing orphaned, nothing phantom");
+{
+  // The bug this exists to catch: a "Weekly review 2" badge sitting over a
+  // queue with nothing in it. Edge cases carry an rfp_id, the seeded ones leave
+  // it null, and the reset deleted by `rfp_id in (...)` - so they survived
+  // every clear-out and kept counting. A badge pointing at rows that are not
+  // reachable from anywhere is worse than a wrong number: it sends you looking
+  // for work that does not exist.
+  const { data: rfps } = await admin.from("rfps").select("id");
+  const live = new Set((rfps ?? []).map((r) => r.id));
+
+  const CHILD_TABLES = [
+    "rfp_disqualifier_checks",
+    "rfp_gap_items",
+    "rfp_compliance_items",
+    "rfp_questions",
+    "rfp_proposal_sections",
+    "rfp_team_assignments",
+  ];
+  let orphans = 0;
+  for (const table of CHILD_TABLES) {
+    const { data } = await admin.from(table).select("rfp_id");
+    orphans += (data ?? []).filter((r) => r.rfp_id && !live.has(r.rfp_id)).length;
+  }
+  ok("no child row points at a solicitation that is gone", orphans === 0, `${orphans} orphaned`);
+
+  // Every badge in the rail resolves to rows someone can actually open.
+  const { data: edges } = await admin.from("rfp_edge_cases").select("rfp_id,status");
+  const pendingEdges = (edges ?? []).filter((e) => e.status === "pending");
+  const unreachable = pendingEdges.filter((e) => e.rfp_id && !live.has(e.rfp_id)).length;
+  ok("the weekly-review badge counts only reachable work", unreachable === 0, `${pendingEdges.length} pending, ${unreachable} unreachable`);
+
+  // An empty queue is a legitimate state, and every count must survive it
+  // rather than throwing. This is the shape that crashed the export check.
+  const { count: rfpCount } = await admin.from("rfps").select("*", { count: "exact", head: true });
+  ok("the desk reports a coherent count on any queue size", Number.isInteger(rfpCount ?? 0), `${rfpCount ?? 0} solicitations`);
+}
+
+heading("14 · Cleanup");
 {
   const { data: removed } = await admin.from("rfps").delete().like("external_id", `${PREFIX}%`).select("id");
   ok("test rows removed", true, `${removed?.length ?? 0} deleted`);

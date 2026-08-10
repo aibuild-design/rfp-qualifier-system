@@ -125,7 +125,7 @@ export default async function OverviewPage() {
           does and whether it is running yet.
         </p>
 
-        <ol className="mt-5 space-y-3">
+        <ol className="pipeline rise-stagger mt-5 space-y-3">
           <Step
             n={1}
             title="It arrives"
@@ -390,7 +390,10 @@ function Step({
 }) {
   const meta = STEP_STATE[state];
   return (
-    <li className="relative rounded-xl border border-rfp-border bg-rfp-surface p-5">
+    <li
+      style={{ "--i": n - 1 } as React.CSSProperties}
+      className="lift relative rounded-xl border border-rfp-border bg-rfp-surface p-5"
+    >
       <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
         <span className="tabular flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rfp-black text-xs font-semibold text-white">
           {n}

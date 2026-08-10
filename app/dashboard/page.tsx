@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { StatCard } from "@/components/StatCard";
+import { ScoreMeter } from "@/components/ScoreMeter";
 import { ProfileIncompleteBanner, ProvisionalTag } from "@/components/ProfileIncompleteBanner";
 import { DemoBanner, DemoTag } from "@/components/DemoBanner";
 import { ChartIcon, CheckCircleIcon, ClockIcon, DocumentIcon } from "@/components/icons";
@@ -40,7 +41,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   // One indexed single-row lookup.
   const { data: scoring } = await supabase
     .from("scoring_settings")
-    .select("deadline_warning_days,deadline_critical_days")
+    .select("deadline_warning_days,deadline_critical_days,go_threshold")
     .eq("id", true)
     .maybeSingle();
   const windows = deadlineWindowsFrom(scoring);
@@ -154,22 +155,53 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
 
       <div className="mt-6 overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
         {rows.length === 0 ? (
-          <div className="p-10 text-center">
-            <p className="text-sm font-medium text-rfp-ink">
-              {showNoGo ? "No RFPs filed as no-go yet" : "No RFPs yet"}
+          /* An empty queue is the first thing anyone sees on a fresh desk, and
+             for a while it is the ONLY thing they see, so it should look like a
+             starting line rather than a failure. The three markers show what
+             will happen to the first solicitation that arrives - they carry the
+             same numbering and the same drawn connector as the overview, so the
+             two pages describe one pipeline rather than two. */
+          <div className="rise px-6 py-12 text-center sm:py-16">
+            <p className="font-display text-base font-semibold text-rfp-ink">
+              {showNoGo ? "Nothing ruled out yet" : "The queue is empty"}
             </p>
-            <p className="mx-auto mt-1.5 max-w-md text-sm text-rfp-ink-secondary">
+            <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-rfp-ink-secondary">
               {showNoGo
-                ? "Once triage rules an RFP out, it lands here with its reasoning - nothing gets deleted."
-                : "Solicitations arrive by email, or you can add one yourself. Either way it is read in full and comes back with a verdict in about a minute."}
+                ? "Once triage rules a solicitation out it lands here with its reasoning. Nothing is ever deleted."
+                : "Solicitations arrive by email on their own, or you can add one yourself."}
             </p>
+
             {!showNoGo && (
-              <Link
-                href="/dashboard/new"
-                className="mt-4 inline-block rounded-lg bg-rfp-black px-4 py-2 text-sm font-semibold text-white press hover:bg-rfp-black-2"
-              >
-                Add a solicitation
-              </Link>
+              <>
+                <ol className="rise-stagger mx-auto mt-8 flex max-w-lg flex-col gap-3 text-left sm:flex-row sm:gap-2">
+                  {[
+                    { n: 1, t: "It arrives", d: "By email, or added by hand" },
+                    { n: 2, t: "It gets read", d: "The whole document, three times" },
+                    { n: 3, t: "It gets a verdict", d: "About a minute later" },
+                  ].map((step, i) => (
+                    <li
+                      key={step.n}
+                      style={{ "--i": i } as CSSProperties}
+                      className="flex flex-1 items-start gap-2.5 rounded-lg border border-dashed border-rfp-border px-3 py-2.5 sm:flex-col sm:gap-1.5"
+                    >
+                      <span className="tabular flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rfp-surface-sunken text-[10px] font-semibold text-rfp-ink-muted">
+                        {step.n}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[13px] font-medium text-rfp-ink">{step.t}</span>
+                        <span className="block text-[11px] leading-relaxed text-rfp-ink-muted">{step.d}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+
+                <Link
+                  href="/dashboard/new"
+                  className="press lift mt-8 inline-flex min-h-11 items-center rounded-lg bg-rfp-black px-5 text-sm font-semibold text-white hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold focus-visible:ring-offset-2"
+                >
+                  Add the first one
+                </Link>
+              </>
             )}
           </div>
         ) : (
@@ -260,8 +292,12 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                       <td className="px-5 py-3.5">
                         <VerdictBadge status={rfp.status} />
                       </td>
-                      <td className="tabular px-5 py-3.5 text-rfp-ink-secondary">
-                        {rfp.score_percent !== null ? `${Math.round(rfp.score_percent)}%` : "-"}
+                      <td className="px-5 py-3.5">
+                        <ScoreMeter
+                          score={rfp.score_percent}
+                          status={rfp.status}
+                          goThreshold={scoring?.go_threshold ?? 85}
+                        />
                       </td>
                       <td className="tabular px-5 py-3.5 text-rfp-ink-secondary">{formatBudget(rfp)}</td>
                       <td className="px-5 py-3.5" style={{ color: deadlineColor(days, windows) }}>

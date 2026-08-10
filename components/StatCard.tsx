@@ -1,5 +1,6 @@
 import { ComponentType } from "react";
 import Link from "next/link";
+import { CountUp } from "./CountUp";
 
 /**
  * One number and what it means.
@@ -43,7 +44,9 @@ export function StatCard({
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      <p className="tabular mt-3 font-display text-3xl font-semibold text-rfp-ink">{value}</p>
+      <p className="mt-3 font-display text-3xl font-semibold text-rfp-ink">
+        {typeof value === "number" ? <CountUp value={value} /> : <span className="tabular">{value}</span>}
+      </p>
       <p className="mt-1.5 text-xs text-rfp-ink-secondary">{subtext}</p>
     </>
   );
