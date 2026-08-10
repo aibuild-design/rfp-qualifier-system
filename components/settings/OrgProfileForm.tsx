@@ -26,6 +26,8 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
         certifications: next.certifications,
         set_aside_status: next.set_aside_status,
         notes: next.notes,
+        insurance_coverage: next.insurance_coverage,
+        governing_body_experience: next.governing_body_experience,
         profile_confirmed: next.profile_confirmed,
       })
       .eq("id", true);
@@ -90,6 +92,45 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
       </div>
 
       <div className="mt-4 space-y-1.5">
+        <label htmlFor="insurance" className="text-sm font-medium text-rfp-ink-secondary">
+          Insurance carried
+        </label>
+        <p className="text-xs leading-relaxed text-rfp-ink-muted">
+          Types and limits, in your own words. Every solicitation that names an insurance
+          requirement currently stalls at <span className="font-medium text-rfp-ink">maybe</span>
+          {" "}because the desk has no way to check it.
+        </p>
+        <textarea
+          id="insurance"
+          value={profile.insurance_coverage ?? ""}
+          onChange={(e) => setProfile({ ...profile, insurance_coverage: e.target.value })}
+          onBlur={() => save(profile)}
+          rows={2}
+          placeholder="e.g. General liability $2M per occurrence / $4M aggregate; professional liability $1M; auto and workers' comp per California statute"
+          className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
+        />
+      </div>
+
+      <div className="mt-4 space-y-1.5">
+        <label htmlFor="governing" className="text-sm font-medium text-rfp-ink-secondary">
+          Facilitating elected or appointed bodies
+        </label>
+        <p className="text-xs leading-relaxed text-rfp-ink-muted">
+          Councils, boards, commissions. A mandatory requirement in most transit and
+          public-agency solicitations, and the single most common reason a bid sits unresolved.
+        </p>
+        <textarea
+          id="governing"
+          value={profile.governing_body_experience ?? ""}
+          onChange={(e) => setProfile({ ...profile, governing_body_experience: e.target.value })}
+          onBlur={() => save(profile)}
+          rows={2}
+          placeholder="e.g. Board retreats and strategic planning committees for transit boards, water district boards and university governance since 2014"
+          className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
+        />
+      </div>
+
+      <div className="mt-4 space-y-1.5">
         <label className="text-sm font-medium text-rfp-ink-secondary">Notes</label>
         <textarea
           value={profile.notes ?? ""}
@@ -99,38 +140,6 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
           className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-base sm:text-sm text-rfp-ink focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
         />
       </div>
-
-      {/* The sign-off. Deliberately the last thing on the form and worded as a
-          claim about reality rather than a preference, because ticking it is
-          what stops every new verdict being stamped provisional. Unticking it
-          is allowed and is the right move if anything above goes stale. */}
-      <label
-        htmlFor="profile-confirmed"
-        className={`press press-row mt-6 flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border p-3 ${
-          profile.profile_confirmed
-            ? "border-rfp-good/50 bg-rfp-good/5"
-            : "border-rfp-warning/50 bg-rfp-warning/5"
-        }`}
-      >
-        <input
-          id="profile-confirmed"
-          type="checkbox"
-          checked={profile.profile_confirmed}
-          onChange={() => void save({ ...profile, profile_confirmed: !profile.profile_confirmed })}
-          aria-describedby="profile-confirmed-description"
-          className="mt-0.5 h-5 w-5 shrink-0 rounded border-rfp-border-strong accent-rfp-black focus-visible:ring-2 focus-visible:ring-rfp-gold"
-        />
-        <span className="min-w-0">
-          <span className="block text-sm font-medium text-rfp-ink">
-            Profile confirmed — everything above is real
-          </span>
-          <span id="profile-confirmed-description" className="mt-0.5 block text-xs leading-relaxed text-rfp-ink-muted">
-            {profile.profile_confirmed
-              ? "New verdicts are treated as trustworthy. Untick this if anything above goes out of date."
-              : "Until this is ticked, every verdict is stored and marked provisional — the figures above ship as placeholders and the desk should not sound certain about numbers nobody has checked."}
-          </span>
-        </span>
-      </label>
 
       <p className="mt-3 text-xs text-rfp-ink-muted">{saving ? "Saving…" : savedAt ? "Saved" : "Autosaves on change"}</p>
     </div>

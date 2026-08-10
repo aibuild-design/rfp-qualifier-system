@@ -59,6 +59,12 @@
               "name": "triage_runs",
               "value": 3,
               "type": "number"
+            },
+            {
+              "id": "a5",
+              "name": "drive_root_folder_id",
+              "value": "__DRIVE_ROOT_FOLDER_ID__",
+              "type": "string"
             }
           ]
         },
@@ -309,7 +315,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Module 10. Builds the Drive destination from the verdict, using the naming\n// convention the SOW fixes:\n//   [Engagement]_[Client]_Caravann Consulting\n//\n// The title and client come from the reconcile step, not from this node's own\n// input. The input here is the bid desk's *response*, which is only\n// { id, status } — so reading v.title off it silently produced undefined and\n// every folder in Drive came out named \"__Caravann Consulting\". Nothing threw;\n// two empty strings just collapsed into their separators. The verdict still has\n// to come from the response, because it is recomputed server-side and the\n// model's own label is discarded — so both sources are genuinely needed.\nconst clean = (s) => String(s || '').replace(/[\\\\/:*?\"<>|]/g, '').replace(/\\s+/g, ' ').trim();\n// Reconcile returns { body, bid_desk_url, samples, ... } — the solicitation\n// fields live under `body`, which is what gets POSTed to the bid desk.\nconst triaged = $('Reconcile triage runs').first().json.body || {};\n\nreturn $input.all().map((item) => {\n  const v = item.json;\n  const verdict = v.status || 'pending';\n  const folder = verdict === 'no_go' ? 'no-go' : verdict === 'maybe' ? 'maybe' : 'go';\n  const title = clean(v.title || triaged.title);\n  const client = clean(v.client_agency || triaged.client_agency);\n  // Join only the parts that exist, so a missing client gives a usable name\n  // rather than a stack of separators.\n  const base = [title, client, 'Caravann Consulting'].filter(Boolean).join('_');\n  return {\n    json: {\n      ...v,\n      drive_parent_folder: `/RFPs/${folder}/`,\n      drive_subfolder: base,\n      drive_file_base: base,\n    },\n  };\n});"
+        "jsCode": "// Module 10. Builds the Drive destination from the verdict, using the naming\n// convention the SOW fixes:\n//   [Engagement]_[Client]_Caravann Consulting\n//\n// The title and client come from the reconcile step, not from this node's own\n// input. The input here is the bid desk's *response*, which is only\n// { id, status } — so reading v.title off it silently produced undefined and\n// every folder in Drive came out named \"__Caravann Consulting\". Nothing threw;\n// two empty strings just collapsed into their separators. The verdict still has\n// to come from the response, because it is recomputed server-side and the\n// model's own label is discarded — so both sources are genuinely needed.\nconst clean = (s) => String(s || '').replace(/[\\\\/:*?\"<>|]/g, '').replace(/\\s+/g, ' ').trim();\n// Reconcile returns { body, bid_desk_url, samples, ... } — the solicitation\n// fields live under `body`, which is what gets POSTed to the bid desk.\nconst triaged = $('Reconcile triage runs').first().json.body || {};\n\nreturn $input.all().map((item) => {\n  const v = item.json;\n  const verdict = v.status || 'pending';\n  const folder = verdict === 'no_go' ? 'no-go' : verdict === 'maybe' ? 'maybe' : 'go';\n  const title = clean(v.title || triaged.title);\n  const client = clean(v.client_agency || triaged.client_agency);\n  // Join only the parts that exist, so a missing client gives a usable name\n  // rather than a stack of separators.\n  const base = [title, client, 'Caravann Consulting'].filter(Boolean).join('_');\n  return {\n    json: {\n      ...v,\n      drive_parent_folder: `/RFPs/${folder}/`,\n      // Prefixes the verdict lane onto the folder name. The designed layout\n      // was /RFPs/<lane>/<name>, but the Drive node takes a parent ID and\n      // cannot create intermediate folders, so the lane rides in the name\n      // until a real tree exists.\n      drive_lane: `[${folder}] `,\n      drive_subfolder: base,\n      drive_file_base: base,\n    },\n  };\n});"
       },
       "id": "build-filing-path",
       "name": "Build filing path",
@@ -324,8 +330,13 @@
     {
       "parameters": {
         "resource": "folder",
-        "name": "={{ $json.drive_subfolder }}",
-        "options": {}
+        "name": "={{ $json.drive_lane }}{{ $json.drive_subfolder }}",
+        "options": {},
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.drive_root_folder_id || 'root' }}"
+        }
       },
       "id": "drive-create-folder",
       "name": "Drive — create bid folder",

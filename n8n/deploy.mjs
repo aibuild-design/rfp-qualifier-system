@@ -116,9 +116,19 @@ async function main() {
   }
   // JSON.stringify escaping keeps the embedded quotes valid inside the string literal.
   after = after.replaceAll("__GMAIL_QUERY__", JSON.stringify(gmailQuery).slice(1, -1));
+  // Optional. Unset means bid folders are created at the root of whichever
+  // Drive the credential belongs to, which is usable but messy — so say so
+  // rather than letting it be discovered later.
+  const driveRoot = (process.env.DRIVE_ROOT_FOLDER_ID || "").trim();
+  after = after.replaceAll("__DRIVE_ROOT_FOLDER_ID__", driveRoot);
   payload.nodes = JSON.parse(after);
   console.log(`  bid desk → ${bidDeskUrl.replace(/\/$/, "")}`);
   console.log(`  gmail q  → ${gmailQuery}`);
+  console.log(
+    driveRoot
+      ? `  drive    → bid folders under ${driveRoot}`
+      : "  drive    → DRIVE_ROOT_FOLDER_ID unset, bid folders land at the Drive root"
+  );
 
   await resolveCredentials(payload);
 

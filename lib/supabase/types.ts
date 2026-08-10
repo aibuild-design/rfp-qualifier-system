@@ -62,6 +62,12 @@ export interface Database {
           certifications: string[];
           set_aside_status: string[];
           notes: string | null;
+          /** Coverage carried, in Caravann's own words. Read by the gate so an
+           *  insurance requirement resolves rather than sitting unclear. */
+          insurance_coverage: string | null;
+          /** Experience facilitating elected or appointed bodies — a recurring
+           *  mandatory requirement the profile previously could not answer. */
+          governing_body_experience: string | null;
           /** Ticked on the settings screen once a human has checked this
            *  against reality. Until then every verdict is stored provisional. */
           profile_confirmed: boolean;
