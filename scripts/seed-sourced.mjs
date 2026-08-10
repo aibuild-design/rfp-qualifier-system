@@ -8,7 +8,7 @@
  * Separate from `seed:demo` on purpose. That script writes plausible invented
  * figures and labels them as such; this one writes only what a real Caravann
  * document actually says, and leaves every field the documents do not cover
- * empty for Khaled. Running this does not confirm the profile — that stays a
+ * empty for Khaled. Running this does not confirm the profile - that stays a
  * deliberate human action on the settings screen, because the gaps below are
  * exactly the things nobody has checked yet.
  */
@@ -48,9 +48,9 @@ console.log(bold("\nTeam roster"));
 console.log(`  currently ${have.size} people, sourced list has ${incoming.size}`);
 for (const t of SOURCED_TEAM) {
   const status = have.has(t.name) ? "keep " : "add  ";
-  console.log(`  ${status} ${t.name}${t.role ? dim(` — ${t.role}`) : dim(" — role not stated in the source")}`);
+  console.log(`  ${status} ${t.name}${t.role ? dim(` - ${t.role}`) : dim(" - role not stated in the source")}`);
 }
-for (const n of invented) console.log(`  ${bold("drop ")} ${n} ${dim("— placeholder, not a real Caravann consultant")}`);
+for (const n of invented) console.log(`  ${bold("drop ")} ${n} ${dim("- placeholder, not a real Caravann consultant")}`);
 
 // ── language ────────────────────────────────────────────────────────────────
 const { data: existingBlocks } = await supabase.from("language_blocks").select("title,source");
@@ -71,7 +71,7 @@ if (invented.length) {
 }
 // Matched on name by hand rather than upsert: there is no unique constraint on
 // team_members.name, so ON CONFLICT has nothing to key against. Re-runnable
-// either way — an existing person is updated, a new one inserted.
+// either way - an existing person is updated, a new one inserted.
 const { data: current } = await supabase.from("team_members").select("id,name");
 const byName = new Map((current ?? []).map((t) => [t.name, t.id]));
 for (const t of SOURCED_TEAM) {
@@ -82,8 +82,8 @@ for (const t of SOURCED_TEAM) {
   if (error) throw new Error(`team write ${t.name}: ${error.message}`);
 }
 
-// The demo blocks label themselves in `source` ("Placeholder — replace with
-// …"), so that prefix is what identifies them — not a null source, which was
+// The demo blocks label themselves in `source` ("Placeholder - replace with
+// …"), so that prefix is what identifies them - not a null source, which was
 // the first guess and deleted nothing. Sourced blocks are matched on their own
 // citation so a re-run replaces rather than duplicates them.
 const { error: delPlaceholder } = await supabase.from("language_blocks").delete().ilike("source", "Placeholder%");
@@ -107,5 +107,5 @@ console.log(
 
 const { data: profile } = await supabase.from("org_profile").select("profile_confirmed").eq("id", true).maybeSingle();
 console.log(bold("\nWritten."));
-console.log(`  profile_confirmed is still ${profile?.profile_confirmed === true ? "true" : "false"} — this script never sets it.`);
+console.log(`  profile_confirmed is still ${profile?.profile_confirmed === true ? "true" : "false"} - this script never sets it.`);
 console.log(dim("  Sector counts, certifications, insurance and locations are not in these sources and remain Khaled's to fill.\n"));

@@ -8,7 +8,7 @@
 //
 // Sectors are matched on the unique `sector` column, so re-running updates in
 // place rather than duplicating. Sectors already in the database but absent
-// from the file are LEFT ALONE — this seeds and corrects, it never prunes,
+// from the file are LEFT ALONE - this seeds and corrects, it never prunes,
 // because silently deleting a sector would silently change every future
 // verdict.
 //
@@ -60,11 +60,11 @@ async function main() {
   for (const s of sectors) {
     const yrs = s.years_experience ?? "?";
     const cnt = s.engagement_count ?? "?";
-    console.log(`    · ${s.sector} — ${yrs} yrs, ${cnt} engagements`);
+    console.log(`    · ${s.sector} - ${yrs} yrs, ${cnt} engagements`);
   }
 
   if (dryRun) {
-    console.log("\n(dry run — nothing written)");
+    console.log("\n(dry run - nothing written)");
     return;
   }
 
@@ -89,7 +89,7 @@ async function main() {
       sector: s.sector,
       years_experience: s.years_experience ?? null,
       engagement_count: s.engagement_count ?? null,
-      notes: [s.notes, s.provenance && `Source: ${s.provenance}`].filter(Boolean).join(" — ") || null,
+      notes: [s.notes, s.provenance && `Source: ${s.provenance}`].filter(Boolean).join(" - ") || null,
     };
     const { error } = await supabase.from("sector_experience").upsert(row, { onConflict: "sector" });
     if (error) throw new Error(`sector ${s.sector}: ${error.message}`);
@@ -97,7 +97,7 @@ async function main() {
   console.log(`✓ ${sectors.length} sector(s) upserted`);
 
   const { count } = await supabase.from("sector_experience").select("*", { count: "exact", head: true });
-  console.log(`\n${count} sector row(s) now in the map — the dashboard banner clears at 1 or more.`);
+  console.log(`\n${count} sector row(s) now in the map - the dashboard banner clears at 1 or more.`);
 }
 
 main().catch((err) => {

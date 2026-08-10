@@ -21,7 +21,7 @@ export function Topbar({ counts }: { counts: NavCounts }) {
         <div className="ml-auto flex items-center gap-2.5">
           {/* Every date in the app is rendered in one fixed zone. Saying which
               one, once, is what stops a 7pm Pacific deadline being read as the
-              next day — the one direction a bid desk must not get wrong. */}
+              next day - the one direction a bid desk must not get wrong. */}
           <span className="hidden items-center gap-1.5 rounded-full bg-rfp-surface-sunken px-2.5 py-1 text-xs font-medium text-rfp-ink-muted sm:inline-flex">
             Deadlines shown in {timeZoneLabel()}
           </span>

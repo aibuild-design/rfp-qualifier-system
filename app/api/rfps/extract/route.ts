@@ -5,7 +5,7 @@ import { checkDocumentUrl, isBlockedHost } from "@/lib/url-guard";
 import { lookup } from "node:dns/promises";
 
 // Downloads a solicitation and returns its plain text, whatever format it is
-// in — the SOW's "PDF and Word text extraction" (module 01).
+// in - the SOW's "PDF and Word text extraction" (module 01).
 //
 // This replaced n8n's Download + Extract From File pair. That node has no
 // .docx path, and agencies post .docx constantly; doing it here also means one
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
   }
 
   // No text means there is nothing to triage. Failing here is the honest
-  // outcome — the alternative is a confident verdict about a document that was
+  // outcome - the alternative is a confident verdict about a document that was
   // never actually read.
   if (!extraction.text) {
     return NextResponse.json(

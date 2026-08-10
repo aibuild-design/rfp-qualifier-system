@@ -2,7 +2,7 @@
 // Manage who can use the dashboard.
 //
 //   node scripts/manage-access.mjs list
-//   node scripts/manage-access.mjs add khaled@caravann.co "Caravann — principal"
+//   node scripts/manage-access.mjs add khaled@caravann.co "Caravann - principal"
 //   node scripts/manage-access.mjs remove someone@example.com
 //
 // The allowlist is what actually enforces access: every table's RLS policy
@@ -11,7 +11,7 @@
 //
 // Adding an email here does NOT create a login. The person still signs up (or
 // is invited) through Supabase Auth; this is the second half they need.
-// Deliberately service-role only — if the browser could write app_users, any
+// Deliberately service-role only - if the browser could write app_users, any
 // allowlisted user could silently grant access to anyone.
 
 import { readFile } from "node:fs/promises";
@@ -50,7 +50,7 @@ async function main() {
     for (const row of data) {
       const acct = accounts.get(row.email.toLowerCase());
       const state = !acct
-        ? "no account yet — they still need to sign up"
+        ? "no account yet - they still need to sign up"
         : acct.email_confirmed_at
           ? "active"
           : "account created, email not confirmed";
@@ -81,7 +81,7 @@ async function main() {
       .upsert({ email: email.toLowerCase(), note: note ?? null }, { onConflict: "email" });
     if (error) throw new Error(error.message);
     console.log(`✓ ${email} allowlisted.`);
-    console.log("  They still need a Supabase Auth account — invite them from");
+    console.log("  They still need a Supabase Auth account - invite them from");
     console.log("  Authentication > Users, or have them use the password-reset flow.");
     return;
   }
@@ -89,7 +89,7 @@ async function main() {
   if (cmd === "remove") {
     const { error } = await supabase.from("app_users").delete().eq("email", email.toLowerCase());
     if (error) throw new Error(error.message);
-    console.log(`✓ ${email} removed — they now see nothing, effective immediately.`);
+    console.log(`✓ ${email} removed - they now see nothing, effective immediately.`);
     console.log("  Their login still exists. Delete it in Authentication > Users to");
     console.log("  revoke the account itself.");
     return;

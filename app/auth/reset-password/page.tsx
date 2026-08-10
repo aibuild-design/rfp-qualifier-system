@@ -59,7 +59,7 @@ function ResetPasswordForm() {
         </p>
 
         {done ? (
-          <p className="text-sm font-medium text-rfp-good">Password updated — redirecting…</p>
+          <p className="text-sm font-medium text-rfp-good">Password updated - redirecting…</p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">

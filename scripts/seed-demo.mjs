@@ -41,7 +41,7 @@ async function loadEnv() {
 // Offsets are in days, but the time of day matters: a deadline reads as
 // "Sep 14, 4:39 AM" if you just add 24h increments to the moment you seeded,
 // which is not a time any agency closes a solicitation. Pinned to 2:00 PM
-// Pacific — the most common submission cutoff in the fixtures — so the
+// Pacific - the most common submission cutoff in the fixtures - so the
 // countdown colours and the exported document both look like real deadlines.
 // 21:00Z is 2pm PDT; an hour out under PST, which does not change the date.
 const daysFromNow = (n) => {
@@ -51,7 +51,7 @@ const daysFromNow = (n) => {
 };
 
 // PostgREST normalises a bulk insert to the union of keys across the batch and
-// fills the gaps with explicit nulls — so a row that omits is_hard_knockout while
+// fills the gaps with explicit nulls - so a row that omits is_hard_knockout while
 // a sibling sets it arrives as NULL and trips the NOT NULL constraint, DEFAULT
 // never applying. Filling these in here keeps the fixture data readable (a row
 // only states the flags that matter to it) without relying on column defaults
@@ -88,7 +88,7 @@ async function main() {
     .select("id");
   if (delErr) throw new Error(`purge: ${delErr.message}`);
 
-  // These carry no is_demo flag of their own — they are small, wholly
+  // These carry no is_demo flag of their own - they are small, wholly
   // seeded sets, so the seeder owns them outright and clears them on both
   // paths rather than trying to tell seeded rows from hand-added ones.
   await supabase.from("language_blocks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
@@ -97,7 +97,7 @@ async function main() {
 
   if (purge) {
     console.log(`✓ Removed ${removed?.length ?? 0} demo RFP(s), plus the language library, edge cases and portal rules.`);
-    console.log("\nThe profile and sector map were left in place — they may have");
+    console.log("\nThe profile and sector map were left in place - they may have");
     console.log("been edited since seeding. Review them in Settings.");
     return;
   }
@@ -118,7 +118,7 @@ async function main() {
   console.log(`✓ ${DEMO_SECTORS.length} sectors`);
 
   // team_members has no natural unique key, so clear and reinsert rather than
-  // upsert — otherwise re-seeding stacks duplicate rosters.
+  // upsert - otherwise re-seeding stacks duplicate rosters.
   await supabase.from("team_members").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   const { error: teamErr } = await supabase.from("team_members").insert(DEMO_TEAM);
   if (teamErr) throw new Error(`team_members: ${teamErr.message}`);
@@ -176,7 +176,7 @@ async function main() {
     for (const { error: childErr } of await Promise.all(inserts)) {
       if (childErr) throw new Error(`children of ${r.external_id}: ${childErr.message}`);
     }
-    const score = r.score_percent == null ? "—" : `${r.score_percent}%`;
+    const score = r.score_percent == null ? "-" : `${r.score_percent}%`;
     console.log(`  · ${r.status.padEnd(7)} ${score.padStart(4)}  ${r.title.slice(0, 58)}`);
   }
 

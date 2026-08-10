@@ -11,7 +11,7 @@ import { LogOutIcon } from "./icons";
  * Who is signed in, how the app looks, and how to leave.
  *
  * This used to be ONE button: an avatar, the email address, and a settings-gear
- * icon on the right — and clicking anywhere on it signed you out immediately.
+ * icon on the right - and clicking anywhere on it signed you out immediately.
  * Nothing said so. A card that looks like a profile and is captioned with a
  * gear reads as "account settings", so the only way to discover what it did was
  * to lose your session doing it.
@@ -51,7 +51,7 @@ export function SignOutButton({ userEmail }: { userEmail: string | null }) {
               <strong className="font-semibold text-rfp-ink">{userEmail ?? "this account"}</strong>.
             </p>
             <p className="mt-2">
-              Nothing is lost — every verdict, note and draft is saved, and any solicitation being
+              Nothing is lost - every verdict, note and draft is saved, and any solicitation being
               triaged carries on without you.
             </p>
           </>

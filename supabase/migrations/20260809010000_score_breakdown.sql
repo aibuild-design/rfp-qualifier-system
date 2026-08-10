@@ -3,8 +3,8 @@
 -- The score is no longer a holistic guess: the model classifies five anchored
 -- dimensions ("is the sector depth none, thin, adequate or strong?") and the
 -- arithmetic happens in code. Storing the classifications means a card can show
--- *why* a solicitation scored what it did — "strong sector depth (30), no local
--- presence (0)" — which is something Khaled can argue with, in a way that "84%"
+-- *why* a solicitation scored what it did - "strong sector depth (30), no local
+-- presence (0)" - which is something Khaled can argue with, in a way that "84%"
 -- never was.
 alter table rfps add column if not exists score_breakdown jsonb;
 

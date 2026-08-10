@@ -30,7 +30,7 @@ const ICONS = {
 
 /**
  * The dark rail. Nav lives in `lib/nav.ts` rather than here so the mobile bar
- * renders the same list from the same source — two copies of the nav drifting
+ * renders the same list from the same source - two copies of the nav drifting
  * apart is how a link ends up reachable on one breakpoint and not the other.
  *
  * Counts come from the layout (a server component) rather than being fetched
@@ -51,7 +51,7 @@ export function Sidebar({
   return (
     <aside className="hidden w-64 shrink-0 flex-col overflow-hidden bg-rfp-black text-white lg:flex">
       <div className="flex h-16 flex-col justify-center gap-1 border-b border-white/10 px-5">
-        {/* Yellow wordmark on the near-black rail — 11.9:1, the variant
+        {/* Yellow wordmark on the near-black rail - 11.9:1, the variant
             Caravann's own site uses on dark. */}
         <Image
           src="/brand/caravann-yellow.png"
@@ -131,7 +131,7 @@ export function Sidebar({
 
 /**
  * Sits between the nav and the account row. The three numbers that decide what
- * gets worked on today, each a link to the view that resolves it — so "2 items
+ * gets worked on today, each a link to the view that resolves it - so "2 items
  * to review" is one click from being cleared rather than a number to remember.
  * When all three are zero it says so, which is information too.
  */

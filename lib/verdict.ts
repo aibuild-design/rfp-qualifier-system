@@ -3,13 +3,13 @@
  *
  * The model used to choose the label itself, and it was not reproducible: the
  * same solicitation, run three times at temperature 0, came back
- * `maybe / 83`, `go / 87`, `go / 88`. The underlying read barely moved — the
+ * `maybe / 83`, `go / 87`, `go / 88`. The underlying read barely moved - the
  * model just picked a different side of a boundary it invented on the spot.
  * On a desk where the label decides whether a week gets spent, a verdict that
  * changes between runs is not a verdict.
  *
- * So the model now reports what it found — a score, and pass/fail per
- * requirement — and the label is arithmetic. Same input, same answer, every
+ * So the model now reports what it found - a score, and pass/fail per
+ * requirement - and the label is arithmetic. Same input, same answer, every
  * time. And the boundary becomes Khaled's to set rather than something to
  * argue with a model about.
  */
@@ -31,7 +31,7 @@ export type Thresholds = {
    *  confidence. Beyond this the verdict is capped at "maybe". */
   maxSpread?: number;
   /** When true, a missed *preferred* requirement also closes the bid. Off by
-   *  default — the SOW is explicit that preferred lowers the score rather than
+   *  default - the SOW is explicit that preferred lowers the score rather than
    *  killing it, and turning it on will rule out winnable work. */
   preferredIsFatal?: boolean;
 };
@@ -63,7 +63,7 @@ export function thresholdsFromSettings(
 export const DEFAULT_MAX_SPREAD = 20;
 
 /** How far apart the furthest two reads were. Useful to display; a poor basis
- *  for a decision — see consensusGap. */
+ *  for a decision - see consensusGap. */
 export function spreadOf(samples: readonly number[] | null | undefined): number {
   if (!samples || samples.length < 2) return 0;
   return Math.max(...samples) - Math.min(...samples);
@@ -76,7 +76,7 @@ export function spreadOf(samples: readonly number[] | null | undefined): number 
  * 58, 87 and 88: the spread is 30, but two reads agree to within a point and
  * the third is simply a bad read that the median already discards. Calling
  * that "uncertain" would push a clear go into maybe every time the model has
- * an off run — which is often.
+ * an off run - which is often.
  *
  * What actually signals uncertainty is *no two reads agreeing at all*:
  * 30, 60, 90 has the same shape as 58, 87, 88 by spread, but nothing to stand
@@ -92,7 +92,7 @@ export function consensusGap(samples: readonly number[] | null | undefined): num
 
 /**
  * Defaults until Caravann sets its own. Overridable per deployment so the
- * boundary can be tuned without a code change — the whole point of moving it
+ * boundary can be tuned without a code change - the whole point of moving it
  * out of the model is that it becomes a dial someone can turn.
  */
 export const THRESHOLDS: Thresholds = {
@@ -115,7 +115,7 @@ export type Decision = {
 
 /**
  * A failed requirement outranks any score. A solicitation demanding three years
- * of behavioral health experience is not a 40% fit for a firm with none — it is
+ * of behavioral health experience is not a 40% fit for a firm with none - it is
  * closed, and no amount of overlap elsewhere reopens it.
  */
 export function decideVerdict(
@@ -128,7 +128,7 @@ export function decideVerdict(
 ): Decision {
   const failed = checks.filter((c) => c.result === "fail");
 
-  // "Preferred but not met" costs score; it never closes the door on its own —
+  // "Preferred but not met" costs score; it never closes the door on its own -
   // unless Khaled has said otherwise for his own firm.
   const blocking = failed.filter(
     (c) => c.is_required === true || c.is_hard_knockout === true || thresholds.preferredIsFatal === true
@@ -145,12 +145,12 @@ export function decideVerdict(
 
   // No score means triage has not finished, not that the answer is no.
   if (scorePercent === null || scorePercent === undefined || !Number.isFinite(scorePercent)) {
-    return { status: "pending", reason: "No score yet — triage has not returned." };
+    return { status: "pending", reason: "No score yet - triage has not returned." };
   }
 
   // A requirement the profile is silent on is not a requirement Caravann
   // fails. It used to be treated as one, because "fail" was the only answer
-  // available for "the profile does not say" — and that closed winnable bids
+  // available for "the profile does not say" - and that closed winnable bids
   // on gaps in our own data. Now it caps the verdict at maybe and names the
   // question, which is both the honest answer and the useful one: every
   // unclear here is a specific line Khaled can add to the profile once and
@@ -174,7 +174,7 @@ export function decideVerdict(
   const softMisses = failed.length;
   const note = softMisses > 0 ? ` ${softMisses} preferred requirement${softMisses > 1 ? "s" : ""} not met.` : "";
 
-  // The gate above has already passed, so nothing here is disqualifying — the
+  // The gate above has already passed, so nothing here is disqualifying - the
   // only question left is degree of fit, and that is exactly the judgement the
   // reads disagreed about. Claiming go or no-go on a 35-point spread would be
   // inventing a confidence the evidence does not support.
@@ -184,7 +184,7 @@ export function decideVerdict(
       status: "maybe",
       reason:
         `No two of the ${samples.length} reads agreed on this solicitation ` +
-        `(${[...samples].sort((a, b) => a - b).join(", ")}) — the closest were ${consensusGap(samples)} points apart, ` +
+        `(${[...samples].sort((a, b) => a - b).join(", ")}) - the closest were ${consensusGap(samples)} points apart, ` +
         `past the ${limit}-point tolerance. Median is ${score}%, but read it yourself before deciding.`,
     };
   }
@@ -200,7 +200,7 @@ export function decideVerdict(
   }
   return {
     status: "no_go",
-    reason: `Scores ${score}%, below the ${thresholds.maybe}% floor — too thin an overlap to be worth the hours.${note}`,
+    reason: `Scores ${score}%, below the ${thresholds.maybe}% floor - too thin an overlap to be worth the hours.${note}`,
   };
 }
 

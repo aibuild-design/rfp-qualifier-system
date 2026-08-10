@@ -1,4 +1,4 @@
-// Demo dataset — realistic example data so the dashboard can be evaluated
+// Demo dataset - realistic example data so the dashboard can be evaluated
 // before real solicitations arrive.
 //
 // Every RFP here carries is_demo = true, which drives a warning banner on
@@ -7,10 +7,10 @@
 //
 // The profile figures below are PLACEHOLDERS chosen to be plausible for a
 // facilitation and strategic-planning firm. They are not Caravann's real
-// numbers and must be replaced before any verdict is trusted — the notes
+// numbers and must be replaced before any verdict is trusted - the notes
 // field on each row says so, and it is visible in Settings.
 
-export const DEMO_MARKER = "PLACEHOLDER — demo figure, replace with Caravann's real number";
+export const DEMO_MARKER = "PLACEHOLDER - demo figure, replace with Caravann's real number";
 
 export const DEMO_ORG_PROFILE = {
   bilingual_staff: false,
@@ -39,7 +39,7 @@ export const DEMO_SECTORS = [
     sector: "Public transit",
     years_experience: 8,
     engagement_count: 11,
-    notes: `${DEMO_MARKER}. The SOW references real SamTrans work, so this sector is genuinely non-zero — the counts are still invented.`,
+    notes: `${DEMO_MARKER}. The SOW references real SamTrans work, so this sector is genuinely non-zero - the counts are still invented.`,
   },
   {
     sector: "K-12 education",
@@ -93,7 +93,7 @@ export const DEMO_TEAM = [
 export const DEMO_RFPS = [
   {
     external_id: "DEMO-transit-strategic-plan",
-    title: "Facilitation and Strategic Planning Services — 2027–2032 Strategic Plan",
+    title: "Facilitation and Strategic Planning Services - 2027–2032 Strategic Plan",
     client_agency: "San Mateo County Transit District",
     project_type: "Strategic planning / facilitation",
     source: "aggregator",
@@ -104,18 +104,18 @@ export const DEMO_RFPS = [
     due_in_days: 38,
     question_deadline_in_days: 9,
     verdict_why:
-      "Core scope is board-and-stakeholder facilitation for a multi-year strategic plan — the centre of Caravann's service line. Transit-sector depth (8 yrs / 11 engagements) clears the three-comparable-engagement minimum with room to spare, and the $185K not-to-exceed is well matched to a 9-month facilitation engagement.",
+      "Core scope is board-and-stakeholder facilitation for a multi-year strategic plan - the centre of Caravann's service line. Transit-sector depth (8 yrs / 11 engagements) clears the three-comparable-engagement minimum with room to spare, and the $185K not-to-exceed is well matched to a 9-month facilitation engagement.",
     verdict_why_not:
       "No consultant currently based in San Mateo County; the RFP prefers but does not require local presence, so this costs points rather than disqualifying. Insurance certificate needs confirming against the $2M GL / $1M PL minimum before submission.",
     gaps: [
-      { gap_type: "geography", description: "No consultant based in San Mateo County — RFP states local presence is preferred, not required." },
-      { gap_type: "certification", description: "General Liability ($2M/occurrence) and Professional Liability ($1M) certificates not on file — confirm current coverage." },
+      { gap_type: "geography", description: "No consultant based in San Mateo County - RFP states local presence is preferred, not required." },
+      { gap_type: "certification", description: "General Liability ($2M/occurrence) and Professional Liability ($1M) certificates not on file - confirm current coverage." },
     ],
     disqualifiers: [
       { requirement_text: "Minimum five (5) years providing facilitation services to public agencies", is_required: true, result: "pass", notes: "12 yrs recorded across public agencies." },
       { requirement_text: "Minimum three (3) comparable engagements with public transit agencies within the last seven years", is_required: true, result: "pass", notes: "11 transit engagements recorded." },
       { requirement_text: "Experience facilitating processes involving elected or appointed governing bodies", is_required: true, result: "pass" },
-      { requirement_text: "Preferred: team member based in San Mateo County or immediate Bay Area", is_required: false, result: "fail", notes: "Oakland is Bay Area but outside San Mateo County — partial match, scored as a miss." },
+      { requirement_text: "Preferred: team member based in San Mateo County or immediate Bay Area", is_required: false, result: "fail", notes: "Oakland is Bay Area but outside San Mateo County - partial match, scored as a miss." },
     ],
     compliance: [
       { category: "deadline", label: "Proposal submission deadline", detail: "2:00 PM PT via agency e-procurement portal", due_in_days: 38 },
@@ -136,7 +136,7 @@ export const DEMO_RFPS = [
   },
   {
     external_id: "DEMO-behavioral-health",
-    title: "Behavioral Health Continuum of Care — Stakeholder Engagement and Planning",
+    title: "Behavioral Health Continuum of Care - Stakeholder Engagement and Planning",
     client_agency: "Riverside County Behavioral Health",
     project_type: "Stakeholder engagement",
     source: "aggregator",
@@ -149,10 +149,10 @@ export const DEMO_RFPS = [
     verdict_why:
       "Budget is healthy and the facilitation mechanics are within Caravann's competence.",
     verdict_why_not:
-      "Section 4.2 requires a minimum of five years of direct behavioral health system experience and a licensed clinician on the engagement team. Caravann records zero behavioral health engagements and has no clinical staff. This is a hard knockout, not a scoring penalty — the requirement is stated as mandatory.",
+      "Section 4.2 requires a minimum of five years of direct behavioral health system experience and a licensed clinician on the engagement team. Caravann records zero behavioral health engagements and has no clinical staff. This is a hard knockout, not a scoring penalty - the requirement is stated as mandatory.",
     gaps: [
       { gap_type: "sector", description: "Zero behavioral health engagements on record; RFP requires 5+ years direct sector experience." },
-      { gap_type: "staffing", description: "No licensed behavioral health clinician on staff — required as a named team member." },
+      { gap_type: "staffing", description: "No licensed behavioral health clinician on staff - required as a named team member." },
     ],
     disqualifiers: [
       { requirement_text: "Minimum five (5) years direct behavioral health system experience", is_required: true, result: "fail", is_hard_knockout: true, notes: "Zero recorded. Confirmed dealbreaker per Caravann's own history." },
@@ -162,13 +162,13 @@ export const DEMO_RFPS = [
     compliance: [
       { category: "deadline", label: "Proposal submission deadline", due_in_days: 24 },
       { category: "deadline", label: "Written questions deadline", due_in_days: 4 },
-      { category: "rubric", label: "Scoring: Sector experience 40, Approach 25, Team 25, Cost 10", detail: "Sector experience is the single heaviest category — a structural disadvantage here." },
+      { category: "rubric", label: "Scoring: Sector experience 40, Approach 25, Team 25, Cost 10", detail: "Sector experience is the single heaviest category - a structural disadvantage here." },
     ],
     questions: [],
   },
   {
     external_id: "DEMO-k12-omaha",
-    title: "Strategic Plan Facilitation — District Equity and Access Plan",
+    title: "Strategic Plan Facilitation - District Equity and Access Plan",
     client_agency: "Omaha Public Schools",
     project_type: "Strategic planning / facilitation",
     source: "aggregator",
@@ -183,19 +183,19 @@ export const DEMO_RFPS = [
     verdict_why_not:
       "Two soft misses that compound: no team member based in Omaha (preferred, not required) and K-12 depth is thin relative to likely competitors. The question window has already closed, so the local-presence and subcontracting questions can no longer be asked. Budget appears only in the agency Q&A document, not the RFP itself.",
     gaps: [
-      { gap_type: "geography", description: "No consultant based in Omaha or the surrounding metro — RFP states a local team member is preferred." },
+      { gap_type: "geography", description: "No consultant based in Omaha or the surrounding metro - RFP states a local team member is preferred." },
       { gap_type: "sector", description: "K-12 depth (4 yrs / 6 engagements) is thin against districts that typically attract education-specialist firms." },
     ],
     disqualifiers: [
-      { requirement_text: "Minimum three (3) years facilitating strategic planning for K-12 districts", is_required: true, result: "pass", notes: "4 yrs recorded — clears, but narrowly." },
+      { requirement_text: "Minimum three (3) years facilitating strategic planning for K-12 districts", is_required: true, result: "pass", notes: "4 yrs recorded - clears, but narrowly." },
       { requirement_text: "Preferred: at least one team member based in the Omaha metropolitan area", is_required: false, result: "fail" },
       { requirement_text: "Experience with equity-focused planning processes", is_required: true, result: "pass" },
     ],
     compliance: [
-      { category: "deadline", label: "Proposal submission deadline", detail: "4:00 PM CT, hand delivery or courier — no electronic submission", due_in_days: 5 },
-      { category: "deadline", label: "Written questions deadline", detail: "CLOSED — window has already passed", due_in_days: -2 },
+      { category: "deadline", label: "Proposal submission deadline", detail: "4:00 PM CT, hand delivery or courier - no electronic submission", due_in_days: 5 },
+      { category: "deadline", label: "Written questions deadline", detail: "CLOSED - window has already passed", due_in_days: -2 },
       { category: "page_limit", label: "Narrative limited to 15 pages" },
-      { category: "submission", label: "Six (6) hard copies plus one USB drive", detail: "No electronic submission accepted — courier lead time matters" },
+      { category: "submission", label: "Six (6) hard copies plus one USB drive", detail: "No electronic submission accepted - courier lead time matters" },
       { category: "rubric", label: "Scoring: Approach 35, Experience 30, Cost 25, Local presence 10" },
     ],
     questions: [
@@ -217,9 +217,9 @@ export const DEMO_RFPS = [
     verdict_why:
       "Shared-governance facilitation sits squarely in Caravann's higher-education line (6 yrs / 9 engagements), and the Oakland office is within reasonable distance of the Hayward campus for on-site sessions.",
     verdict_why_not:
-      "No budget figure appears anywhere in the solicitation, so effort-versus-value cannot be assessed before pricing. The question deadline is in two days — if a budget range is going to be asked for, it has to be asked now.",
+      "No budget figure appears anywhere in the solicitation, so effort-versus-value cannot be assessed before pricing. The question deadline is in two days - if a budget range is going to be asked for, it has to be asked now.",
     gaps: [
-      { gap_type: "other", description: "No budget disclosed in the RFP — pricing lane (premium vs tight) cannot be determined without asking." },
+      { gap_type: "other", description: "No budget disclosed in the RFP - pricing lane (premium vs tight) cannot be determined without asking." },
     ],
     disqualifiers: [
       { requirement_text: "Demonstrated experience with higher education shared governance structures", is_required: true, result: "pass" },
@@ -227,13 +227,13 @@ export const DEMO_RFPS = [
     ],
     compliance: [
       { category: "deadline", label: "Proposal submission deadline", due_in_days: 16 },
-      { category: "deadline", label: "Written questions deadline", detail: "Closes in 2 days — the budget question must go out before this", due_in_days: 2 },
+      { category: "deadline", label: "Written questions deadline", detail: "Closes in 2 days - the budget question must go out before this", due_in_days: 2 },
       { category: "page_limit", label: "Proposal limited to 20 pages including appendices" },
       { category: "insurance", label: "GL $1M/occurrence minimum" },
     ],
     questions: [
       { lane: "public_memo", question_text: "Has the University established a budget range or not-to-exceed amount for this engagement?" },
-      { lane: "public_memo", question_text: "Is the expectation of on-campus facilitation sessions, remote, or hybrid — and how many sessions are anticipated?" },
+      { lane: "public_memo", question_text: "Is the expectation of on-campus facilitation sessions, remote, or hybrid - and how many sessions are anticipated?" },
       { lane: "incumbent_request", question_text: "Is there an incumbent consultant currently supporting shared governance review, and may we review the prior scope of work?" },
     ],
   },
@@ -250,7 +250,7 @@ export const DEMO_RFPS = [
     due_in_days: 2,
     question_deadline_in_days: -6,
     verdict_why:
-      "Small, well-defined board-retreat facilitation — exactly the shape of engagement Caravann delivers repeatedly for public agencies (12 yrs / 34 engagements). Low effort relative to the $45K budget.",
+      "Small, well-defined board-retreat facilitation - exactly the shape of engagement Caravann delivers repeatedly for public agencies (12 yrs / 34 engagements). Low effort relative to the $45K budget.",
     verdict_why_not:
       "Deadline is in two days. The question window closed six days ago. This is submittable only if the team can move immediately.",
     gaps: [],
@@ -259,7 +259,7 @@ export const DEMO_RFPS = [
       { requirement_text: "References from at least two California public agencies", is_required: true, result: "pass" },
     ],
     compliance: [
-      { category: "deadline", label: "Proposal submission deadline", detail: "5:00 PM PT — email submission accepted", due_in_days: 2 },
+      { category: "deadline", label: "Proposal submission deadline", detail: "5:00 PM PT - email submission accepted", due_in_days: 2 },
       { category: "page_limit", label: "Ten (10) page maximum" },
       { category: "submission", label: "Single PDF, email to the procurement contact" },
     ],
@@ -267,7 +267,7 @@ export const DEMO_RFPS = [
   },
   {
     external_id: "DEMO-pending-triage",
-    title: "Community Engagement Services — General Plan Update",
+    title: "Community Engagement Services - General Plan Update",
     client_agency: "City of Fremont",
     project_type: "Community engagement",
     source: "email",
@@ -288,36 +288,36 @@ export const DEMO_RFPS = [
 
 // ── Approved-language library (module 8) ─────────────────────────────────────
 // Placeholder text in Caravann's register, NOT their real proposal language.
-// Real blocks come from their past submissions — that is the whole point of
+// Real blocks come from their past submissions - that is the whole point of
 // the library, and why nothing writes to this table automatically.
 export const DEMO_LANGUAGE_BLOCKS = [
   {
     section_type: "cover_letter",
     title: "Standard cover letter opening",
     body: `Dear Selection Committee,\n\nCaravann Consulting is pleased to submit this proposal for {{ENGAGEMENT}} on behalf of {{CLIENT}}. We have read the solicitation in full, including all addenda issued to date, and confirm our ability to meet the requirements and the {{DUE_DATE}} timeline.\n\nOur practice is built on a single premise: a plan people helped write is a plan they will carry out. We would welcome the opportunity to bring that to {{CLIENT}}.`,
-    source: "Placeholder — replace with Caravann's own cover letter",
+    source: "Placeholder - replace with Caravann's own cover letter",
     won: false,
   },
   {
     section_type: "firm_profile",
     title: "Firm overview",
     body: `Caravann Consulting is an organizational consulting practice working with public agencies, universities, healthcare systems, and corporations. We specialize in facilitation, strategic planning, and human-centered change management.\n\nOur work is distinguished by process design that produces decisions rather than documents, and by facilitation that holds a room of competing interests without flattening the disagreement that makes a plan durable.`,
-    source: "Placeholder — drawn from caravann.co positioning",
+    source: "Placeholder - drawn from caravann.co positioning",
     won: false,
     is_boilerplate: true,
   },
   {
     section_type: "approach",
     title: "Four-phase facilitation methodology",
-    body: `Our approach to {{PROJECT_TYPE}} proceeds in four phases.\n\nDiscovery. We review existing plans, performance data, and prior engagement efforts, and interview leadership and a cross-section of staff to surface what the organization already knows about itself.\n\nEngagement. We design and facilitate sessions calibrated to each audience — governing body, staff, and public — so that participation is genuine rather than ceremonial.\n\nSynthesis. We return what we heard, including where it conflicts, and work with leadership to make the trade-offs explicit rather than deferring them.\n\nAdoption. We deliver a plan written to be used: specific owners, measurable commitments, and a review cadence the organization can sustain.`,
-    source: "Placeholder — replace with the real methodology section",
+    body: `Our approach to {{PROJECT_TYPE}} proceeds in four phases.\n\nDiscovery. We review existing plans, performance data, and prior engagement efforts, and interview leadership and a cross-section of staff to surface what the organization already knows about itself.\n\nEngagement. We design and facilitate sessions calibrated to each audience - governing body, staff, and public - so that participation is genuine rather than ceremonial.\n\nSynthesis. We return what we heard, including where it conflicts, and work with leadership to make the trade-offs explicit rather than deferring them.\n\nAdoption. We deliver a plan written to be used: specific owners, measurable commitments, and a review cadence the organization can sustain.`,
+    source: "Placeholder - replace with the real methodology section",
     won: true,
   },
   {
     section_type: "relevant_experience",
     title: "Public agency facilitation experience",
     body: `Caravann has facilitated strategic planning and organizational review processes for public agencies including transit districts, county departments, and municipal governments. These engagements share the characteristics {{CLIENT}} describes: multiple stakeholder groups with competing priorities, an elected or appointed governing body that must ultimately adopt the plan, and a public record obligation throughout.`,
-    source: "Placeholder — replace with named engagements and outcomes",
+    source: "Placeholder - replace with named engagements and outcomes",
     won: true,
   },
   {
@@ -334,7 +334,7 @@ export const DEMO_LANGUAGE_BLOCKS = [
 export const DEMO_EDGE_CASES = [
   {
     description:
-      'A solicitation listed "bilingual facilitation capability" under Desirable Qualifications but the evaluation rubric scored it at 15 points — heavier than some stated minimums. Triage treated it as a preference and scored it as a minor miss.',
+      'A solicitation listed "bilingual facilitation capability" under Desirable Qualifications but the evaluation rubric scored it at 15 points - heavier than some stated minimums. Triage treated it as a preference and scored it as a minor miss.',
     proposed_rule_change:
       "When a preference carries 10 or more rubric points, weight it like a requirement in the score even though it does not hard-gate.",
   },
@@ -347,7 +347,7 @@ export const DEMO_EDGE_CASES = [
 ];
 
 export const DEMO_PORTAL_RULES = [
-  { portal_name: "PlanetBids", rule_text: "References must be merged into a single PDF — only one upload slot is provided." },
+  { portal_name: "PlanetBids", rule_text: "References must be merged into a single PDF - only one upload slot is provided." },
   { portal_name: "Omaha Public Schools", rule_text: "Resumes are excluded from the narrative page count; confirm before trimming." },
   { portal_name: "SamTrans e-procurement", rule_text: "Cost proposal must be a separate sealed PDF. Cost figures in the technical volume are grounds for rejection." },
 ];

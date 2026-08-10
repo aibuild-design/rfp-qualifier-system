@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { SectorExperienceRow } from "@/lib/supabase/types";
 
-// "It knows your depth, sector by sector" (module 3) — the disqualifier gate
+// "It knows your depth, sector by sector" (module 3) - the disqualifier gate
 // and scoring both read this table per RFP.
 export function SectorExperienceEditor({ initial }: { initial: SectorExperienceRow[] }) {
   const [rows, setRows] = useState(initial);
@@ -88,7 +88,7 @@ export function SectorExperienceEditor({ initial }: { initial: SectorExperienceR
           value={newSector}
           onChange={(e) => setNewSector(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addSector()}
-          placeholder="Add a sector — e.g. K-12, behavioral health, transit"
+          placeholder="Add a sector - e.g. K-12, behavioral health, transit"
           className="min-h-11 flex-1 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
         />
         <button

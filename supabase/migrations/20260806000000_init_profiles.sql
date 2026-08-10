@@ -1,10 +1,10 @@
--- RFP Qualifier — starter migration.
+-- RFP Qualifier - starter migration.
 --
 -- This is intentionally the bare minimum: a profiles table synced to
 -- auth.users, so login/signup has somewhere to attach a display name, plus
 -- the standard auth-trigger + RLS scaffolding every Supabase project needs.
 --
--- No RFP-specific tables yet — the qualification schema (RFPs, criteria,
+-- No RFP-specific tables yet - the qualification schema (RFPs, criteria,
 -- scoring, review workflow) depends on scope that hasn't been defined.
 -- Add it in a follow-up migration once that's settled; don't extend this
 -- file after it's been applied to a real project.

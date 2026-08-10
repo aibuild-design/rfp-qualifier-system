@@ -11,7 +11,7 @@
  * - `min-h-11` (44px). The platform minimum for a touch target; the old fields
  *   and buttons came in around 34px, which is a miss-tap on a phone.
  *
- * The focus ring is also deliberately visible — the previous `ring-gold/20` was
+ * The focus ring is also deliberately visible - the previous `ring-gold/20` was
  * nearly invisible on white, which fails keyboard users silently.
  */
 
@@ -31,7 +31,7 @@ export const buttonClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold " +
   "focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
-/** Secondary action — same geometry, lower emphasis. */
+/** Secondary action - same geometry, lower emphasis. */
 export const buttonSecondaryClass =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-rfp-border " +
   "bg-rfp-surface px-4 text-sm font-semibold text-rfp-ink-secondary press " +

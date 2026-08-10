@@ -111,7 +111,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         {rfp.is_provisional && (
           <p className="mt-4 rounded-lg border border-rfp-warning/30 bg-rfp-warning/5 px-3 py-2 text-[13px] leading-relaxed text-rfp-ink-secondary">
             This verdict was computed against an <span className="font-medium text-rfp-ink">unconfirmed
-            eligibility profile</span>. Confirming the profile now will not make it correct — re-run
+            eligibility profile</span>. Confirming the profile now will not make it correct - re-run
             triage on this solicitation before acting on it.
           </p>
         )}
@@ -120,7 +120,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">Score</p>
             <p className="tabular mt-1 text-lg font-semibold text-rfp-ink">
-              {rfp.score_percent !== null ? `${Math.round(rfp.score_percent)}%` : "—"}
+              {rfp.score_percent !== null ? `${Math.round(rfp.score_percent)}%` : "-"}
             </p>
             {/* The document is read several times and the median is kept. When
                 the reads agreed there is nothing to say; when they did not,
@@ -129,7 +129,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
               <p className="tabular mt-0.5 text-[11px] text-rfp-ink-muted">
                 {consensusGap(rfp.score_samples) > 20 ? (
                   <span className="font-medium text-rfp-warning">
-                    reads disagreed — {[...rfp.score_samples].sort((a, b) => a - b).join(", ")}
+                    reads disagreed - {[...rfp.score_samples].sort((a, b) => a - b).join(", ")}
                   </span>
                 ) : (
                   <>median of {[...rfp.score_samples].sort((a, b) => a - b).join(", ")}</>
@@ -229,7 +229,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
       )}
 
       {/* Gap list */}
-      <Section title="Gap list" subtitle="What Caravann is short on for this RFP — the teaming shopping list.">
+      <Section title="Gap list" subtitle="What Caravann is short on for this RFP - the teaming shopping list.">
         {!gaps || gaps.length === 0 ? (
           <EmptyRow text="No gaps flagged." />
         ) : (
@@ -290,14 +290,14 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
           <>
             {/* Unanswered mandatory requirements are the only thing on this card
                 that a person can act on, so they get said once, plainly, at the
-                top — rather than left for the reader to spot among the passes. */}
+                top - rather than left for the reader to spot among the passes. */}
             {unresolved.length > 0 && (
               <div className="mx-5 mt-4 rounded-lg border border-rfp-warning/40 bg-rfp-warning/5 px-4 py-3">
                 <p className="text-sm font-semibold text-rfp-ink">
                   {unresolved.length} mandatory requirement{unresolved.length > 1 ? "s" : ""} the profile does not answer
                 </p>
                 <p className="mt-1 text-[13px] leading-relaxed text-rfp-ink-muted">
-                  Not a failure — triage could not tell either way, so this is held at{" "}
+                  Not a failure - triage could not tell either way, so this is held at{" "}
                   <span className="font-medium text-rfp-ink">maybe</span> rather than closed. Record the answer in{" "}
                   <Link href="/dashboard/settings" className="underline underline-offset-2 hover:text-rfp-ink">
                     the eligibility profile
@@ -341,7 +341,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         )}
       </Section>
 
-      {/* Question memo — approve / mark sent (module 7) */}
+      {/* Question memo - approve / mark sent (module 7) */}
       {questions && questions.length > 0 && (
         <QuestionMemo rfpId={rfp.id} questions={questions} questionDeadline={rfp.question_deadline_at} />
       )}

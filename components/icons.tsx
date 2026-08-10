@@ -1,4 +1,4 @@
-// Minimal inline stroke-icon set — keeps the dashboard dependency-free.
+// Minimal inline stroke-icon set - keeps the dashboard dependency-free.
 // 20x20 viewbox, 1.6px stroke, rounded joins, currentColor.
 
 type IconProps = { className?: string };

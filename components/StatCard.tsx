@@ -5,7 +5,7 @@ import Link from "next/link";
  * One number and what it means.
  *
  * Optionally a link. A stat that names a subset of the queue should get you to
- * that subset — "3 pending triage" is a question, and clicking it ought to be
+ * that subset - "3 pending triage" is a question, and clicking it ought to be
  * the answer. Cards without an `href` render as plain divs rather than as
  * links that go nowhere, because a pressable surface that does not respond is
  * worse than one that never invited the press.

@@ -1,7 +1,7 @@
 /**
  * The single definition of what's in the dashboard nav.
  *
- * Pure data, no JSX — so the dark rail, the mobile bar, and any server
+ * Pure data, no JSX - so the dark rail, the mobile bar, and any server
  * component that needs to know the routes all read the same list. Icons are
  * looked up by `key` at the render site, which keeps this file importable from
  * server components without pulling a component tree along with it.
@@ -10,13 +10,13 @@
 export type NavCountKey = "queue" | "review";
 
 export type NavItem = {
-  /** Stable id — also the icon lookup key. */
+  /** Stable id - also the icon lookup key. */
   key: "overview" | "queue" | "library" | "review" | "settings";
   label: string;
   href: string;
   /** Which live count to show as a badge, if any. */
   countKey?: NavCountKey;
-  /** `attention` badges are gold — something is waiting on a person. */
+  /** `attention` badges are gold - something is waiting on a person. */
   countTone?: "attention" | "neutral";
   /**
    * Extra path prefixes that should light this item up. An RFP detail page

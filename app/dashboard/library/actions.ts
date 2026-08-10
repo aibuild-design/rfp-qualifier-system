@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser, safeError, type ActionResult } from "@/lib/auth";
 
 // Module 8's library. Every block here is text Caravann has already used and
-// stands behind — that is the whole point, and why nothing writes to this
+// stands behind - that is the whole point, and why nothing writes to this
 // table automatically.
 
 export async function addBlock(form: {

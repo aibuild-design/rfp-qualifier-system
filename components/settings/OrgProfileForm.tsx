@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { OrgProfileRow } from "@/lib/supabase/types";
 
-// The org-wide eligibility profile (module 3) — confirmed once, read by the
+// The org-wide eligibility profile (module 3) - confirmed once, read by the
 // disqualifier gate on every RFP. A singleton row (id is always `true`).
 export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
   const [profile, setProfile] = useState(initial);

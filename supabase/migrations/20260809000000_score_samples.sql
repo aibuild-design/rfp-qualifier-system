@@ -1,7 +1,7 @@
 -- Keep the individual reads, not just the median.
 --
 -- The workflow now scores each solicitation several times and takes the median,
--- because five reads of one identical document returned 55, 82, 86, 88 and 90 —
+-- because five reads of one identical document returned 55, 82, 86, 88 and 90 -
 -- and the 55 would have dropped a winnable bid into the no-go folder.
 --
 -- Storing every sample matters for two reasons. It makes disagreement visible
@@ -17,7 +17,7 @@ comment on column rfps.score_samples is
 -- How far the reads may disagree before the desk stops claiming confidence.
 -- Beyond this the verdict is capped at "maybe": the honest answer to three
 -- readers disagreeing is "look at this yourself", not a confident go or no-go.
--- A failed mandatory requirement is unaffected — that is a gate, not a judgement
+-- A failed mandatory requirement is unaffected - that is a gate, not a judgement
 -- about degree of fit, and it closes the bid however wide the spread.
 alter table scoring_settings
   add column if not exists max_score_spread integer not null default 20

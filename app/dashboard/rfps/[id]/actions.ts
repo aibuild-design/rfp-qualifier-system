@@ -24,7 +24,7 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
   const sections = assembleDraft(rfp, blocks ?? [], DEFAULT_SECTIONS);
 
   // Replace wholesale so a rebuild after adding library material doesn't
-  // leave stale sections behind. Approved sections are preserved — losing a
+  // leave stale sections behind. Approved sections are preserved - losing a
   // human's edits to an automated rebuild would be unforgivable.
   const { data: existing } = await supabase
     .from("rfp_proposal_sections")
@@ -63,7 +63,7 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
  * Record what a human actually decided.
  *
  * Deliberately does not touch `status`. The computed verdict stays exactly as
- * it was, because the point is the *gap* between the two — overwriting it would
+ * it was, because the point is the *gap* between the two - overwriting it would
  * destroy the only evidence of whether the desk is any good. The UI shows the
  * human call as the one that counts; the machine call stays underneath it.
  *
@@ -82,7 +82,7 @@ export async function setHumanVerdict(
     .update({
       human_verdict: verdict,
       human_verdict_at: verdict ? new Date().toISOString() : null,
-      // The note is the valuable part, so it is kept whenever there is one —
+      // The note is the valuable part, so it is kept whenever there is one -
       // including on a verdict that agrees with the desk, where "right call,
       // but only because we know the incumbent" is worth having.
       human_verdict_note: verdict ? note.trim() || null : null,
@@ -119,7 +119,7 @@ export async function matchTeam(rfpId: string): Promise<ActionResult<{ recommend
   const picks = recommendTeam(members ?? [], checks ?? []);
   if (!picks.length) return { error: "No active team members to recommend" };
 
-  // Only clear recommendations — a confirmed assignment is Khaled's decision
+  // Only clear recommendations - a confirmed assignment is Khaled's decision
   // and re-running the matcher must not silently undo it.
   await supabase
     .from("rfp_team_assignments")
@@ -185,7 +185,7 @@ export async function approveQuestion(rfpId: string, questionId: string): Promis
 }
 
 /** Records that an approved question was sent by hand. No mail is dispatched
- *  from here — this marks what a human already did, so the memo doesn't get
+ *  from here - this marks what a human already did, so the memo doesn't get
  *  sent twice. */
 export async function markQuestionSent(rfpId: string, questionId: string): Promise<ActionResult> {
   const { supabase, denied } = await requireUser();

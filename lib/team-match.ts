@@ -7,7 +7,7 @@ export type TeamRecommendation = {
   match_reason: string;
 };
 
-// Bandwidth is a tie-breaker, not a gate — the SOW recommends, it never
+// Bandwidth is a tie-breaker, not a gate - the SOW recommends, it never
 // auto-assigns, so someone at capacity should still surface if they are the
 // only person who satisfies a stated minimum. Khaled decides.
 const BANDWIDTH_WEIGHT: Record<TeamMemberRow["bandwidth"], number> = {
@@ -23,7 +23,7 @@ const BANDWIDTH_WEIGHT: Record<TeamMemberRow["bandwidth"], number> = {
  * the qualifications are short phrases Khaled wrote himself, and a
  * recommendation that can be explained in one line ("satisfies 2 of 3 stated
  * minimums") is more useful than an opaque score. The reason string is the
- * point — an unexplained ranking is not something anyone should act on.
+ * point - an unexplained ranking is not something anyone should act on.
  */
 export function recommendTeam(
   members: TeamMemberRow[],

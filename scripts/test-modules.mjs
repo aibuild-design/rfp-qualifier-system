@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Unit checks for the pure logic behind the newly-built modules — proposal
+// Unit checks for the pure logic behind the newly-built modules - proposal
 // assembly (8) and team match (9). These are deterministic functions with real
 // decision consequences, so they get assertions rather than a manual click
 // through the UI.
@@ -24,7 +24,7 @@ function check(name, condition, detail = "") {
     console.log(`  ✓ ${name}`);
   } else {
     failures.push({ name, detail });
-    console.log(`  ✗ ${name}${detail ? ` — ${detail}` : ""}`);
+    console.log(`  ✗ ${name}${detail ? ` - ${detail}` : ""}`);
   }
 }
 
@@ -226,7 +226,7 @@ console.log("\nDisagreement between triage runs");
   check("no samples has no spread", spreadOf(null) === 0);
 
   // A real run returned 58, 87, 88. Spread is 30, but two reads agree to
-  // within a point — the median is well supported and the 58 is just a bad
+  // within a point - the median is well supported and the 58 is just a bad
   // read. Treating that as uncertain would demote a clear go every time the
   // model has an off run.
   check("two reads agreeing closely is a consensus", consensusGap([58, 87, 88]) === 1);
@@ -242,7 +242,7 @@ console.log("\nDisagreement between triage runs");
   const tight = decideVerdict(88, pass, T, [86, 88, 90]);
   check("agreement leaves a go as a go", tight.status === "go", tight.status);
 
-  // A failed mandatory requirement is a gate, not a matter of degree — it
+  // A failed mandatory requirement is a gate, not a matter of degree - it
   // closes the bid no matter how much the reads disagreed.
   const gated = decideVerdict(88, [{ is_required: true, result: "fail", requirement_text: "behavioral health" }], T, [30, 60, 90]);
   check("a failed requirement still forces no-go despite disagreement", gated.status === "no_go", gated.status);
@@ -277,7 +277,7 @@ console.log("\nDocument URL guard (SSRF)");
     "http://intranet.local/rfp.pdf",
     "http://fileserver.internal/rfp.pdf",
     "http://localhost./",
-    // Obfuscated spellings of 127.0.0.1 — the URL parser normalises these, so
+    // Obfuscated spellings of 127.0.0.1 - the URL parser normalises these, so
     // the guard sees dotted decimal by the time it runs.
     "http://2130706433/",
     "http://0x7f000001/",
@@ -334,14 +334,14 @@ console.log("\nVerdict thresholds");
   check("exactly 60 is still a maybe", decideVerdict(60, [pass], T).status === "maybe");
   check("59 falls below the floor", decideVerdict(59, [pass], T).status === "no_go");
 
-  // A failed mandatory requirement closes the door regardless of overlap —
+  // A failed mandatory requirement closes the door regardless of overlap -
   // the behavioral-health case that motivated the whole product.
   check("a failed requirement beats a 99% score", decideVerdict(99, [requiredFail], T).status === "no_go");
   check("...and says which one", decideVerdict(99, [requiredFail], T).reason.includes("behavioral health"));
   check("a hard knockout closes it even if not worded 'required'",
     decideVerdict(95, [{ is_required: false, is_hard_knockout: true, result: "fail" }], T).status === "no_go");
 
-  // "Preferred" costs score, never the bid — the SOW is explicit about this.
+  // "Preferred" costs score, never the bid - the SOW is explicit about this.
   check("a preferred miss does not force no-go", decideVerdict(90, [pass, preferredFail], T).status === "go");
   check("...but is surfaced in the reason", decideVerdict(90, [pass, preferredFail], T).reason.includes("preferred"));
 
@@ -363,6 +363,6 @@ console.log("\nVerdict thresholds");
 console.log(`\n${passed}/${passed + failures.length} checks passed.`);
 if (failures.length) {
   console.log("\nFailed:");
-  failures.forEach((f) => console.log(`  ✗ ${f.name}${f.detail ? ` — ${f.detail}` : ""}`));
+  failures.forEach((f) => console.log(`  ✗ ${f.name}${f.detail ? ` - ${f.detail}` : ""}`));
   process.exit(1);
 }

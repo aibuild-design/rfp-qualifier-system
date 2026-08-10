@@ -7,8 +7,8 @@
 --   · Experience facilitating elected or appointed governing bodies
 --
 -- Both are things Caravann almost certainly satisfies. The profile simply had
--- no field for either, so the model could not confirm them and — correctly,
--- under the unclear rule — refused to guess. Every solicitation that mentions
+-- no field for either, so the model could not confirm them and - correctly,
+-- under the unclear rule - refused to guess. Every solicitation that mentions
 -- insurance therefore lands at "maybe" and asks a human the same question
 -- forever.
 --
@@ -21,7 +21,7 @@ alter table public.org_profile
   add column if not exists governing_body_experience text;
 
 comment on column public.org_profile.insurance_coverage is
-  'Coverage carried, in Caravann''s own words — types and limits. Read by the disqualifier gate so insurance requirements resolve to pass or fail rather than unclear.';
+  'Coverage carried, in Caravann''s own words - types and limits. Read by the disqualifier gate so insurance requirements resolve to pass or fail rather than unclear.';
 
 comment on column public.org_profile.governing_body_experience is
-  'Experience facilitating elected or appointed bodies — councils, boards, commissions. A recurring mandatory requirement in transit and public-agency solicitations that the profile previously could not answer.';
+  'Experience facilitating elected or appointed bodies - councils, boards, commissions. A recurring mandatory requirement in transit and public-agency solicitations that the profile previously could not answer.';

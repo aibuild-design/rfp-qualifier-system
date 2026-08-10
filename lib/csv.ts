@@ -12,7 +12,7 @@ export function toCsv(headers: string[], rows: (string | number | null | undefin
   for (const row of rows) {
     lines.push(row.map(escapeCell).join(","));
   }
-  // CRLF per the spec — Excel is the likeliest consumer and is happiest with it.
+  // CRLF per the spec - Excel is the likeliest consumer and is happiest with it.
   return lines.join("\r\n");
 }
 

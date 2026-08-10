@@ -31,7 +31,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
   if (!sections || sections.length === 0) {
     return NextResponse.json(
-      { error: "No draft yet — build one from the RFP page first." },
+      { error: "No draft yet - build one from the RFP page first." },
       { status: 409 }
     );
   }

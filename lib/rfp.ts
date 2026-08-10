@@ -3,10 +3,10 @@ import type { Database } from "@/lib/supabase/types";
 export type RfpRow = Database["public"]["Tables"]["rfps"]["Row"];
 export type RfpStatus = RfpRow["status"];
 
-// Verdict → color + label. "pending" means triage hasn't run/finished yet —
+// Verdict → color + label. "pending" means triage hasn't run/finished yet -
 // distinct from "maybe" (triage ran, result was genuinely ambiguous).
 // Hex literals (not CSS vars) so components can append alpha, e.g. `${color}1a`
-// for a tinted background — must match the --rfp-* values in globals.css.
+// for a tinted background - must match the --rfp-* values in globals.css.
 export const VERDICT_META: Record<RfpStatus, { label: string; color: string }> = {
   go: { label: "Go", color: "#1b8a5a" },
   maybe: { label: "Maybe", color: "#d9962c" },
@@ -15,7 +15,7 @@ export const VERDICT_META: Record<RfpStatus, { label: string; color: string }> =
 };
 
 /** ISO timestamp N days from now. Lives here rather than inline in a page so
- *  the react-hooks/purity rule doesn't flag Date.now() during render — these
+ *  the react-hooks/purity rule doesn't flag Date.now() during render - these
  *  are server components, so the clock read is intentional and per-request. */
 export function isoDaysFromNow(days: number): string {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
@@ -28,8 +28,8 @@ export function daysUntil(iso: string | null): number | null {
   return Math.ceil(ms / (1000 * 60 * 60 * 24));
 }
 
-/** How close is too close. The SOW's defaults — yellow inside a week, red
- *  inside three days — are the starting point, but the windows live in
+/** How close is too close. The SOW's defaults - yellow inside a week, red
+ *  inside three days - are the starting point, but the windows live in
  *  Settings because how much runway a bid needs is Caravann's call. */
 export type DeadlineWindows = { warningDays: number; criticalDays: number };
 
@@ -73,7 +73,7 @@ export function formatBudget(row: Pick<RfpRow, "budget_amount" | "budget_source"
  * Every deadline is rendered in this zone, never the viewer's or the server's.
  *
  * These dates are rendered on the server, so an unpinned toLocaleDateString
- * uses whatever timezone the host runs in — UTC on Vercel. A 7pm Pacific
+ * uses whatever timezone the host runs in - UTC on Vercel. A 7pm Pacific
  * deadline stored as 02:00Z then displays as the FOLLOWING day, which on a bid
  * desk means showing a deadline later than the real one. That is the one
  * direction this must never fail in.
@@ -89,7 +89,7 @@ export const DISPLAY_TIME_ZONE = process.env.NEXT_PUBLIC_DISPLAY_TZ || "America/
  * Coerce a value to an ISO timestamp, or null if it isn't one.
  *
  * Postgres rejects anything it cannot cast to timestamptz, and the triage model
- * sometimes echoes a deadline the way the solicitation phrased it — "October
+ * sometimes echoes a deadline the way the solicitation phrased it - "October
  * 30, 2026 at 4:00 PM Pacific". Sent straight to Supabase that fails the whole
  * insert, which took the entire compliance checklist with it.
  *
@@ -101,7 +101,7 @@ export function toTimestamp(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
 
   // Date.parse alone is not safe here. V8 falls back to a lenient parser that
-  // reads "see section 4" as 1 April 2001 — a compliance item that would then
+  // reads "see section 4" as 1 April 2001 - a compliance item that would then
   // render as a deadline six years past due, in red, on the detail page.
   // Requiring a four-digit year is what separates a real date from a
   // cross-reference the model copied out of the document.
@@ -112,7 +112,7 @@ export function toTimestamp(value: unknown): string | null {
 
   // A date with no time parses at local midnight, which on a UTC host lands
   // earlier in Pacific than the real deadline. That is the safe direction to
-  // be wrong in — see formatDeadline for why late is the one unacceptable one.
+  // be wrong in - see formatDeadline for why late is the one unacceptable one.
   return new Date(ms).toISOString();
 }
 
@@ -128,7 +128,7 @@ export function timeZoneLabel(): string {
 }
 
 export function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -137,11 +137,11 @@ export function formatDate(iso: string | null): string {
   });
 }
 
-/** Deadlines carry a time of day that materially changes the answer — "due the
+/** Deadlines carry a time of day that materially changes the answer - "due the
  *  14th" reads very differently from "due 2:00 PM on the 14th". Shown with the
  *  zone abbreviation so it can't be misread. */
 export function formatDeadline(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleString("en-US", {
     month: "short",
     day: "numeric",

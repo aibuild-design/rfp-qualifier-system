@@ -69,8 +69,8 @@ export function PortalRules({ rules }: { rules: PortalRuleRow[] }) {
     <div className="overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
       {rules.length === 0 ? (
         <p className="px-5 py-4 text-sm text-rfp-ink-muted">
-          No rules recorded. Teach it one once — &ldquo;this agency wants references merged into a
-          single PDF&rdquo; — and it appears on that portal&rsquo;s compliance checklist from then on.
+          No rules recorded. Teach it one once - &ldquo;this agency wants references merged into a
+          single PDF&rdquo; - and it appears on that portal&rsquo;s compliance checklist from then on.
         </p>
       ) : (
         <ul className="divide-y divide-rfp-border">

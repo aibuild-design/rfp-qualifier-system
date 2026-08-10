@@ -15,7 +15,7 @@ export function SupabaseNotConfigured() {
           RFP Qualifier isn&rsquo;t connected yet
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-rfp-ink-secondary">
-          This is the skeletal build — the dashboard shell and auth pages are
+          This is the skeletal build - the dashboard shell and auth pages are
           wired, but no Supabase project is attached. Copy{" "}
           <code className="rounded bg-rfp-surface-sunken px-1.5 py-0.5 text-xs">
             .env.example

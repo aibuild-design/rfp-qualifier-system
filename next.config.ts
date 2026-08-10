@@ -40,7 +40,7 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
           },
-          // Nothing here should ever be indexed — it is a private bid pipeline.
+          // Nothing here should ever be indexed - it is a private bid pipeline.
           { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
         ],
       },

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { TeamMemberRow } from "@/lib/supabase/types";
 
-// The private roster module 9's team match recommends against — Khaled
+// The private roster module 9's team match recommends against - Khaled
 // confirms every assignment, nothing here auto-assigns.
 export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
   const [rows, setRows] = useState(initial);

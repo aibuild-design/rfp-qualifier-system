@@ -21,7 +21,7 @@ const KEY = "rfp-theme";
  * every navigation.
  *
  * useSyncExternalStore rather than useState + useEffect, because the theme
- * genuinely lives outside React — the inline script has already read it and set
+ * genuinely lives outside React - the inline script has already read it and set
  * data-theme before this component exists. Syncing it into state in an effect
  * costs an extra render on every mount; this reads it directly and gets
  * cross-tab updates for free, so changing the theme in one tab moves the toggle
@@ -52,7 +52,7 @@ function readTheme(): Theme {
 }
 
 export function ThemeToggle() {
-  // "system" on the server, which has no localStorage — and is what the markup
+  // "system" on the server, which has no localStorage - and is what the markup
   // must say for hydration to match.
   const theme = useSyncExternalStore(subscribe, readTheme, () => "system" as Theme);
 

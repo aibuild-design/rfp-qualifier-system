@@ -27,7 +27,7 @@ const STATUS_COPY: Record<RfpRow["filing_status"], { label: string; color: strin
 
 /** Module 10. The folder structure and naming are settled; the Drive API call
  *  is not wired because it needs Google OAuth. Showing the intended
- *  destination is more honest than hiding the module until it works — it makes
+ *  destination is more honest than hiding the module until it works - it makes
  *  clear what is and isn't happening. */
 export function FilingStatusCard({ rfp }: { rfp: RfpRow }) {
   const meta = STATUS_COPY[rfp.filing_status];
@@ -85,7 +85,7 @@ export function FilingStatusCard({ rfp }: { rfp: RfpRow }) {
         </dl>
 
         <p className="mt-4 border-t border-rfp-border pt-3 text-[11px] leading-relaxed text-rfp-ink-muted">
-          Not yet connected. Filing needs a Google account authorised in n8n — the same one-time
+          Not yet connected. Filing needs a Google account authorised in n8n - the same one-time
           consent the email trigger needs. Until then this records intent only; no files move.
         </p>
       </div>

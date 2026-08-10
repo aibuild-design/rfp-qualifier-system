@@ -1,4 +1,4 @@
--- Scoring settings — the dials that decide a verdict, moved out of code.
+-- Scoring settings - the dials that decide a verdict, moved out of code.
 --
 -- The label used to be the model's choice and was not reproducible: one
 -- solicitation, three runs, came back maybe/83, go/87, go/88. lib/verdict.ts
@@ -32,7 +32,7 @@ create table if not exists scoring_settings (
   updated_at timestamptz not null default now(),
 
   -- A maybe band that sits above the go line is not a stricter setting, it is
-  -- an incoherent one — every score would be a maybe and nothing could ever
+  -- an incoherent one - every score would be a maybe and nothing could ever
   -- be a go. Rejected at the database so no UI bug can produce it.
   constraint maybe_below_go check (maybe_threshold <= go_threshold)
 );

@@ -7,7 +7,7 @@
 //   node scripts/migrate.mjs --status   # list applied vs pending, change nothing
 //
 // Exists because this project has no Supabase CLI in the loop. If the CLI is
-// adopted later, `supabase db push` is the canonical replacement — but the
+// adopted later, `supabase db push` is the canonical replacement - but the
 // applied-migration bookkeeping differs, so pick one and stay on it.
 //
 // Needs SUPABASE_DB_URL, or SUPABASE_DB_PASSWORD + SUPABASE_DB_HOST +
@@ -32,7 +32,7 @@ async function loadEnv() {
       if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
     }
   } catch {
-    // fine — env may come from the shell
+    // fine - env may come from the shell
   }
 }
 
@@ -97,7 +97,7 @@ async function main() {
     }
 
     if (!pending.length) {
-      console.log(`Up to date — ${files.length} migration(s) already applied.`);
+      console.log(`Up to date - ${files.length} migration(s) already applied.`);
       return;
     }
 

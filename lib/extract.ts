@@ -3,13 +3,13 @@
  *
  * The SOW's Module 01 promises "PDF and Word text extraction". n8n's own
  * Extract From File node covers PDF, text, HTML and a few spreadsheet formats
- * but has no .docx path at all, and agencies post .docx constantly — so this
+ * but has no .docx path at all, and agencies post .docx constantly - so this
  * lives in the app, where a real library can do it.
  *
  * The format is decided by looking at the bytes, not by trusting the file
  * extension or the server's Content-Type. Both lie routinely: agency portals
  * serve PDFs as application/octet-stream, and a link ending in .pdf frequently
- * returns an HTML login page. Getting this wrong is not cosmetic — an HTML
+ * returns an HTML login page. Getting this wrong is not cosmetic - an HTML
  * error page parsed as a solicitation produces a confident verdict about a
  * document nobody read.
  */
@@ -29,7 +29,7 @@ export type Extraction = {
  * Identify a file from its leading bytes.
  *
  * - PDF  : "%PDF-"
- * - DOCX : a ZIP ("PK\x03\x04") — every Office Open XML file is a zip archive
+ * - DOCX : a ZIP ("PK\x03\x04") - every Office Open XML file is a zip archive
  * - DOC  : the old OLE compound-file magic, which we can detect but not read
  */
 export function sniffFormat(bytes: Uint8Array, contentType = ""): DocumentFormat {
@@ -40,7 +40,7 @@ export function sniffFormat(bytes: Uint8Array, contentType = ""): DocumentFormat
   if (head[0] === 0xd0 && head[1] === 0xcf && head[2] === 0x11 && head[3] === 0xe0) return "doc";
   if (ascii.startsWith("PK\x03\x04")) return "docx";
 
-  // Not a container format — decide between markup and plain text.
+  // Not a container format - decide between markup and plain text.
   const sample = new TextDecoder("utf-8", { fatal: false })
     .decode(bytes.slice(0, 2048))
     .trimStart()
@@ -85,7 +85,7 @@ export function htmlToText(html: string): string {
 export function looksUnusable(text: string, format: DocumentFormat): string | undefined {
   const trimmed = text.trim();
   if (trimmed.length < 400) {
-    return `Only ${trimmed.length} characters of text came out of this ${format} — it is very likely a scanned image, a cover page, or an error page rather than the solicitation.`;
+    return `Only ${trimmed.length} characters of text came out of this ${format} - it is very likely a scanned image, a cover page, or an error page rather than the solicitation.`;
   }
   const lower = trimmed.slice(0, 1500).toLowerCase();
   const loginish = ["sign in", "log in", "login", "username", "password", "create an account"];
@@ -108,7 +108,7 @@ export async function extractText(
 
   switch (format) {
     case "pdf": {
-      // unpdf ships a serverless build of pdf.js — no native modules, no
+      // unpdf ships a serverless build of pdf.js - no native modules, no
       // filesystem, which is what makes it usable on Vercel.
       const { extractText: pdfText, getDocumentProxy } = await import("unpdf");
       const doc = await getDocumentProxy(bytes);

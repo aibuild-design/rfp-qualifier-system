@@ -3,7 +3,7 @@ import { LanguageLibrary } from "@/components/LanguageLibrary";
 
 // Module 8's foundation. The SOW puts this library in Caravann's own Drive;
 // holding it here instead is a deliberate simplification for the skeletal
-// build — the shape (blocks per section, winners weighted above boilerplate)
+// build - the shape (blocks per section, winners weighted above boilerplate)
 // is the part that matters and transfers either way.
 export default async function LibraryPage() {
   const supabase = await createClient();
@@ -18,7 +18,7 @@ export default async function LibraryPage() {
       <div className="mb-2">
         <h1 className="font-display text-2xl font-semibold text-rfp-ink">Approved language</h1>
         <p className="mt-1 text-sm text-rfp-ink-secondary">
-          What proposal drafts are built from. Text Caravann has already used and stands behind —
+          What proposal drafts are built from. Text Caravann has already used and stands behind -
           which is what stops a draft reading like it came from a language model.
         </p>
       </div>

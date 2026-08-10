@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
  * first load and never again. Keying on the pathname remounts the wrapper, which
  * restarts the CSS animation.
  *
- * A client boundary purely for `usePathname` — the pages themselves stay server
+ * A client boundary purely for `usePathname` - the pages themselves stay server
  * components and are passed straight through as children, so nothing that
  * renders inside here is pulled into the client bundle.
  *

@@ -20,7 +20,7 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // Server component — mutations are no-ops, middleware/route handlers refresh the session
+            // Server component - mutations are no-ops, middleware/route handlers refresh the session
           }
         },
       },
@@ -28,8 +28,8 @@ export async function createClient() {
   );
 }
 
-/** Plain service-role client, no cookie/session plumbing — for background/server
- *  work that isn't tied to a browser request. Bypasses RLS — server-only, never
+/** Plain service-role client, no cookie/session plumbing - for background/server
+ *  work that isn't tied to a browser request. Bypasses RLS - server-only, never
  *  import from a client component. */
 export function createServiceRoleClient() {
   return createSupabaseJsClient<Database>(

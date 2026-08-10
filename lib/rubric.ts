@@ -5,15 +5,15 @@
  * the same thresholds, still turned into the same go / maybe / no-go. What
  * changes is where the number comes from.
  *
- * The prompt used to ask for "capability overlap, 0-100" — an open-ended
+ * The prompt used to ask for "capability overlap, 0-100" - an open-ended
  * numeric judgement with no anchors. Ask a human expert to do that on three
  * different days and you get the same 10-30 point spread we measured from the
  * model (55, 82, 86, 88, 90 on one document). The task was under-specified;
  * the model was re-inventing the scale on every read.
  *
  * So the model no longer produces the number. It answers five questions with
- * defined anchors — "is Caravann's depth in this sector none, thin, adequate
- * or strong?" — and the arithmetic happens here. That is the same move that
+ * defined anchors - "is Caravann's depth in this sector none, thin, adequate
+ * or strong?" - and the arithmetic happens here. That is the same move that
  * already fixed the label: take the judgement the model is good at
  * (classification against a described standard), and keep the judgement it is
  * bad at (inventing a scale) out of its hands.
@@ -21,7 +21,7 @@
  * Three things fall out of it beyond stability:
  *   · every score explains itself, line by line, instead of being "84%"
  *   · the weights become Khaled's to set, not ours to bake in
- *   · disagreement gets specific — "two reads said strong, one said thin" is
+ *   · disagreement gets specific - "two reads said strong, one said thin" is
  *     checkable in a way that "the reads disagreed" is not
  */
 
@@ -48,7 +48,7 @@ export const RUBRIC: RubricDimension[] = [
     key: "sector_depth",
     label: "Sector depth",
     question:
-      "How deep is Caravann's recorded experience in the sector this solicitation sits in? Judge only against the sector experience map — never assume depth that is not recorded.",
+      "How deep is Caravann's recorded experience in the sector this solicitation sits in? Judge only against the sector experience map - never assume depth that is not recorded.",
     levels: [
       { value: "none", points: 0, description: "No recorded experience in this sector" },
       { value: "thin", points: 10, description: "Some experience, but shallow for the scope" },
@@ -60,7 +60,7 @@ export const RUBRIC: RubricDimension[] = [
     key: "comparable_engagements",
     label: "Comparable engagements",
     question:
-      "How many comparable engagements has Caravann delivered — same kind of work, similar client type and scale?",
+      "How many comparable engagements has Caravann delivered - same kind of work, similar client type and scale?",
     levels: [
       { value: "none", points: 0, description: "None on record" },
       { value: "few", points: 8, description: "One or two" },
@@ -143,7 +143,7 @@ export type RubricScore = {
  *
  * Rescaled to 0-100 over the dimensions that were actually answered, so a
  * partial response degrades to a fair score rather than a artificially low one
- * — a model that skipped "timeline" should not cost the bid 15 points it never
+ * - a model that skipped "timeline" should not cost the bid 15 points it never
  * had the chance to earn.
  */
 export function scoreFromRubric(
@@ -193,8 +193,8 @@ export function scoreFromRubric(
  *  against and the anchors we score against can never drift apart. */
 export function rubricForPrompt(): string {
   return RUBRIC.map((d) => {
-    const levels = d.levels.map((l) => `      "${l.value}" — ${l.description}`).join("\n");
-    return `  ${d.key} — ${d.label}\n    ${d.question}\n${levels}`;
+    const levels = d.levels.map((l) => `      "${l.value}" - ${l.description}`).join("\n");
+    return `  ${d.key} - ${d.label}\n    ${d.question}\n${levels}`;
   }).join("\n\n");
 }
 

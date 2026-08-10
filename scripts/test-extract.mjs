@@ -18,7 +18,7 @@ function check(name, condition, detail = "") {
     console.log(`  ✓ ${name}`);
   } else {
     failures.push({ name, detail });
-    console.log(`  ✗ ${name}${detail ? ` — ${detail}` : ""}`);
+    console.log(`  ✗ ${name}${detail ? ` - ${detail}` : ""}`);
   }
 }
 
@@ -43,7 +43,7 @@ console.log("\nFormat sniffing (by bytes, not by extension)");
   );
 }
 
-console.log("\nWord (.docx) — the format n8n cannot read at all");
+console.log("\nWord (.docx) - the format n8n cannot read at all");
 {
   const doc = new Document({
     sections: [
@@ -115,12 +115,12 @@ try {
   check("extracts text from a real PDF", out.text.toLowerCase().includes("dummy"), out.text.slice(0, 60));
   check("reports pdf as the format", out.format === "pdf");
 } catch (err) {
-  console.log(`  · skipped — no network (${err.message})`);
+  console.log(`  · skipped - no network (${err.message})`);
 }
 
 console.log(`\n${passed}/${passed + failures.length} checks passed.`);
 if (failures.length) {
   console.log("\nFailed:");
-  failures.forEach((f) => console.log(`  ✗ ${f.name}${f.detail ? ` — ${f.detail}` : ""}`));
+  failures.forEach((f) => console.log(`  ✗ ${f.name}${f.detail ? ` - ${f.detail}` : ""}`));
   process.exit(1);
 }

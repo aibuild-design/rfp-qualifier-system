@@ -1,4 +1,4 @@
--- RFP Qualifier — Caravann Phase 1 domain schema.
+-- RFP Qualifier - Caravann Phase 1 domain schema.
 -- Matches the signed SOW's 11 modules (see Scope_Khaled_RFP_BidDesk.md):
 -- intake -> qualification/triage -> sector depth -> gap list -> budget ->
 -- compliance checklist -> question memo -> proposal assembly -> team match
@@ -11,14 +11,14 @@
 -- roster directly (those are Khaled's one-time/occasional edits, not
 -- n8n-generated).
 --
--- Single-tenant (Caravann only) — RLS is "any authenticated user can
+-- Single-tenant (Caravann only) - RLS is "any authenticated user can
 -- read/write everything," same as the sibling Goldhill Group schema. If
 -- this ever serves a second client, add a workspace_id column and switch
--- these policies to scope by it — don't reuse this migration as multi-tenant
+-- these policies to scope by it - don't reuse this migration as multi-tenant
 -- as-is.
 --
 -- Proposal assembly (module 8) and the approved-language library live in
--- Caravann's Google Drive, not this database — nothing to model here beyond
+-- Caravann's Google Drive, not this database - nothing to model here beyond
 -- a pointer (rfp_files.drive_url) to where the draft ended up.
 
 create extension if not exists "pgcrypto";
@@ -41,11 +41,11 @@ create table if not exists org_profile (
 );
 
 comment on table org_profile is
-  'One row only (id is always true) — the org-wide eligibility profile, not per-RFP.';
+  'One row only (id is always true) - the org-wide eligibility profile, not per-RFP.';
 
 -- ── sector_experience ────────────────────────────────────────────────────────
 -- Years/engagements per sector (K-12, behavioral health, transit, public
--- agencies, ...) — the "knows your depth" map from module 3.
+-- agencies, ...) - the "knows your depth" map from module 3.
 create table if not exists sector_experience (
   id                uuid primary key default gen_random_uuid(),
   sector            text not null unique,
@@ -69,7 +69,7 @@ create table if not exists team_members (
 );
 
 -- ── rfps ─────────────────────────────────────────────────────────────────────
--- One row per solicitation. Never deleted — no-go RFPs stay, filed with a
+-- One row per solicitation. Never deleted - no-go RFPs stay, filed with a
 -- reason, same "labeled not hidden" standard as the sibling schema.
 create table if not exists rfps (
   id                   uuid primary key default gen_random_uuid(),
@@ -103,11 +103,11 @@ create table if not exists rfps (
 
 comment on column rfps.status is
   'pending = intake done, triage not run or in flight. go/maybe/no_go = verdict '
-  'delivered — no_go stays in the table with reasoning, never deleted.';
+  'delivered - no_go stays in the table with reasoning, never deleted.';
 comment on column rfps.budget_source is
   'rfp = read from the solicitation itself. qa_document = only appeared in a '
   'Q&A doc. none_listed = stated absence, shown verbatim on the card rather '
-  'than a guess — the aggregator''s estimate is never used as this value.';
+  'than a guess - the aggregator''s estimate is never used as this value.';
 
 create index if not exists rfps_status_idx on rfps (status);
 create index if not exists rfps_due_at_idx on rfps (due_at);
@@ -131,7 +131,7 @@ create table if not exists rfp_disqualifier_checks (
 create index if not exists rfp_disqualifier_checks_rfp_idx on rfp_disqualifier_checks (rfp_id);
 
 -- ── rfp_gap_items ─────────────────────────────────────────────────────────────
--- The teaming shopping list (module 4) — everything Caravann is short on for
+-- The teaming shopping list (module 4) - everything Caravann is short on for
 -- this specific RFP.
 create table if not exists rfp_gap_items (
   id          uuid primary key default gen_random_uuid(),
@@ -180,7 +180,7 @@ create table if not exists rfp_questions (
 create index if not exists rfp_questions_rfp_idx on rfp_questions (rfp_id);
 
 -- ── rfp_team_assignments ─────────────────────────────────────────────────────
--- Module 9's recommendation — never auto-assigned, Khaled confirms.
+-- Module 9's recommendation - never auto-assigned, Khaled confirms.
 create table if not exists rfp_team_assignments (
   id             uuid primary key default gen_random_uuid(),
   rfp_id         uuid not null references rfps (id) on delete cascade,
@@ -192,7 +192,7 @@ create table if not exists rfp_team_assignments (
 );
 
 -- ── rfp_files ─────────────────────────────────────────────────────────────────
--- Pointers into the Drive folder structure module 10 files everything into —
+-- Pointers into the Drive folder structure module 10 files everything into -
 -- the RFP itself, addenda, the compliance checklist export, the draft.
 create table if not exists rfp_files (
   id         uuid primary key default gen_random_uuid(),
@@ -206,7 +206,7 @@ create table if not exists rfp_files (
 create index if not exists rfp_files_rfp_idx on rfp_files (rfp_id);
 
 -- ── rfp_edge_cases ────────────────────────────────────────────────────────────
--- The weekly digest (module 11) — every edge case the system was unsure
+-- The weekly digest (module 11) - every edge case the system was unsure
 -- about, plus a proposed rule change. Nothing here changes behavior until
 -- Khaled approves it.
 create table if not exists rfp_edge_cases (
@@ -220,7 +220,7 @@ create table if not exists rfp_edge_cases (
 );
 
 -- ── portal_rules ──────────────────────────────────────────────────────────────
--- "Teach it a portal rule once" (module 11) — e.g. one agency wants
+-- "Teach it a portal rule once" (module 11) - e.g. one agency wants
 -- references merged into a single PDF, another excludes resumes from the
 -- page count. Surfaced back onto rfp_compliance_items for that portal going
 -- forward.
@@ -252,7 +252,7 @@ create trigger org_profile_set_updated_at
 
 -- ── RLS ──────────────────────────────────────────────────────────────────────
 -- Single-tenant: any signed-in user (Khaled + team) reads/writes everything.
--- The n8n intake route uses the service-role key and bypasses RLS entirely —
+-- The n8n intake route uses the service-role key and bypasses RLS entirely -
 -- this only governs what the dashboard's browser/session client sees.
 alter table org_profile enable row level security;
 alter table sector_experience enable row level security;

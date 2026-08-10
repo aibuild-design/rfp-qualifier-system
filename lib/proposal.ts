@@ -18,7 +18,7 @@ export const DEFAULT_SECTIONS = [
 
 /** Ranking the SOW is explicit about: proven winners outrank boilerplate.
  *  Boilerplate still sorts high within its own section because it is meant to
- *  be inserted verbatim — it just never displaces a block that came from a win. */
+ *  be inserted verbatim - it just never displaces a block that came from a win. */
 export function rankBlocks(blocks: LanguageBlockRow[]): LanguageBlockRow[] {
   return [...blocks].sort((a, b) => {
     if (a.won !== b.won) return a.won ? -1 : 1;
@@ -42,7 +42,7 @@ export type AssembledSection = {
  *
  * Deliberately NOT a model call. This stage is a deterministic stitch of
  * Caravann's own approved text, because the SOW's requirement is that a draft
- * reads like Caravann wrote it — the risk to manage is generic model prose
+ * reads like Caravann wrote it - the risk to manage is generic model prose
  * reaching a procurement officer, not a blank page. A section with no library
  * material is returned as `needs_input` with an empty body rather than filled
  * with invented content: a visible gap is safe, plausible-sounding filler in a
@@ -74,7 +74,7 @@ export function assembleDraft(
         body: null,
         status: "needs_input" as const,
         source_block_ids: [],
-        notes: "No approved language on file for this section — needs writing by hand.",
+        notes: "No approved language on file for this section - needs writing by hand.",
       };
     }
 
@@ -91,7 +91,7 @@ export function assembleDraft(
       notes:
         fromWins > 0
           ? `${available.length} block(s), ${fromWins} from winning proposals.`
-          : `${available.length} block(s), none from a win yet — thinner ground.`,
+          : `${available.length} block(s), none from a win yet - thinner ground.`,
     };
   });
 }

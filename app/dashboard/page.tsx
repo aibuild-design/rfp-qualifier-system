@@ -8,11 +8,11 @@ import { DemoBanner, DemoTag } from "@/components/DemoBanner";
 import { ChartIcon, CheckCircleIcon, ClockIcon, DocumentIcon } from "@/components/icons";
 import { daysUntil, deadlineColor, deadlineWindowsFrom, formatBudget, formatDate, isoDaysFromNow } from "@/lib/rfp";
 
-// The RFP queue — this *is* the dashboard per the SOW ("a simple dashboard
+// The RFP queue - this *is* the dashboard per the SOW ("a simple dashboard
 // showing the RFP queue by stage"). Ranked by score by default so the
 // highest-overlap opportunities sit at top; no-go RFPs drop out of the
 // ranked view into their own tab instead of cluttering it. Every row here
-// is written by n8n via /api/rfps/intake — nothing on this page writes.
+// is written by n8n via /api/rfps/intake - nothing on this page writes.
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   const params = await searchParams;
   // One filter param, extending the `view=no-go` the page already had rather
@@ -23,14 +23,14 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   const sortByDeadline = params.sort === "deadline";
 
   const VIEW_TITLES: Record<string, { title: string; blurb: string }> = {
-    "no-go": { title: "No-go folder", blurb: "Ruled out, kept — nothing here is deleted." },
+    "no-go": { title: "No-go folder", blurb: "Ruled out, kept - nothing here is deleted." },
     go: { title: "Qualified", blurb: "Cleared every mandatory requirement and scored above the go mark." },
     pending: { title: "Awaiting a verdict", blurb: "Triage has not returned yet." },
     due: { title: "Due soon", blurb: "Open compliance items inside the warning window." },
   };
   const heading = (view && VIEW_TITLES[view]) || {
     title: "RFP queue",
-    blurb: "Ranked by qualification score — highest overlap with Caravann first.",
+    blurb: "Ranked by qualification score - highest overlap with Caravann first.",
   };
 
   const supabase = await createClient();
@@ -103,8 +103,8 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           <p className="mt-1 text-sm text-rfp-ink-secondary">{heading.blurb}</p>
         </div>
         {/* View controls only. Adding a solicitation lives in the rail on
-            desktop and the top bar on mobile — one of which is always on
-            screen — so repeating it here only ever duplicated whichever was
+            desktop and the top bar on mobile - one of which is always on
+            screen - so repeating it here only ever duplicated whichever was
             already visible. */}
         <div className="flex w-full flex-wrap items-center gap-2 text-xs font-medium sm:w-auto">
           <a
@@ -160,7 +160,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             </p>
             <p className="mx-auto mt-1.5 max-w-md text-sm text-rfp-ink-secondary">
               {showNoGo
-                ? "Once triage rules an RFP out, it lands here with its reasoning — nothing gets deleted."
+                ? "Once triage rules an RFP out, it lands here with its reasoning - nothing gets deleted."
                 : "Solicitations arrive by email, or you can add one yourself. Either way it is read in full and comes back with a verdict in about a minute."}
             </p>
             {!showNoGo && (
@@ -204,7 +204,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                         <div className="flex items-center gap-1">
                           <dt className="text-rfp-ink-muted">Score</dt>
                           <dd className="tabular font-semibold text-rfp-ink">
-                            {rfp.score_percent !== null ? `${Math.round(rfp.score_percent)}%` : "—"}
+                            {rfp.score_percent !== null ? `${Math.round(rfp.score_percent)}%` : "-"}
                           </dd>
                         </div>
                         <div className="flex items-center gap-1">
@@ -261,7 +261,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                         <VerdictBadge status={rfp.status} />
                       </td>
                       <td className="tabular px-5 py-3.5 text-rfp-ink-secondary">
-                        {rfp.score_percent !== null ? `${Math.round(rfp.score_percent)}%` : "—"}
+                        {rfp.score_percent !== null ? `${Math.round(rfp.score_percent)}%` : "-"}
                       </td>
                       <td className="tabular px-5 py-3.5 text-rfp-ink-secondary">{formatBudget(rfp)}</td>
                       <td className="px-5 py-3.5" style={{ color: deadlineColor(days, windows) }}>

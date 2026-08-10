@@ -2,14 +2,14 @@
 --
 -- WHY: the original policies granted full read/write to anyone holding the
 -- `authenticated` role. Supabase's signup endpoint is open by default and the
--- anon key is, by design, public — it ships in the browser bundle. Together
+-- anon key is, by design, public - it ships in the browser bundle. Together
 -- that meant anybody could self-register with any email address, confirm it,
 -- and read Caravann's entire bid pipeline: which solicitations they are
 -- chasing, their scores, their gap lists, their pricing signals. Verified
 -- against the live project, not theorised: a throwaway account was created
 -- with nothing but the public anon key, then deleted.
 --
--- This migration is the durable half of the fix — even with signup wide open,
+-- This migration is the durable half of the fix - even with signup wide open,
 -- a new account now sees nothing. Turning signup off in the Supabase dashboard
 -- is still worth doing (see SECURITY.md), but the system no longer depends on
 -- it being off.
@@ -25,7 +25,7 @@ create table if not exists app_users (
 
 comment on table app_users is
   'Allowlist of people permitted to use the dashboard. Managed with the '
-  'service-role key (scripts/manage-access.mjs) — deliberately not writable '
+  'service-role key (scripts/manage-access.mjs) - deliberately not writable '
   'from the browser, or an allowlisted user could add anyone.';
 
 alter table app_users enable row level security;
@@ -92,5 +92,5 @@ create policy "Allowlisted read" on app_users for select
 -- Seed the one real account that exists today. Add Khaled's with:
 --   node scripts/manage-access.mjs add khaled@caravann.co
 insert into app_users (email, note)
-values ('d4nielm7@gmail.com', 'Deep Loom — build account')
+values ('d4nielm7@gmail.com', 'Deep Loom - build account')
 on conflict (email) do nothing;

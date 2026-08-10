@@ -18,6 +18,6 @@ alter table rfps add column if not exists is_demo boolean not null default false
 comment on column rfps.is_demo is
   'True only for seeded example data (scripts/seed-demo.mjs). Drives the '
   'dashboard warning banner and the one-command purge. Never set by the '
-  'intake route — real solicitations are always false.';
+  'intake route - real solicitations are always false.';
 
 create index if not exists rfps_is_demo_idx on rfps (is_demo) where is_demo;

@@ -7,7 +7,7 @@ import { buttonClass, buttonSecondaryClass } from "@/components/ui/form";
  * A modal that asks before doing something disruptive.
  *
  * Built on <dialog> rather than a hand-rolled overlay, so the browser supplies
- * the focus trap, the inert background and Escape-to-close — three things that
+ * the focus trap, the inert background and Escape-to-close - three things that
  * are easy to get wrong by hand and invisible when you do.
  *
  * Opens from nothing rather than sliding: a confirmation appearing where you
@@ -51,7 +51,7 @@ export function ConfirmDialog({
         onCancel();
       }}
       onClick={(e) => {
-        // Clicking the backdrop — the dialog element itself is the backdrop, so
+        // Clicking the backdrop - the dialog element itself is the backdrop, so
         // a click that lands on it rather than on the panel means "outside".
         if (e.target === ref.current) onCancel();
       }}

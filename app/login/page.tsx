@@ -56,7 +56,7 @@ function LoginForm() {
 
   return (
     <div className="grid min-h-screen overflow-hidden bg-rfp-page lg:grid-cols-2">
-      {/* Left — form */}
+      {/* Left - form */}
       <div className="relative flex items-center justify-center bg-rfp-surface px-8 py-12">
         <div className="w-full max-w-[360px]">
           <div className="mb-10">
@@ -135,12 +135,12 @@ function LoginForm() {
           </form>
 
           <p className="mt-8 text-center text-[11px] text-rfp-ink-muted">
-            Invite-only — reach out to your admin for access.
+            Invite-only - reach out to your admin for access.
           </p>
         </div>
       </div>
 
-      {/* Right — what the tool does */}
+      {/* Right - what the tool does */}
       <div className="relative hidden items-center justify-center overflow-hidden border-l border-rfp-border bg-rfp-black px-16 lg:flex">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.05]"
@@ -167,7 +167,7 @@ function LoginForm() {
             Qualify incoming RFPs before you spend a single hour on the response.
           </h2>
           <p className="text-sm leading-relaxed text-white/60">
-            One place to screen, score, and track requests for proposal —
+            One place to screen, score, and track requests for proposal -
             so time only goes into the ones worth pursuing.
           </p>
         </div>

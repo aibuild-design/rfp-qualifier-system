@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Runs the triage workflow's REAL Code-node JavaScript — extracted from
-// rfp-intake-triage.json, not a copy — against fixture solicitations with
+// Runs the triage workflow's REAL Code-node JavaScript - extracted from
+// rfp-intake-triage.json, not a copy - against fixture solicitations with
 // known-correct verdicts, then asserts the result.
 //
 // Testing a copy of the prompt would let the workflow and the test drift
@@ -28,7 +28,7 @@ async function loadEnv() {
       if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
     }
   } catch {
-    // fine — env may come from the shell
+    // fine - env may come from the shell
   }
 }
 
@@ -48,7 +48,7 @@ function runCodeNode(jsCode, { input, nodes }) {
 async function getCodeNodes() {
   const wf = JSON.parse(await readFile(WORKFLOW, "utf8"));
   const byName = Object.fromEntries(wf.nodes.map((n) => [n.name, n]));
-  const openrouter = byName["OpenRouter — triage"];
+  const openrouter = byName["OpenRouter - triage"];
 
   // The jsonBody is an n8n expression: "={{ JSON.stringify({...}) }}". Strip
   // the wrapper and evaluate it with $json bound, so the request body under
@@ -141,7 +141,7 @@ async function runFixture(code, fixture) {
   };
 
   const promptOut = runCodeNode(code.buildPrompt, {
-    input: { json: {} }, // no extracted PDF — text came in on the payload
+    input: { json: {} }, // no extracted PDF - text came in on the payload
     nodes: { Config: config, "Load triage context": { json: CARAVANN_CONTEXT } },
   });
 

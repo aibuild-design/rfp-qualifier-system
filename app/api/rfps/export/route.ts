@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { toCsv } from "@/lib/csv";
 import { formatDeadline } from "@/lib/rfp";
 
-// The whole queue as a spreadsheet — the SOW's "Google Sheets tracker" without
+// The whole queue as a spreadsheet - the SOW's "Google Sheets tracker" without
 // needing Google. Opens directly in Sheets or Excel.
 //
 // Session-scoped, so RLS applies and a non-allowlisted account exports nothing.
@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
   const stamp = new Date().toISOString().slice(0, 10);
 
   return new NextResponse(
-    // BOM so Excel reads it as UTF-8 — without it, the em dashes and accents in
+    // BOM so Excel reads it as UTF-8 - without it, the em dashes and accents in
     // agency names and solicitation titles arrive mangled.
     "﻿" + csv,
     {

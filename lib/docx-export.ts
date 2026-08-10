@@ -74,13 +74,13 @@ export function buildProposalDocx(
 
   // A draft that reaches a procurement officer unreviewed is the failure this
   // notice exists to prevent. It is removed by the person finalising the
-  // document — which is also how you can tell at a glance whether anyone has.
+  // document - which is also how you can tell at a glance whether anyone has.
   body.push(
     new Paragraph({
       children: [
         new TextRun({
           text:
-            "DRAFT — assembled from Caravann's approved-language library. Review, tailor to this " +
+            "DRAFT - assembled from Caravann's approved-language library. Review, tailor to this " +
             "solicitation, and delete this notice before submission.",
           bold: true,
           size: 18,
@@ -124,7 +124,7 @@ export function buildProposalDocx(
         new Paragraph({
           children: [
             new TextRun({
-              text: "[TO BE WRITTEN — no approved language on file for this section.]",
+              text: "[TO BE WRITTEN - no approved language on file for this section.]",
               italics: true,
               color: "B91C1C",
               size: 24,
@@ -151,7 +151,7 @@ export function buildProposalDocx(
       {
         properties: {
           page: {
-            // 1 inch in twentieths of a point — the standard public-agency margin.
+            // 1 inch in twentieths of a point - the standard public-agency margin.
             margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
           },
         },
@@ -161,7 +161,7 @@ export function buildProposalDocx(
               new Paragraph({
                 alignment: AlignmentType.RIGHT,
                 children: [
-                  new TextRun({ text: `${rfp.client_agency} — ${rfp.title}`, size: 16, color: "888888" }),
+                  new TextRun({ text: `${rfp.client_agency} - ${rfp.title}`, size: 16, color: "888888" }),
                 ],
               }),
             ],
@@ -173,7 +173,7 @@ export function buildProposalDocx(
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ text: "Caravann Consulting — Page ", size: 16, color: "888888" }),
+                  new TextRun({ text: "Caravann Consulting - Page ", size: 16, color: "888888" }),
                   new TextRun({ children: [PageNumber.CURRENT], size: 16, color: "888888" }),
                   new TextRun({ text: " of ", size: 16, color: "888888" }),
                   new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16, color: "888888" }),

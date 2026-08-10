@@ -25,7 +25,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   // Numbers for the rail: nav badges plus the "needs attention" block. All are
   // `head: true`, so Postgres returns a count and no rows, and they go out
-  // together rather than in sequence — this is the layout, so the cost is paid
+  // together rather than in sequence - this is the layout, so the cost is paid
   // on every single dashboard page.
   const [
     { count: queueCount },
@@ -59,7 +59,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
        content column does.
 
        It was min-h-screen, which lets the OUTER container grow with whatever is
-       inside it — so a long page (Settings, or a full queue) scrolled the entire
+       inside it - so a long page (Settings, or a full queue) scrolled the entire
        layout and carried the sidebar off the top of the screen with it.
        Navigation should not be something you scroll back up to reach.
 
@@ -72,7 +72,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           refuses to shrink below its content's intrinsic width, which is how a
           wide table makes the whole app scroll sideways on a phone.
 
-          overflow-y-auto makes THIS the scroll container — which is also what
+          overflow-y-auto makes THIS the scroll container - which is also what
           keeps the Topbar pinned to the top of the content rather than to a page
           sliding underneath it. */}
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">

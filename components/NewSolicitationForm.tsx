@@ -58,7 +58,7 @@ export function NewSolicitationForm() {
 
   return (
     <form onSubmit={submit} className="space-y-4 rounded-xl border border-rfp-border bg-rfp-surface p-6">
-      <Field label="Solicitation title" hint="As the agency names it — this becomes the file name.">
+      <Field label="Solicitation title" hint="As the agency names it - this becomes the file name.">
         <input
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -96,7 +96,7 @@ export function NewSolicitationForm() {
       {mode === "link" ? (
         <Field
           label="Document link"
-          hint="A direct link to the PDF works best. A portal page behind a login can't be fetched — paste the text instead."
+          hint="A direct link to the PDF works best. A portal page behind a login can't be fetched - paste the text instead."
         >
           <input
             type="url"

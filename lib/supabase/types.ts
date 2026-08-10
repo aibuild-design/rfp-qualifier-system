@@ -2,7 +2,7 @@
 // Regenerate with `npx supabase gen types typescript` once a project is linked.
 //
 // `Relationships: []` on every table (and empty Views/Functions on the
-// schema) aren't decorative — @supabase/postgrest-js's GenericTable/
+// schema) aren't decorative - @supabase/postgrest-js's GenericTable/
 // GenericSchema constraints require them structurally. Omitting them doesn't
 // error here; it silently makes every .from(...) call resolve to `never`,
 // which is a much worse failure mode. Keep them even though nothing in this
@@ -62,13 +62,13 @@ export interface Database {
           certifications: string[];
           set_aside_status: string[];
           notes: string | null;
-          /** What Caravann does, in its own words — functional areas, key
+          /** What Caravann does, in its own words - functional areas, key
            *  capabilities and subject areas. Judged alongside the sector map. */
           capabilities: { functional_areas?: string[]; key_capabilities?: string[]; subject_areas?: string[] } | null;
           /** Coverage carried, in Caravann's own words. Read by the gate so an
            *  insurance requirement resolves rather than sitting unclear. */
           insurance_coverage: string | null;
-          /** Experience facilitating elected or appointed bodies — a recurring
+          /** Experience facilitating elected or appointed bodies - a recurring
            *  mandatory requirement the profile previously could not answer. */
           governing_body_experience: string | null;
           /** Ticked on the settings screen once a human has checked this
@@ -157,7 +157,7 @@ export interface Database {
           verdict_why_not: string | null;
           verdict_set_at: string | null;
           /** What a human decided, when they disagreed with the computed
-           *  verdict. Never overwrites `status` — the gap is the measurement. */
+           *  verdict. Never overwrites `status` - the gap is the measurement. */
           human_verdict: RfpStatus | null;
           human_verdict_at: string | null;
           human_verdict_note: string | null;
@@ -380,7 +380,7 @@ export interface Database {
   };
 }
 
-/** Row/Insert shorthands. `TableInsert` keeps the machine routes readable —
+/** Row/Insert shorthands. `TableInsert` keeps the machine routes readable -
  *  `TableInsert<"rfp_gap_items">` rather than the four-level index. */
 export type TableInsert<T extends keyof Database["public"]["Tables"]> =
   Database["public"]["Tables"][T]["Insert"];

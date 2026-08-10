@@ -6,7 +6,7 @@
 //
 // Distinct from scripts/e2e.mjs, which drives the same stages from this
 // machine and skips n8n entirely. This one proves the deployed system works
-// as deployed — the failure it exists to catch is one that only shows up in
+// as deployed - the failure it exists to catch is one that only shows up in
 // the hosted wiring (a wrong URL baked into the workflow, a missing
 // credential, an env var set on the wrong project).
 //
@@ -36,7 +36,7 @@ async function loadEnv() {
 const results = [];
 function record(name, ok, detail) {
   results.push({ name, ok, detail });
-  console.log(`  ${ok ? "✓" : "✗"} ${name}${detail ? ` — ${detail}` : ""}`);
+  console.log(`  ${ok ? "✓" : "✗"} ${name}${detail ? ` - ${detail}` : ""}`);
 }
 
 async function hitWebhook(body, { auth = true } = {}) {
@@ -119,7 +119,7 @@ async function main() {
 
   // ── 2. The webhook refuses anonymous callers ────────────────────────────
   // This was open once. n8n only re-registers a webhook on activation, so a
-  // config change alone can leave the old, unauthenticated behaviour live —
+  // config change alone can leave the old, unauthenticated behaviour live -
   // which is exactly how it went unnoticed. Assert it rather than trust it.
   console.log("\nWebhook authentication");
   {
@@ -142,7 +142,7 @@ async function main() {
   }
 
   // ── 3. Every fixture through the live webhook ───────────────────────────
-  console.log("\nTriage — full pipeline per fixture");
+  console.log("\nTriage - full pipeline per fixture");
   const seen = [];
   for (const f of FIXTURES) {
     const externalId = `${PREFIX}${f.external_id}`;
@@ -219,7 +219,7 @@ async function main() {
     ]);
     const complete = Boolean(rfp.title && rfp.client_agency && rfp.status !== "pending") && checks > 0;
     record(
-      `${rfp.client_agency.slice(0, 32)} — ${rfp.status}`,
+      `${rfp.client_agency.slice(0, 32)} - ${rfp.status}`,
       complete,
       `${gaps} gaps · ${comp} compliance · ${checks} checks · ${qs} questions`
     );
@@ -257,7 +257,7 @@ async function main() {
   console.log(`\n${results.length - failed.length}/${results.length} checks passed.`);
   if (failed.length) {
     console.log("\nFailed:");
-    failed.forEach((f) => console.log(`  ✗ ${f.name} — ${f.detail ?? ""}`));
+    failed.forEach((f) => console.log(`  ✗ ${f.name} - ${f.detail ?? ""}`));
     process.exit(1);
   }
 }

@@ -5,7 +5,7 @@ import { TeamRosterEditor } from "@/components/settings/TeamRosterEditor";
 import { ScoringSettingsForm } from "@/components/settings/ScoringSettingsForm";
 import { ProfileConfirmation } from "@/components/settings/ProfileConfirmation";
 
-// Everything on this page is Khaled's own occasional editing — the
+// Everything on this page is Khaled's own occasional editing - the
 // eligibility profile and sector map "confirmed once" (module 3) and the
 // team roster (module 9). Unlike the RFP queue, nothing here is written by
 // n8n, so these editors write straight to Supabase from the browser.
@@ -52,9 +52,9 @@ export default async function SettingsPage() {
       </div>
 
       {/* Two kinds of setting, and conflating them is why this screen was
-          confusing. The first part is facts about Caravann — there is a right
+          confusing. The first part is facts about Caravann - there is a right
           answer, the desk cannot work without it, and it is filled in once.
-          The second is judgement — no right answer, only Khaled's preference,
+          The second is judgement - no right answer, only Khaled's preference,
           and worth revisiting as he learns what the desk gets wrong.
 
           Facts come first because tuning thresholds against placeholder data is
@@ -79,7 +79,7 @@ export default async function SettingsPage() {
               <OrgProfileForm initial={orgProfile} />
             ) : (
               <p className="rounded-xl border border-dashed border-rfp-border-strong bg-rfp-surface p-5 text-sm text-rfp-ink-muted">
-                Org profile row missing — run the migration to seed it.
+                Org profile row missing - run the migration to seed it.
               </p>
             )}
           </div>
@@ -89,7 +89,7 @@ export default async function SettingsPage() {
           <h3 className="font-display text-sm font-semibold text-rfp-ink">Sector experience map</h3>
           <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
             Years and engagement counts per sector. This is what &ldquo;how deep is Caravann&rsquo;s
-            experience here?&rdquo; is judged against — a sector left at zero will rule out work.
+            experience here?&rdquo; is judged against - a sector left at zero will rule out work.
           </p>
           <div className="mt-3">
             <SectorExperienceEditor initial={sectors ?? []} />
@@ -123,7 +123,7 @@ export default async function SettingsPage() {
         <div className="border-b border-rfp-border pb-3">
           <h2 className="font-display text-lg font-semibold text-rfp-ink">2 · How the desk decides</h2>
           <p className="mt-1 text-sm leading-relaxed text-rfp-ink-secondary">
-            Judgement, not fact. There is no correct answer here — only how cautious you want to be,
+            Judgement, not fact. There is no correct answer here - only how cautious you want to be,
             and it is worth changing as you see what the desk gets wrong. Adjustable any time; the
             next solicitation uses the new numbers without a deploy.
           </p>
@@ -142,7 +142,7 @@ export default async function SettingsPage() {
               <ScoringSettingsForm initial={scoring} scoreSample={scoreSample} />
             ) : (
               <p className="rounded-xl border border-dashed border-rfp-border-strong bg-rfp-surface p-5 text-sm text-rfp-ink-muted">
-                Scoring settings row missing — run <code>npm run migrate</code>.
+                Scoring settings row missing - run <code>npm run migrate</code>.
               </p>
             )}
           </div>

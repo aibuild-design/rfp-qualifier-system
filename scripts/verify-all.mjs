@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * One command that exercises the whole desk, end to end, against the live
- * stack — and cleans up after itself.
+ * stack - and cleans up after itself.
  *
  *   npm run verify              everything, including a real triage
  *   npm run verify -- --fast    skip the model call (no OpenRouter spend)
@@ -55,12 +55,12 @@ function heading(name) {
 function ok(name, condition, detail = "") {
   const passed = Boolean(condition);
   results.push({ section, name, state: passed ? "pass" : "fail", detail });
-  console.log(`  ${passed ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m"} ${name}${detail ? dim(` — ${detail}`) : ""}`);
+  console.log(`  ${passed ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m"} ${name}${detail ? dim(` - ${detail}`) : ""}`);
   return passed;
 }
 function skip(name, why) {
   results.push({ section, name, state: "skip", detail: why });
-  console.log(`  \x1b[33m·\x1b[0m ${name} ${dim(`— skipped: ${why}`)}`);
+  console.log(`  \x1b[33m·\x1b[0m ${name} ${dim(`- skipped: ${why}`)}`);
 }
 
 const post = (path, body, key = KEY) =>
@@ -174,7 +174,7 @@ heading("5 · Document extraction");
     const dead = await post("/api/rfps/extract", { document_url: "https://www.w3.org/nope-404.pdf" });
     ok("reports a dead link instead of guessing", dead.status === 502, `http ${dead.status}`);
 
-    // Word is the format n8n cannot read at all — prove it locally too.
+    // Word is the format n8n cannot read at all - prove it locally too.
     const doc = new Document({
       sections: [{ children: [new Paragraph("MINIMUM QUALIFICATIONS: five years facilitating public agencies.")] }],
     });
@@ -250,7 +250,7 @@ heading("7 · Intake, thresholds and idempotency");
       await admin.from("rfps").update({
         human_verdict: "no_go",
         human_verdict_at: new Date().toISOString(),
-        human_verdict_note: "No healthcare references — we would never place.",
+        human_verdict_note: "No healthcare references - we would never place.",
       }).eq("id", id);
       const { data: after } = await admin.from("rfps").select("status,human_verdict,human_verdict_note").eq("id", id).maybeSingle();
       ok("a human verdict can be recorded", after?.human_verdict === "no_go", `human=${after?.human_verdict}`);
@@ -263,7 +263,7 @@ heading("7 · Intake, thresholds and idempotency");
 
     // The profile interlock. An unconfirmed eligibility profile must mark every
     // verdict provisional, and a caller must not be able to talk its way out of
-    // it — the whole point is that it cannot be forgotten in the off position.
+    // it - the whole point is that it cannot be forgotten in the off position.
     {
       const { data: before } = await admin.from("org_profile").select("profile_confirmed").eq("id", true).maybeSingle();
 
@@ -371,7 +371,7 @@ heading("9 · Live triage through n8n and the model");
     ok("the n8n webhook refuses anonymous callers", anon.status === 403, `http ${anon.status}`);
 
     const DOC = `
-REQUEST FOR PROPOSALS — Verify Transit District
+REQUEST FOR PROPOSALS - Verify Transit District
 RFP No. VTD-2026-01
 
 1. PURPOSE. Facilitate board workshops and produce a five-year strategic plan.
@@ -388,7 +388,7 @@ RFP No. VTD-2026-01
 
     // Triage reads the document three times, so this is a minutes-long
     // request over a long-lived connection. A transient reset should cost a
-    // retry, not the whole suite — and the run may well have completed
+    // retry, not the whole suite - and the run may well have completed
     // server-side even when the response never arrived, so the database is
     // checked before giving up.
     const started = Date.now();
@@ -420,7 +420,7 @@ RFP No. VTD-2026-01
         ? `${json.verdict} @ ${json.score}% in ${seconds}s`
         : landed
           ? `${landed.status} @ ${landed.score_percent}% in ${seconds}s (response dropped: ${transport})`
-          : `no verdict — ${transport ?? `http ${res?.status}`}`
+          : `no verdict - ${transport ?? `http ${res?.status}`}`
     );
     if (landed?.score_samples?.length > 1) {
       const s = [...landed.score_samples].sort((a, b) => a - b);
@@ -446,7 +446,7 @@ RFP No. VTD-2026-01
 heading("10 · Downstream modules");
 {
   const { data: demo } = await admin.from("rfps").select("id").eq("is_demo", true).limit(1).maybeSingle();
-  if (!demo) skip("module checks", "no demo RFP — run npm run seed:demo");
+  if (!demo) skip("module checks", "no demo RFP - run npm run seed:demo");
   else {
     const { assembleDraft, DEFAULT_SECTIONS, proposalFileName } = await import(join(ROOT, "lib/proposal.ts"));
     const { recommendTeam } = await import(join(ROOT, "lib/team-match.ts"));
@@ -497,11 +497,11 @@ heading("12 · The dashboard, in a real browser");
     try {
       ({ chromium, devices } = await import("playwright"));
     } catch {
-      skip("browser checks", "playwright not installed — npm i -D playwright && npx playwright install chromium");
+      skip("browser checks", "playwright not installed - npm i -D playwright && npx playwright install chromium");
     }
     if (chromium) {
       // The motion system is checked on the login page, before the credential
-      // gate below — it is the one screen that needs no password, and the
+      // gate below - it is the one screen that needs no password, and the
       // tokens are global, so a regression here is a regression everywhere.
       // Worth having in the always-runs tier: motion is exactly the kind of
       // thing that rots silently when someone swaps a class.
@@ -595,10 +595,10 @@ heading("12 · The dashboard, in a real browser");
               ok(`${path} renders`, h1 === heading, `h1: "${h1}"`);
             }
 
-            // Back to the queue first — the link count has to be taken on the
+            // Back to the queue first - the link count has to be taken on the
             // page that actually has the links, not wherever the loop ended.
             await page.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
-            // The queue renders twice — cards below `md`, a table above — so
+            // The queue renders twice - cards below `md`, a table above - so
             // the DOM holds two links per RFP and one set is always hidden.
             // Filter to what is actually on screen at this viewport.
             const rfpLinks = page.locator('a[href^="/dashboard/rfps/"]:visible');
@@ -652,7 +652,7 @@ heading("13 · Cleanup");
 {
   const { data: removed } = await admin.from("rfps").delete().like("external_id", `${PREFIX}%`).select("id");
   ok("test rows removed", true, `${removed?.length ?? 0} deleted`);
-  // The claim is that *this script* cleaned up after itself — not that the queue
+  // The claim is that *this script* cleaned up after itself - not that the queue
   // may only ever hold demo data. Real solicitations living alongside the demo
   // rows is the normal end state, and asserting otherwise turned the first real
   // row anyone added into a failing check.
@@ -663,7 +663,7 @@ heading("13 · Cleanup");
   ok(
     "the queue is intact",
     (left ?? []).length > 0,
-    `${left?.length ?? 0} rows — ${(left ?? []).length - real} demo, ${real} real`
+    `${left?.length ?? 0} rows - ${(left ?? []).length - real} demo, ${real} real`
   );
 }
 
@@ -676,11 +676,11 @@ console.log(`\n${bold("─".repeat(60))}`);
 console.log(bold(`${pass}/${pass + fail.length} checks passed${skipped.length ? `, ${skipped.length} skipped` : ""}`));
 if (fail.length) {
   console.log("\nFailed:");
-  for (const f of fail) console.log(`  \x1b[31m✗\x1b[0m [${f.section}] ${f.name}${f.detail ? ` — ${f.detail}` : ""}`);
+  for (const f of fail) console.log(`  \x1b[31m✗\x1b[0m [${f.section}] ${f.name}${f.detail ? ` - ${f.detail}` : ""}`);
 }
 if (skipped.length) {
   console.log("\nSkipped:");
-  for (const s of skipped) console.log(`  \x1b[33m·\x1b[0m [${s.section}] ${s.name} — ${s.detail}`);
+  for (const s of skipped) console.log(`  \x1b[33m·\x1b[0m [${s.section}] ${s.name} - ${s.detail}`);
 }
 console.log("");
 process.exit(fail.length ? 1 : 0);

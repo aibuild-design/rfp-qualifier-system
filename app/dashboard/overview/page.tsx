@@ -12,7 +12,7 @@ import { daysUntil, deadlineColor, deadlineWindowsFrom, formatDate, isoDaysFromN
  * The queue answers "what should I do next". This answers the two questions
  * that come before it: how a solicitation actually moves through the desk, and
  * which parts of that path are live versus still waiting on someone. Every
- * status below is derived from real data or real configuration — nothing here
+ * status below is derived from real data or real configuration - nothing here
  * is a hardcoded green tick, because a checklist that lies is worse than none.
  */
 export default async function OverviewPage() {
@@ -20,7 +20,7 @@ export default async function OverviewPage() {
 
   // Triage runs in n8n, which this app talks to over a webhook. If either half
   // of that address is missing, submissions will queue and never get a verdict
-  // — worth saying out loud rather than letting it look live.
+  // - worth saying out loud rather than letting it look live.
   const triageConfigured = Boolean(process.env.N8N_BASE_URL && process.env.RFP_INTAKE_API_KEY);
 
   const { data: scoring } = await supabase
@@ -134,7 +134,7 @@ export default async function OverviewPage() {
             href="/dashboard/new"
             hrefLabel="Add one now"
           >
-            The n8n workflow polls the mailbox every minute — not daily, because a solicitation
+            The n8n workflow polls the mailbox every minute - not daily, because a solicitation
             posted at 9pm should be scored before the morning. Anything the mailbox misses, or
             anything you find yourself, goes in through{" "}
             <Nav href="/dashboard/new">Add a solicitation</Nav>.
@@ -146,7 +146,7 @@ export default async function OverviewPage() {
             )}
             <Aside>
               The Gmail account is connected and the trigger is switched on. It watches for
-              subjects mentioning an RFP, RFQ or solicitation — deliberately broad, because
+              subjects mentioning an RFP, RFQ or solicitation - deliberately broad, because
               triaging a few irrelevant emails costs less than missing a real one. That switch
               lives in n8n rather than here, so this page reports what was last deployed, not
               live state.
@@ -157,7 +157,7 @@ export default async function OverviewPage() {
             n={2}
             title="The whole document gets read"
             state={triageConfigured ? "live" : "needs-setup"}
-            summary="One pass over the full text — the PDF where there is one, never just the summary."
+            summary="One pass over the full text - the PDF where there is one, never just the summary."
           >
             A linked PDF is preferred, then a portal link, then the email body. That order matters:
             aggregator summaries paraphrase, and their dollar figures are often well off the real
@@ -211,7 +211,7 @@ export default async function OverviewPage() {
             summary="A team suggestion off the roster, and a first draft stitched from past wins."
           >
             Team match ranks the roster against what the solicitation actually asks for; nothing is
-            assigned until you confirm it. The draft is assembled only from approved language —
+            assigned until you confirm it. The draft is assembled only from approved language -
             a section with nothing on file comes back marked{" "}
             <em>needs writing by hand</em> rather than filled with invented text, because this
             document goes to a public agency. Finished drafts export as .docx.
@@ -241,7 +241,7 @@ export default async function OverviewPage() {
               [Engagement]_[Client]_Caravann Consulting
             </code>{" "}
             naming are settled and shown on every RFP. The Drive call itself needs a Google account
-            authorised in n8n — the same one-time consent the email trigger needs. Until then the
+            authorised in n8n - the same one-time consent the email trigger needs. Until then the
             desk records where a file <em>would</em> go and moves nothing.
           </Step>
         </ol>
@@ -306,7 +306,7 @@ export default async function OverviewPage() {
         <div className="mt-4 overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
           {!recent || recent.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-rfp-ink-muted">
-              Nothing has come through yet. The first solicitation — emailed in or added by hand —
+              Nothing has come through yet. The first solicitation - emailed in or added by hand -
               shows up here with its verdict.
             </p>
           ) : (
@@ -327,7 +327,7 @@ export default async function OverviewPage() {
                         <p className="truncate text-xs text-rfp-ink-muted">{rfp.client_agency}</p>
                       </div>
                       <span className="tabular hidden shrink-0 text-sm text-rfp-ink-secondary sm:block">
-                        {rfp.score_percent !== null ? `${Math.round(rfp.score_percent)}%` : "—"}
+                        {rfp.score_percent !== null ? `${Math.round(rfp.score_percent)}%` : "-"}
                       </span>
                       <span
                         className="hidden shrink-0 text-xs font-medium sm:block"
@@ -434,7 +434,7 @@ function Nav({ href, children }: { href: string; children: React.ReactNode }) {
   );
 }
 
-/** `done: null` means the answer lives outside this app — shown as an open
+/** `done: null` means the answer lives outside this app - shown as an open
  *  circle rather than a tick or a cross, because guessing either way would be
  *  a checklist item that lies. */
 function Task({

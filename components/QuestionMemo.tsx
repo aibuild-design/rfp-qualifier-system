@@ -30,7 +30,7 @@ export function QuestionMemo({
         {questionDeadline === null
           ? "No question deadline found in the solicitation."
           : windowClosed
-            ? `Question window closed ${Math.abs(days!)} day(s) ago — these can no longer be asked.`
+            ? `Question window closed ${Math.abs(days!)} day(s) ago - these can no longer be asked.`
             : `Question window closes in ${days} day(s).`}
       </p>
 
@@ -60,7 +60,7 @@ export function QuestionMemo({
                         onClick={() => start(async () => void (await markQuestionSent(rfpId, q.id)))}
                         disabled={pending}
                         className="rounded-lg border border-rfp-border px-2.5 py-1 text-xs font-semibold text-rfp-ink-secondary hover:bg-rfp-surface-sunken disabled:opacity-50"
-                        title="Records that you have sent it — nothing is dispatched from here"
+                        title="Records that you have sent it - nothing is dispatched from here"
                       >
                         Mark sent
                       </button>

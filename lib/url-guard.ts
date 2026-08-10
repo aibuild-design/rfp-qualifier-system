@@ -4,7 +4,7 @@
  * The dashboard's "add a solicitation" form takes a link to a document and
  * passes it to n8n, which fetches it. Without a guard that is a server-side
  * request forgery primitive: point it at http://169.254.169.254/ and n8n
- * retrieves the cloud metadata service — including, on most providers, the
+ * retrieves the cloud metadata service - including, on most providers, the
  * credentials attached to the instance. Private ranges, loopback and .internal
  * names are all reachable from wherever the fetcher runs, and none of them can
  * ever hold a public agency's solicitation.
@@ -41,15 +41,15 @@ function parseIpv4(host: string): Ipv4 | null {
 
 /**
  * Ranges that are not routable on the public internet. Note that the WHATWG URL
- * parser already normalises the obfuscated spellings of an address —
- * http://2130706433/ and http://0x7f.1/ both arrive here as 127.0.0.1 — so this
+ * parser already normalises the obfuscated spellings of an address -
+ * http://2130706433/ and http://0x7f.1/ both arrive here as 127.0.0.1 - so this
  * only has to understand dotted decimal.
  */
 function isPrivateIpv4([a, b]: Ipv4): boolean {
   if (a === 0) return true; // 0.0.0.0/8 "this network"
   if (a === 10) return true; // private
   if (a === 127) return true; // loopback
-  if (a === 169 && b === 254) return true; // link-local — cloud metadata lives here
+  if (a === 169 && b === 254) return true; // link-local - cloud metadata lives here
   if (a === 172 && b >= 16 && b <= 31) return true; // private
   if (a === 192 && b === 168) return true; // private
   if (a === 192 && b === 0) return true; // IETF protocol assignments
@@ -99,7 +99,7 @@ export type UrlCheck = { ok: true; url: string } | { ok: false; error: string };
 
 /**
  * Validate a user-supplied document link. Messages are written to be read by
- * whoever pasted the URL, not by a security engineer — the person hitting this
+ * whoever pasted the URL, not by a security engineer - the person hitting this
  * is almost always someone who pasted a portal login page, not an attacker.
  */
 export function checkDocumentUrl(raw: string): UrlCheck {

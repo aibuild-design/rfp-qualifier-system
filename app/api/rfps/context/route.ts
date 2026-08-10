@@ -6,7 +6,7 @@ import { isServiceRoleConfigured } from "@/lib/supabase/config";
 // Everything n8n's triage prompt needs to judge a solicitation against
 // Caravann specifically: the eligibility profile and sector map Khaled
 // confirms in Settings (module 3), plus any portal rules taught once
-// (module 11). Exposing it here means n8n holds no Supabase credential —
+// (module 11). Exposing it here means n8n holds no Supabase credential -
 // it only ever talks to this app and OpenRouter.
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   }
   if (!isServiceRoleConfigured) {
     return NextResponse.json(
-      { error: "Supabase not configured — set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY" },
+      { error: "Supabase not configured - set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY" },
       { status: 503 }
     );
   }

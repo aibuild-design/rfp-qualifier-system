@@ -8,7 +8,7 @@ import type { OrgProfileRow } from "@/lib/supabase/types";
  * The sign-off on everything in the facts section.
  *
  * It lives here rather than at the bottom of the eligibility form because it
- * covers the sector map and the roster too — ticking it says "all of this is
+ * covers the sector map and the roster too - ticking it says "all of this is
  * real", and putting it inside one of the three forms made it look like it only
  * applied to that one.
  *
@@ -36,7 +36,7 @@ export function ProfileConfirmation({
     {
       label: "Certifications and set-aside status",
       done: profile.certifications.length > 0 || profile.set_aside_status.length > 0,
-      note: "Leave empty if Caravann genuinely holds none — claiming one it does not can void a bid.",
+      note: "Leave empty if Caravann genuinely holds none - claiming one it does not can void a bid.",
       optional: true,
     },
     { label: "Insurance carried", done: Boolean(profile.insurance_coverage?.trim()) },
@@ -79,7 +79,7 @@ export function ProfileConfirmation({
                 g.done ? "bg-rfp-good/15 text-rfp-good" : "bg-rfp-warning/15 text-rfp-warning"
               }`}
             >
-              {g.done ? "✓" : "—"}
+              {g.done ? "✓" : "-"}
             </span>
             <span className="min-w-0">
               <span className={g.done ? "text-rfp-ink-muted line-through" : "text-rfp-ink"}>{g.label}</span>
@@ -109,11 +109,11 @@ export function ProfileConfirmation({
         />
         <span className="min-w-0">
           <span className="block text-sm font-medium text-rfp-ink">
-            Profile confirmed — all of the above is real
+            Profile confirmed - all of the above is real
           </span>
           <span id="profile-confirmed-description" className="mt-0.5 block text-xs leading-relaxed text-rfp-ink-muted">
             {profile.profile_confirmed
-              ? "New verdicts are treated as trustworthy. Untick this if anything goes out of date — solicitations scored while it was ticked keep their verdicts."
+              ? "New verdicts are treated as trustworthy. Untick this if anything goes out of date - solicitations scored while it was ticked keep their verdicts."
               : "Until this is ticked, every verdict is stored and marked provisional. The figures here ship as placeholders, and the desk should not sound certain about numbers nobody has checked."}
           </span>
         </span>

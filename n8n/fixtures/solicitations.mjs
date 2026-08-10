@@ -3,7 +3,7 @@
 // verdict so test-triage.mjs can assert rather than eyeball.
 //
 // Deliberately synthetic: a random real PDF gives no ground truth to check
-// against. These are written to read like the real thing — the disqualifier
+// against. These are written to read like the real thing - the disqualifier
 // is buried deep, the budget hides where it hides, and the submission
 // mechanics trap sits in a paragraph nobody reads.
 
@@ -26,7 +26,7 @@ export const CARAVANN_CONTEXT = {
     { sector: "behavioral health", years_experience: 0, engagement_count: 0, notes: "No experience" },
   ],
   portal_rules: [
-    { portal_name: "PlanetBids", rule_text: "References must be merged into a single PDF — the portal exposes only one upload slot." },
+    { portal_name: "PlanetBids", rule_text: "References must be merged into a single PDF - the portal exposes only one upload slot." },
   ],
 };
 
@@ -106,7 +106,7 @@ proposer prior to award.
   },
 
   {
-    name: "behavioral-health (expect NO_GO — buried hard disqualifier)",
+    name: "behavioral-health (expect NO_GO - buried hard disqualifier)",
     external_id: "test-behavioral-health-002",
     expect: {
       status: "no_go",
@@ -117,32 +117,32 @@ proposer prior to award.
     },
     text: `
 REQUEST FOR PROPOSALS
-COUNTY OF STANISLAUS — BEHAVIORAL HEALTH AND RECOVERY SERVICES
+COUNTY OF STANISLAUS - BEHAVIORAL HEALTH AND RECOVERY SERVICES
 RFP #BHRS-2026-08
 ORGANIZATIONAL ASSESSMENT AND STAFF FACILITATION SERVICES
 
-SECTION 1 — PURPOSE
+SECTION 1 - PURPOSE
 Stanislaus County Behavioral Health and Recovery Services (BHRS) seeks a qualified
 consultant to conduct an organizational assessment and facilitate a series of staff
 engagement sessions across its outpatient service divisions.
 
-SECTION 2 — BACKGROUND
+SECTION 2 - BACKGROUND
 BHRS operates twelve outpatient clinics serving approximately 14,000 clients annually.
 The Department has experienced significant turnover in clinical supervisory roles and
 seeks external support in assessing organizational structure and facilitating staff
 input into a restructuring plan.
 
-SECTION 3 — SCOPE OF WORK
+SECTION 3 - SCOPE OF WORK
 3.1 Conduct an organizational assessment of BHRS outpatient divisions.
 3.2 Facilitate no fewer than fifteen (15) staff engagement sessions.
 3.3 Deliver a written assessment with restructuring recommendations.
 3.4 Present findings to the Board of Supervisors.
 
-SECTION 4 — TERM
+SECTION 4 - TERM
 The initial term shall be twelve (12) months from Notice to Proceed, with two (2)
 optional one-year extensions at the County's sole discretion.
 
-SECTION 5 — PROPOSER QUALIFICATIONS
+SECTION 5 - PROPOSER QUALIFICATIONS
 5.1 Proposers shall have a minimum of seven (7) years of experience conducting
     organizational assessments for public sector clients.
 5.2 Proposers shall demonstrate experience facilitating group processes with
@@ -157,25 +157,25 @@ SECTION 5 — PROPOSER QUALIFICATIONS
 5.5 At least one member of the proposed team shall hold, or have previously held, a
     California license as an LCSW, LMFT, or Licensed Psychologist.
 
-SECTION 6 — COMPENSATION
+SECTION 6 - COMPENSATION
 Compensation shall be negotiated with the successful proposer based on the proposed
 scope and staffing plan. Proposers shall submit a fully burdened rate schedule with
 their cost proposal.
 
-SECTION 7 — SUBMISSION
+SECTION 7 - SUBMISSION
 7.1 Proposals are limited to twenty-five (25) pages exclusive of appendices.
 7.2 Submit one (1) electronic copy in PDF format to purchasing@stancounty.example.gov.
 7.3 Deadline for submission: November 3, 2026, 4:00 p.m.
 7.4 Written questions are due October 10, 2026.
 
-SECTION 8 — INSURANCE
+SECTION 8 - INSURANCE
 Successful proposer shall maintain Professional Liability coverage of $1,000,000 per
 claim and Commercial General Liability of $1,000,000 per occurrence.
 `,
   },
 
   {
-    name: "k12-omaha (expect MAYBE — thin depth + preferred-local miss, budget in Q&A)",
+    name: "k12-omaha (expect MAYBE - thin depth + preferred-local miss, budget in Q&A)",
     external_id: "test-k12-omaha-003",
     expect: {
       status: "maybe",
@@ -189,17 +189,17 @@ OMAHA PUBLIC SCHOOLS
 REQUEST FOR PROPOSAL RFP 26-047
 STRATEGIC PLANNING FACILITATION SERVICES
 
-PART I — GENERAL INFORMATION
+PART I - GENERAL INFORMATION
 Omaha Public Schools ("District") requests proposals from qualified firms to facilitate
 the development of the District's 2027-2031 Strategic Plan, including community
 engagement sessions and Board work sessions.
 
-PART II — SCOPE
+PART II - SCOPE
 The Contractor shall facilitate up to twelve (12) community engagement sessions across
 District attendance areas, three (3) Board of Education work sessions, and produce a
 final strategic plan document with implementation milestones.
 
-PART III — MINIMUM REQUIREMENTS
+PART III - MINIMUM REQUIREMENTS
 A. Proposer shall have not less than three (3) years of experience providing strategic
    planning facilitation to public sector or educational institutions.
 B. Proposer shall demonstrate experience conducting community engagement in
@@ -211,11 +211,11 @@ C. It is strongly preferred that the proposing team include at least one team me
    lower under Criterion 4.
 D. Prior experience with K-12 public school district strategic planning is preferred.
 
-PART IV — COMPENSATION
+PART IV - COMPENSATION
 The District has not established a published not-to-exceed amount in this solicitation.
 Proposers shall submit a cost proposal reflecting their proposed level of effort.
 
-PART V — SUBMISSION REQUIREMENTS
+PART V - SUBMISSION REQUIREMENTS
 A. Proposals shall not exceed forty (40) pages including all attachments and resumes.
    NOTE: unlike many solicitations, resumes DO count against the page limit.
 B. Font shall be Arial 11pt minimum.
@@ -223,14 +223,14 @@ C. Proposals due December 8, 2026 at 2:00 p.m. Central Time.
 D. Questions due November 12, 2026.
 E. Submit via email to procurement@ops.example.org.
 
-PART VI — EVALUATION
-Criterion 1 — Approach and Methodology ............ 35%
-Criterion 2 — Firm Experience ..................... 25%
-Criterion 3 — Personnel Qualifications ............ 20%
-Criterion 4 — Local Presence and Availability ..... 10%
-Criterion 5 — Cost ................................ 10%
+PART VI - EVALUATION
+Criterion 1 - Approach and Methodology ............ 35%
+Criterion 2 - Firm Experience ..................... 25%
+Criterion 3 - Personnel Qualifications ............ 20%
+Criterion 4 - Local Presence and Availability ..... 10%
+Criterion 5 - Cost ................................ 10%
 
---- ATTACHED: ADDENDUM NO. 1 — WRITTEN QUESTIONS AND ANSWERS ---
+--- ATTACHED: ADDENDUM NO. 1 - WRITTEN QUESTIONS AND ANSWERS ---
 
 Q1: Will the District consider proposals from firms located outside Nebraska?
 A1: Yes. Local presence is preferred and scored under Criterion 4 but is not a

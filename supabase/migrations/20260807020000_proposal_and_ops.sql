@@ -3,7 +3,7 @@
 -- (9) and the question memo (7) that were storage-only.
 --
 -- Skeletal means the tables, relationships and constraints are real and the
--- app reads and writes them — not that the modules are finished. Two things
+-- app reads and writes them - not that the modules are finished. Two things
 -- are explicitly deferred because they need OAuth this build cannot perform:
 -- pushing files to Drive, and sending the question memo. Both have their state
 -- modelled here so the workflow is complete apart from the final hop.
@@ -28,7 +28,7 @@ create table if not exists language_blocks (
 
 comment on column language_blocks.is_boilerplate is
   'Locked text (company description, EEO statement, insurance language). '
-  'Assembly copies these verbatim — the model must never paraphrase them.';
+  'Assembly copies these verbatim - the model must never paraphrase them.';
 comment on column language_blocks.won is
   'From a winning proposal. Ranked above unwon material and above the base '
   'template, per the SOW: proven winners outrank boilerplate.';

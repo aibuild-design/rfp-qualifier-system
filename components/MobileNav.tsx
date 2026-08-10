@@ -7,7 +7,7 @@ import { NAV_GROUPS, isNavItemActive, type NavCounts } from "@/lib/nav";
 /**
  * Below `lg` the dark rail is hidden, which previously left no way to reach any
  * page but the one you were on. This is the same nav list flattened into a
- * scrollable strip — no drawer, no toggle state, everything one tap away.
+ * scrollable strip - no drawer, no toggle state, everything one tap away.
  */
 export function MobileNav({ counts }: { counts: NavCounts }) {
   const pathname = usePathname();

@@ -8,7 +8,7 @@ import type { ScoringSettingsRow } from "@/lib/supabase/types";
 /**
  * Where the go / no-go line sits.
  *
- * This used to be the model's call and it was not reproducible — one
+ * This used to be the model's call and it was not reproducible - one
  * solicitation returned maybe/83, go/87 and go/88 across three runs. The label
  * is now arithmetic, and this is where the arithmetic's inputs live, because
  * how much overlap is "enough" is a judgement about Caravann's appetite for
@@ -35,7 +35,7 @@ export function ScoringSettingsForm({
   // gets told why, next to the field, instead of a Postgres error.
   const thresholdError =
     settings.maybe_threshold > settings.go_threshold
-      ? "The maybe floor cannot sit above the go bar — nothing could ever be a go."
+      ? "The maybe floor cannot sit above the go bar - nothing could ever be a go."
       : null;
   const deadlineError =
     settings.deadline_critical_days > settings.deadline_warning_days
@@ -45,7 +45,7 @@ export function ScoringSettingsForm({
   async function save(next: ScoringSettingsRow) {
     setSettings(next);
     if (next.maybe_threshold > next.go_threshold || next.deadline_critical_days > next.deadline_warning_days) {
-      return; // Invalid — the field-level message already explains why.
+      return; // Invalid - the field-level message already explains why.
     }
     setSaving(true);
     setError(null);
@@ -127,7 +127,7 @@ export function ScoringSettingsForm({
             <strong className="tabular font-semibold text-rfp-good">{counts.go} go</strong>,{" "}
             <strong className="tabular font-semibold text-rfp-warning">{counts.maybe} maybe</strong>, and{" "}
             <strong className="tabular font-semibold text-rfp-critical">{counts.noGo} no-go</strong>. Changing them does
-            not re-score past RFPs — it applies from the next one.
+            not re-score past RFPs - it applies from the next one.
           </p>
         )}
       </div>
@@ -167,7 +167,7 @@ export function ScoringSettingsForm({
           id="preferred-fatal"
           tone="caution"
           label="Treat missed “preferred” requirements as dealbreakers"
-          description="Off by default, and worth leaving off. Agencies write “preferred” for things they would like, not things they require — a firm that bids anyway still wins these. Turning this on will rule out work Caravann could take."
+          description="Off by default, and worth leaving off. Agencies write “preferred” for things they would like, not things they require - a firm that bids anyway still wins these. Turning this on will rule out work Caravann could take."
           checked={settings.preferred_misses_are_fatal}
           onChange={(next) => save({ ...settings, preferred_misses_are_fatal: next })}
         />

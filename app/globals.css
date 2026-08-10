@@ -5,7 +5,7 @@
   minimal color usage, single gold/yellow accent, generous whitespace,
   card-based sections. Token/layout architecture mirrors the sibling
   dashboard at /Users/danielmatias/Documents/Codess/Client/Jonathan/
-  signal-based-scrapper — same pattern, different brand hues + domain.
+  signal-based-scrapper - same pattern, different brand hues + domain.
 */
 :root {
   color-scheme: light;
@@ -34,7 +34,7 @@
   --rfp-gold-bright: #ffbd36;
   --rfp-cream: #f5f2ea;
 
-  /* status (fixed, never themed — kept distinct from --rfp-gold so verdict/
+  /* status (fixed, never themed - kept distinct from --rfp-gold so verdict/
      deadline badges don't visually blend with the brand accent) */
   --rfp-good: #1b8a5a;
   --rfp-warning: #d9962c;
@@ -49,7 +49,7 @@
 /*
  * DARK MODE.
  *
- * Only the tokens are redefined — not one component knows this exists. That is
+ * Only the tokens are redefined - not one component knows this exists. That is
  * the whole reason the palette was built as variables.
  *
  * Three states, in the order they must resolve:
@@ -175,7 +175,7 @@ body {
 
    One rhythm for the whole app. Durations and easings are tokens rather than
    per-component choices, because the thing that makes an interface feel built
-   rather than assembled is that everything moves the same way — a 300ms button
+   rather than assembled is that everything moves the same way - a 300ms button
    next to a 120ms row reads as two different products.
 
    Three rules the tokens encode:
@@ -200,12 +200,12 @@ body {
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
   /* A little overshoot, for things that should feel physical rather than
-     mechanical — the press release, mainly. Deliberately restrained: this is a
+     mechanical - the press release, mainly. Deliberately restrained: this is a
      bid desk, not a game. */
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
-/* Anything clickable. Gives a real, immediate response to a press — which on
+/* Anything clickable. Gives a real, immediate response to a press - which on
    touch is the only feedback there is, since there is no hover to rely on. */
 .press {
   transition:
@@ -222,7 +222,7 @@ body {
   transition-duration: var(--dur-press);
 }
 
-/* Larger surfaces need a smaller ratio — 0.97 on a full-width card is a lurch,
+/* Larger surfaces need a smaller ratio - 0.97 on a full-width card is a lurch,
    the same 0.97 on a 90px button is barely visible. Equal *pixel* travel is
    what reads as one system, not equal percentage. */
 .press-card:active:not(:disabled):not([aria-disabled="true"]) {
@@ -234,7 +234,7 @@ body {
 }
 
 /* Hover effects only where hovering exists. Without this, tapping on a phone
-   leaves the hover state stuck on until you tap something else — the row you
+   leaves the hover state stuck on until you tap something else - the row you
    just left keeps looking selected. */
 @media (hover: hover) and (pointer: fine) {
   .lift:hover {
@@ -243,7 +243,7 @@ body {
   }
 }
 
-/* Focus rings should not animate in — a keyboard user tabbing quickly needs the
+/* Focus rings should not animate in - a keyboard user tabbing quickly needs the
    ring present now, not fading up over 150ms. */
 .press:focus-visible {
   transition-duration: 0s;
@@ -276,7 +276,7 @@ body {
   animation-delay: 320ms;
 }
 
-/* Modal. Opens from nothing rather than travelling — a confirmation appearing
+/* Modal. Opens from nothing rather than travelling - a confirmation appearing
    where you are already looking is faster to read than one that slides in. The
    backdrop fades independently so the page dims before the panel lands. */
 @keyframes dialog-in {
@@ -336,7 +336,7 @@ body {
   animation: fade-in var(--dur-fast) var(--ease-out) both;
 }
 
-/* Indeterminate progress for a save or a fetch — a sheen rather than a spinner,
+/* Indeterminate progress for a save or a fetch - a sheen rather than a spinner,
    so it does not compete with the content for attention. */
 @keyframes shimmer {
   from {

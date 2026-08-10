@@ -10,7 +10,7 @@ import { checkDocumentUrl, isBlockedHost } from "@/lib/url-guard";
 /**
  * Submits a solicitation for triage from the dashboard.
  *
- * Triage takes 40-90 seconds — a full 1M-context read of the document — which
+ * Triage takes 40-90 seconds - a full 1M-context read of the document - which
  * is far too long to hold a form submission open, and long enough to hit a
  * serverless timeout. So this returns immediately and the work continues in
  * the background:
@@ -19,7 +19,7 @@ import { checkDocumentUrl, isBlockedHost } from "@/lib/url-guard";
  *      and the person can see their submission landed.
  *   2. after() fires the n8n webhook once the response has been sent.
  *   3. n8n POSTs the finished verdict to /api/rfps/intake, which upserts on
- *      external_id — replacing the pending row rather than duplicating it.
+ *      external_id - replacing the pending row rather than duplicating it.
  *
  * If triage fails the row stays `pending` rather than vanishing, which is the
  * honest failure mode: something was submitted and did not get a verdict, and
@@ -45,7 +45,7 @@ export async function submitSolicitation(input: {
   }
 
   // n8n fetches whatever link it is handed, so the check happens before the
-  // link is stored — not at fetch time, when it is already someone else's
+  // link is stored - not at fetch time, when it is already someone else's
   // process. See lib/url-guard.ts for what this does and does not cover.
   let url: string | undefined;
   if (rawUrl) {

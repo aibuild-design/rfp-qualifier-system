@@ -13,7 +13,7 @@
 // swaps in the target instance's real credential ids at deploy time.
 //
 // n8n's public API has no "list credentials" endpoint, so created ids are
-// recorded back into .env.local (N8N_CRED_*_ID) and reused — otherwise every
+// recorded back into .env.local (N8N_CRED_*_ID) and reused - otherwise every
 // deploy would create another duplicate credential.
 
 import { readFile, writeFile } from "node:fs/promises";
@@ -30,7 +30,7 @@ async function loadEnv() {
       if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
     }
   } catch {
-    // fine — env may come from the shell
+    // fine - env may come from the shell
   }
 }
 
@@ -66,7 +66,7 @@ async function main() {
     settings: workflow.settings ?? {},
   };
 
-  console.log(`Workflow "${payload.name}" — ${payload.nodes.length} nodes`);
+  console.log(`Workflow "${payload.name}" - ${payload.nodes.length} nodes`);
 
   if (dryRun) {
     const names = payload.nodes.map((n) => n.name);
@@ -93,7 +93,7 @@ async function main() {
   }
 
   // n8n Cloud doesn't allow custom instance env vars, so the app's origin is
-  // baked in here rather than read via $env at runtime — which would silently
+  // baked in here rather than read via $env at runtime - which would silently
   // resolve to undefined and fall back to localhost, leaving the workflow
   // green while every verdict went nowhere.
   const bidDeskUrl = process.env.BID_DESK_URL;
@@ -111,13 +111,13 @@ async function main() {
   const before = JSON.stringify(payload.nodes);
   let after = before.replaceAll("__BID_DESK_URL__", bidDeskUrl.replace(/\/$/, ""));
   if (before === after) {
-    console.error("No __BID_DESK_URL__ placeholder found — the Config node may have been edited.");
+    console.error("No __BID_DESK_URL__ placeholder found - the Config node may have been edited.");
     process.exit(1);
   }
   // JSON.stringify escaping keeps the embedded quotes valid inside the string literal.
   after = after.replaceAll("__GMAIL_QUERY__", JSON.stringify(gmailQuery).slice(1, -1));
   // Optional. Unset means bid folders are created at the root of whichever
-  // Drive the credential belongs to, which is usable but messy — so say so
+  // Drive the credential belongs to, which is usable but messy - so say so
   // rather than letting it be discovered later.
   const driveRoot = (process.env.DRIVE_ROOT_FOLDER_ID || "").trim();
   after = after.replaceAll("__DRIVE_ROOT_FOLDER_ID__", driveRoot);
@@ -152,7 +152,7 @@ async function main() {
   // solicitations, and an update to an already-active workflow leaves it active.
   if (process.argv.includes("--activate")) {
     const state = await api(`/workflows/${id}/activate`, { method: "POST" });
-    console.log(`✓ Activated — webhook live at ${process.env.N8N_BASE_URL.replace(/\/$/, "")}/webhook/rfp-intake`);
+    console.log(`✓ Activated - webhook live at ${process.env.N8N_BASE_URL.replace(/\/$/, "")}/webhook/rfp-intake`);
     return state;
   }
 
@@ -169,7 +169,7 @@ const CREDENTIALS = {
 
 async function resolveCredentials(payload) {
   for (const [placeholder, { secretEnv, idEnv }] of Object.entries(CREDENTIALS)) {
-    // Nodes carrying this placeholder — skip the API call entirely if unused.
+    // Nodes carrying this placeholder - skip the API call entirely if unused.
     const nodes = payload.nodes.filter((n) =>
       Object.values(n.credentials ?? {}).some((c) => c.id === placeholder)
     );
@@ -209,7 +209,7 @@ async function resolveCredentials(payload) {
  * Gmail and Google Drive are OAuth: they can only be connected by a human
  * clicking through a consent screen in the n8n UI, so their credentials exist
  * on the instance and never in this repo. Without this, every deploy would push
- * nodes with no credential attached and undo that consent — n8n now refuses the
+ * nodes with no credential attached and undo that consent - n8n now refuses the
  * publish outright, which is how this was caught, but the older failure mode was
  * a silently disconnected trigger.
  *
@@ -220,7 +220,7 @@ async function preserveLiveCredentials(payload, workflowId) {
 
   // Read the PUBLISHED version, not the working copy. n8n keeps a draft
   // alongside the active version, and a deploy that failed to publish leaves a
-  // credential-less draft sitting in `nodes` — reading that would carry nothing
+  // credential-less draft sitting in `nodes` - reading that would carry nothing
   // across and quietly confirm the loss. `activeVersion` is what is actually
   // running, so it is the source of truth for what a human has connected.
   const source = live.activeVersion?.nodes?.length ? live.activeVersion.nodes : live.nodes;
@@ -231,7 +231,7 @@ async function preserveLiveCredentials(payload, workflowId) {
     const existing = liveByName.get(node.name);
     if (!existing?.credentials) continue;
     for (const [type, cred] of Object.entries(existing.credentials)) {
-      if (node.credentials?.[type]) continue; // the repo named one — it wins
+      if (node.credentials?.[type]) continue; // the repo named one - it wins
       node.credentials = { ...(node.credentials ?? {}), [type]: cred };
       carried.push(`${node.name} (${type})`);
     }
@@ -251,7 +251,7 @@ async function rememberId(key, id) {
   try {
     raw = await readFile(path, "utf8");
   } catch {
-    // no .env.local — nothing to append to, the id just isn't cached
+    // no .env.local - nothing to append to, the id just isn't cached
     return;
   }
   const line = `${key}=${id}`;

@@ -11,10 +11,10 @@ export function DemoBanner({ count }: { count: number }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-rfp-ink">
-          Showing {count} example {count === 1 ? "solicitation" : "solicitations"} — not real
+          Showing {count} example {count === 1 ? "solicitation" : "solicitations"} - not real
         </p>
         {/* The full explanation is desktop-only. On a phone this paragraph ran
-            to nine lines and pushed the entire queue below the fold — a warning
+            to nine lines and pushed the entire queue below the fold - a warning
             nobody can scroll past stops being a warning and becomes an
             obstacle. The headline above carries the actual message on every
             breakpoint; the detail (and a shell command, which is useless on a

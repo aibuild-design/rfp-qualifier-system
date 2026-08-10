@@ -9,18 +9,18 @@ import type { Database, TableInsert } from "@/lib/supabase/types";
 
 // The landing point for n8n's intake → triage pipeline (modules 1-2 of the
 // SOW). n8n parses a solicitation, runs it through OpenRouter, and POSTs the
-// result here. Idempotent on `external_id` — a re-run for the same
+// result here. Idempotent on `external_id` - a re-run for the same
 // solicitation (e.g. an addendum re-triage) upserts the rfp row and fully
 // replaces its child records rather than appending duplicates.
 //
 // Auth: a shared secret in the RFP_INTAKE_API_KEY env var, sent as
-// `Authorization: Bearer <key>` — deliberately not the Supabase service-role
+// `Authorization: Bearer <key>` - deliberately not the Supabase service-role
 // key itself, so n8n never holds a credential broader than "post RFP data."
 //
-// Expected body shape — see supabase/migrations/20260806010000_rfp_domain_schema.sql
+// Expected body shape - see supabase/migrations/20260806010000_rfp_domain_schema.sql
 // for column meaning:
 // {
-//   "external_id": "string, required — n8n's dedupe key",
+//   "external_id": "string, required - n8n's dedupe key",
 //   "title": "string, required",
 //   "client_agency": "string, required",
 //   "project_type": "string?",
@@ -42,7 +42,7 @@ import type { Database, TableInsert } from "@/lib/supabase/types";
 //   "questions": [{ "lane": "public_memo|incumbent_request", "question_text": "...", "status": "?" }]
 // }
 
-/** A child row as the caller sends it — the parent link is set by this route,
+/** A child row as the caller sends it - the parent link is set by this route,
  *  never taken from the body. */
 type Child<T extends keyof Database["public"]["Tables"]> = Omit<TableInsert<T>, "rfp_id">;
 
@@ -57,7 +57,7 @@ type IntakeBody = Partial<TableInsert<"rfps">> & {
 };
 
 // Explicit allowlist rather than spreading the body into the upsert. Spreading
-// let a caller set ANY column on the table — `is_demo` (laundering a fake
+// let a caller set ANY column on the table - `is_demo` (laundering a fake
 // solicitation into the real queue, or hiding a real one from it), `id`,
 // `created_at`. The service-role client bypasses RLS, so this route's own
 // validation is the only thing standing between the request body and the
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
 
   if (!isServiceRoleConfigured) {
     return NextResponse.json(
-      { error: "Supabase not configured — set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY" },
+      { error: "Supabase not configured - set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY" },
       { status: 503 }
     );
   }
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
   // The label is decided here, not by the model. Whatever `status` arrived is
   // discarded and recomputed from the score and the gate results, so the same
   // solicitation always lands on the same side of the line. See lib/verdict.ts
-  // for why. Only applied once triage has actually run — a freshly submitted
+  // for why. Only applied once triage has actually run - a freshly submitted
   // row with no checks and no score stays `pending`.
   const triaged = (disqualifier_checks?.length ?? 0) > 0 || body.score_percent !== undefined;
   // Never caller-controlled. It is in the field allowlist so the value we
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
 
     // Stamped per row, not read at display time. A verdict reached against an
     // unconfirmed profile does not become correct later because someone ticked
-    // a box afterwards — only re-triaging it does. Recording the state at the
+    // a box afterwards - only re-triaging it does. Recording the state at the
     // moment of the decision is what keeps that honest, and it defaults to
     // provisional so a missing profile row fails safe.
     body.is_provisional = orgProfile?.profile_confirmed !== true;
@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
     // ourselves is the same fix already applied to the label.
     //
     // A payload without a rubric still works and keeps whatever score it
-    // carried — the old shape has to stay valid, or a half-deployed workflow
+    // carried - the old shape has to stay valid, or a half-deployed workflow
     // would silently stop producing verdicts.
     const rubric = scoreFromRubric(
       body.score_breakdown as RubricBreakdown | null,
@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
     if (rubric) {
       if (body.score_percent !== undefined && body.score_percent !== null && Math.abs(body.score_percent - rubric.score) > 10) {
         console.info(
-          `[intake ${body.external_id}] model volunteered ${body.score_percent}%, rubric computes ${rubric.score}% — using the rubric`
+          `[intake ${body.external_id}] model volunteered ${body.score_percent}%, rubric computes ${rubric.score}% - using the rubric`
         );
       }
       body.score_percent = rubric.score;
@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
   if (decision && decision.status !== "pending") {
     if (body.status && body.status !== decision.status) {
       console.info(
-        `[intake ${body.external_id}] model said "${body.status}", thresholds say "${decision.status}" — ${decision.reason}`
+        `[intake ${body.external_id}] model said "${body.status}", thresholds say "${decision.status}" - ${decision.reason}`
       );
     }
     body.status = decision.status;
@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
 
   // The only child field Postgres can reject on content. Normalised here rather
   // than trusted, because an unparseable date used to take the whole compliance
-  // checklist down with it — see toTimestamp.
+  // checklist down with it - see toTimestamp.
   const compliance_items = body.compliance_items?.map((item) => ({
     ...item,
     due_at: toTimestamp(item.due_at),
@@ -216,14 +216,14 @@ export async function POST(req: NextRequest) {
 
   const rfpId = rfp.id;
 
-  // Full-replace pattern for child records — simplest way to stay idempotent
+  // Full-replace pattern for child records - simplest way to stay idempotent
   // when n8n re-triages the same solicitation (an addendum lands, a rescore
   // runs). Cheap at this volume; revisit if a table grows large enough for
   // delete+reinsert to matter.
   //
   // Every outcome is collected rather than ignored. Swallowing these errors
   // meant a rejected insert returned `200 {"status":"ok"}` with the compliance
-  // checklist quietly missing — the worst possible failure on a bid desk,
+  // checklist quietly missing - the worst possible failure on a bid desk,
   // because the RFP looks triaged and the technicalities that disqualify are
   // simply absent.
   const failures: string[] = [];
@@ -257,7 +257,7 @@ export async function POST(req: NextRequest) {
   ]);
 
   if (failures.length > 0) {
-    // The rfp row itself is already saved and correct, so the id is returned —
+    // The rfp row itself is already saved and correct, so the id is returned -
     // but this is a 500 so n8n's run is marked failed and the dashboard's
     // submit path records it on the row instead of showing a complete verdict.
     return NextResponse.json(

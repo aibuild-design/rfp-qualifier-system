@@ -10,7 +10,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "RFP Bid Desk | Caravann",
   description:
-    "Qualifies incoming solicitations against Caravann's eligibility profile — go/no-go verdicts, gap lists, and compliance checklists before a single hour goes into a response.",
+    "Qualifies incoming solicitations against Caravann's eligibility profile - go/no-go verdicts, gap lists, and compliance checklists before a single hour goes into a response.",
   icons: {
     icon: [
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-icon.png",
   },
-  // Invite-only internal tool — keep it out of search results.
+  // Invite-only internal tool - keep it out of search results.
   robots: { index: false, follow: false },
 };
 
@@ -32,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Applies the saved theme before first paint. Without it a dark-mode
             user gets a full-white flash on every navigation, because the
             stylesheet only learns the choice once React has mounted. Inline and
-            blocking on purpose — it is two lines and it has to run first. */}
+            blocking on purpose - it is two lines and it has to run first. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `try{var t=localStorage.getItem("rfp-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}`,

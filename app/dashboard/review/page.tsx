@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { EdgeCaseList, PortalRules } from "@/components/ReviewQueue";
 
-// Module 11 — the weekly pass. Everything the system was unsure about, plus
+// Module 11 - the weekly pass. Everything the system was unsure about, plus
 // the portal quirks it has been taught, in one place to clear in a sitting.
 export default async function ReviewPage() {
   const supabase = await createClient();

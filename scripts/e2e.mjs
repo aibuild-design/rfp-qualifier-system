@@ -41,7 +41,7 @@ function assert(cond, label, detail = "") {
     console.log(`  ✓ ${label}`);
   } else {
     failed++;
-    console.log(`  ✗ ${label}${detail ? ` — ${detail}` : ""}`);
+    console.log(`  ✗ ${label}${detail ? ` - ${detail}` : ""}`);
   }
 }
 
@@ -74,7 +74,7 @@ async function triage(fixture) {
     nodes: { Config: config, "Load triage context": { json: CARAVANN_CONTEXT } },
   });
 
-  const expr = byName["OpenRouter — triage"].parameters.jsonBody
+  const expr = byName["OpenRouter - triage"].parameters.jsonBody
     .replace(/^=\{\{/, "")
     .replace(/\}\}$/, "");
   const requestBody = JSON.parse(new Function("$json", `return (${expr});`)(promptOut[0].json));
@@ -123,7 +123,7 @@ async function main() {
     const res = await fetch(`${APP_URL}/login`);
     assert(res.ok, `login page responds (${res.status})`);
   } catch (err) {
-    console.error(`  ✗ cannot reach ${APP_URL} — is the dev server running?\n    ${err.message}`);
+    console.error(`  ✗ cannot reach ${APP_URL} - is the dev server running?\n    ${err.message}`);
     process.exit(1);
   }
 
@@ -147,7 +147,7 @@ async function main() {
 
   // ── 3. triage → intake → Supabase ─────────────────────────────────────────
   const fixture = FIXTURES.find((f) => f.name.startsWith("transit"));
-  console.log(`\n▸ Triage + intake — ${fixture.name}`);
+  console.log(`\n▸ Triage + intake - ${fixture.name}`);
   const body = await triage(fixture);
   assert(["go", "no_go", "maybe"].includes(body.status), `triage returned a verdict (${body.status})`);
 
@@ -175,7 +175,7 @@ async function main() {
     assert((count ?? 0) > 0, `${label} written (${count})`);
   }
 
-  // ── 5. idempotency — the addendum re-triage case ──────────────────────────
+  // ── 5. idempotency - the addendum re-triage case ──────────────────────────
   console.log("\n▸ Re-post same external_id (addendum re-triage)");
   const second = await postIntake({ ...body, score_percent: 71, verdict_why: "rescored after addendum" });
   assert(second.status === 200, `second post accepted (${second.status})`);
@@ -223,7 +223,7 @@ async function main() {
       .eq("rfp_id", rfpId);
     assert(count === 0, "child rows cascade-deleted");
   } else {
-    console.log(`\n  · kept ${rfpId} — view at ${APP_URL}/dashboard/rfps/${rfpId}`);
+    console.log(`\n  · kept ${rfpId} - view at ${APP_URL}/dashboard/rfps/${rfpId}`);
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);
