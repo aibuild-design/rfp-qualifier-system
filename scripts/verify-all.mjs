@@ -641,12 +641,29 @@ heading("12 · The dashboard, in a real browser");
                 .filter((el) => parseFloat(getComputedStyle(el).fontSize) < 16).length
             );
             ok("every input is ≥16px on a phone (no iOS zoom trap)", small === 0, `${small} too small`);
-            const tiny = await mp.evaluate(() =>
-              [...document.querySelectorAll("a[href], button, input:not([type=checkbox])")]
+            // WCAG 2.5.8 exempts inline targets: "the target is in a sentence,
+            // or its size is otherwise constrained by the line-height of
+            // non-target text". A link inside a paragraph cannot be 44px tall
+            // without wrecking the paragraph, and the standard says so. Without
+            // this the check flags every prose link and the real misses - a
+            // 40px submit button, say - get lost in the noise.
+            const tiny = await mp.evaluate(() => {
+              const inSentence = (el) => {
+                const parent = el.parentElement;
+                if (!parent) return false;
+                const text = (parent.textContent ?? "").trim().length;
+                const own = (el.textContent ?? "").trim().length;
+                // Meaningfully more text around it than in it: it is a link in
+                // a sentence, not a control that happens to sit near words.
+                return text - own > 20;
+              };
+              return [...document.querySelectorAll("a[href], button, input:not([type=checkbox]), select")]
                 .filter((el) => el.offsetParent !== null)
-                .filter((el) => { const h = el.getBoundingClientRect().height; return h > 0 && h < 44; }).length
-            );
-            ok("every touch target is ≥44px", tiny === 0, `${tiny} too small`);
+                .filter((el) => { const h = el.getBoundingClientRect().height; return h > 0 && h < 44; })
+                .filter((el) => !(el.tagName === "A" && inSentence(el)))
+                .map((el) => `${el.tagName} ${Math.round(el.getBoundingClientRect().height)}px "${(el.textContent ?? "").trim().slice(0, 24)}"`);
+            });
+            ok("every touch target is >=44px", tiny.length === 0, tiny.join("; ") || "all pass, inline prose links exempt per WCAG 2.5.8");
           }
         } finally {
           await browser.close();
