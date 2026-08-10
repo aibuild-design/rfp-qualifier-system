@@ -54,8 +54,14 @@ const CHILDREN = [
   "rfp_disqualifier_checks",
 ];
 
+// Edge cases carry rfp_id but the seeded ones leave it null, so deleting by
+// `rfp_id in (...)` misses them entirely and they linger as a "2 to review"
+// badge over an empty queue. Cleared wholesale instead.
+const { count: edgeCount } = await supabase.from("rfp_edge_cases").select("*", { count: "exact", head: true });
+
 const { data: rows } = await supabase.from("rfps").select("id,title,status,is_demo");
 console.log(bold(`\nSolicitations: ${(rows ?? []).length}`));
+if (edgeCount) console.log(dim(`  plus ${edgeCount} edge case(s) awaiting weekly review`));
 for (const r of rows ?? []) {
   console.log(`  ${r.is_demo ? "demo" : "real"}  ${String(r.status).padEnd(8)} ${r.title.slice(0, 58)}`);
 }
@@ -78,9 +84,12 @@ if (!GO) {
   process.exit(0);
 }
 
+const { error: edgeErr } = await supabase.from("rfp_edge_cases").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+if (edgeErr) throw new Error(`rfp_edge_cases: ${edgeErr.message}`);
+
 const ids = (rows ?? []).map((r) => r.id);
 if (ids.length === 0) {
-  console.log(dim("\nQueue is already empty.\n"));
+  console.log(bold(`\nQueue already empty; cleared ${edgeCount ?? 0} edge case(s).\n`));
   process.exit(0);
 }
 
