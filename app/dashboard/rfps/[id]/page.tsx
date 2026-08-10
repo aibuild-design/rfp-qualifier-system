@@ -97,7 +97,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
             <h1 className="font-display text-xl font-semibold text-rfp-ink">
               {rfp.title}
               {rfp.is_demo && <DemoTag />}
-              {rfp.is_provisional && <ProvisionalTag />}
+              {!rfp.is_demo && rfp.is_provisional && <ProvisionalTag />}
             </h1>
             <p className="mt-1 text-sm text-rfp-ink-secondary">
               {rfp.client_agency}

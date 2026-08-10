@@ -197,7 +197,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                         <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-rfp-ink">
                           {rfp.title}
                           {rfp.is_demo && <DemoTag />}
-                          {rfp.is_provisional && <ProvisionalTag />}
+                          {!rfp.is_demo && rfp.is_provisional && <ProvisionalTag />}
                         </p>
                         <VerdictBadge status={rfp.status} />
                       </div>
@@ -254,7 +254,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                           <p className="font-medium text-rfp-ink">
                             {rfp.title}
                             {rfp.is_demo && <DemoTag />}
-                          {rfp.is_provisional && <ProvisionalTag />}
+                          {!rfp.is_demo && rfp.is_provisional && <ProvisionalTag />}
                           </p>
                           <p className="text-xs text-rfp-ink-muted">
                             {rfp.client_agency}
