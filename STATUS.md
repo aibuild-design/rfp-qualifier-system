@@ -13,22 +13,10 @@ Last full run: 2026-08-09, against https://rfp-qualifier-system.vercel.app
 
 ---
 
-## Run it yourself
+## How to test it
 
-```bash
-npm run verify                 # everything, including one real triage (~$0.09)
-npm run verify -- --fast       # skip the model call, no spend
-npm run verify -- --no-ui      # skip the browser checks
-```
-
-Browser checks need a login. `VERIFY_LOGIN_EMAIL` and `VERIFY_LOGIN_PASSWORD` are in
-`.env.local` (gitignored) and are picked up automatically — the same single account Khaled uses,
-because there is only one.
-
-First time only: `npx playwright install chromium`.
-
-The script creates rows prefixed `verify-` and deletes them at the end. It never touches the
-demo rows or the eligibility profile, and it restores any setting it changes.
+See **[TESTING.md](TESTING.md)** — a 25-minute session to run with Khaled, and the commands to run
+alone. The short version is `npm run verify`.
 
 ---
 

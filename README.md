@@ -12,6 +12,17 @@ dashboard/auth architecture mirrors the sibling `signal-based-scrapper`
 (Goldhill Group) build: same split-screen login, Supabase-not-configured gate,
 and migrations-first pattern.
 
+## Where to look
+
+| | |
+|---|---|
+| **[TESTING.md](TESTING.md)** | How to test it — a session to run with Khaled, and the commands to run alone |
+| **[STATUS.md](STATUS.md)** | What works, what was fixed and measured, and what is still needed |
+| **[SECURITY.md](SECURITY.md)** | Security review findings, how credentials are split, what to rotate at handover |
+| **[n8n/README.md](n8n/README.md)** | The intake and triage workflow |
+
+---
+
 ## How it fits together
 
 ```

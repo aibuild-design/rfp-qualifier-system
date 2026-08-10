@@ -46,6 +46,89 @@
   --foreground: var(--rfp-ink);
 }
 
+/*
+ * DARK MODE.
+ *
+ * Only the tokens are redefined — not one component knows this exists. That is
+ * the whole reason the palette was built as variables.
+ *
+ * Three states, in the order they must resolve:
+ *   1. no attribute        -> follow the operating system (the media block)
+ *   2. data-theme="light"  -> stay light even if the OS is dark
+ *   3. data-theme="dark"   -> go dark even if the OS is light
+ * The media query is guarded on :not([data-theme="light"]) so an explicit
+ * light choice beats a dark OS, which it otherwise would not.
+ *
+ * The neutrals are WARM here, not the blue-grey a dark theme usually reaches
+ * for. Caravann's light palette is warm (#fafafa page, #e7e5e1 borders) against
+ * a gold accent, and a cool dark ground under a warm accent reads as two
+ * different brands stitched together.
+ *
+ * --rfp-gold is lightened. #96650f exists because it clears 5.0:1 on white; on
+ * a near-black ground it is a hole rather than a colour. --rfp-gold-bright was
+ * already sampled for dark surfaces and carries over untouched.
+ *
+ * The sidebar goes DARKER than the page rather than lighter, so the rail stays
+ * the anchor it is in light mode instead of dissolving into the content.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --rfp-page: #131211;
+    --rfp-surface: #1b1a18;
+    --rfp-surface-sunken: #232220;
+    --rfp-border: #2f2c29;
+    --rfp-border-strong: #443f3a;
+
+    --rfp-ink: #f2efe9;
+    --rfp-ink-secondary: #b6b1a7;
+    --rfp-ink-muted: #8b867c;
+
+    --rfp-black: #0b0a09;
+    --rfp-black-2: #171614;
+    --rfp-black-3: #100f0e;
+
+    --rfp-gold: #e0a94a;
+    --rfp-gold-bright: #ffbd36;
+    --rfp-cream: #2a2721;
+
+    --rfp-good: #57bc8d;
+    --rfp-warning: #e8b44a;
+    --rfp-serious: #e89a5f;
+    --rfp-critical: #e57373;
+    --rfp-neutral: #8b867c;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --rfp-page: #131211;
+  --rfp-surface: #1b1a18;
+  --rfp-surface-sunken: #232220;
+  --rfp-border: #2f2c29;
+  --rfp-border-strong: #443f3a;
+
+  --rfp-ink: #f2efe9;
+  --rfp-ink-secondary: #b6b1a7;
+  --rfp-ink-muted: #8b867c;
+
+  --rfp-black: #0b0a09;
+  --rfp-black-2: #171614;
+  --rfp-black-3: #100f0e;
+
+  --rfp-gold: #e0a94a;
+  --rfp-gold-bright: #ffbd36;
+  --rfp-cream: #2a2721;
+
+  --rfp-good: #57bc8d;
+  --rfp-warning: #e8b44a;
+  --rfp-serious: #e89a5f;
+  --rfp-critical: #e57373;
+  --rfp-neutral: #8b867c;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -193,6 +276,53 @@ body {
   animation-delay: 320ms;
 }
 
+/* Modal. Opens from nothing rather than travelling — a confirmation appearing
+   where you are already looking is faster to read than one that slides in. The
+   backdrop fades independently so the page dims before the panel lands. */
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.dialog[open] {
+  animation: dialog-in var(--dur-base) var(--ease-out) both;
+}
+
+.dialog[open]::backdrop {
+  animation: fade-in var(--dur-fast) var(--ease-out) both;
+}
+
+/* Nav rows get a rail that grows from the centre out when they become current,
+   so moving between pages reads as the marker travelling rather than blinking
+   from one row to another. */
+@keyframes rail-in {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.nav-rail::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 60%;
+  width: 2px;
+  translate: 0 -50%;
+  border-radius: 999px;
+  background: var(--rfp-gold-bright);
+  animation: rail-in var(--dur-base) var(--ease-spring) both;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -242,6 +372,9 @@ body {
     animation: none !important;
   }
 
+  .dialog[open],
+  .dialog[open]::backdrop,
+  .nav-rail::before,
   .press,
   .press:active,
   .press-card:active,

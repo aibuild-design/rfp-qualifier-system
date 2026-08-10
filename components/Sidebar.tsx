@@ -49,7 +49,7 @@ export function Sidebar({
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col bg-rfp-black text-white lg:flex">
+    <aside className="hidden w-64 shrink-0 flex-col overflow-hidden bg-rfp-black text-white lg:flex">
       <div className="flex h-16 flex-col justify-center gap-1 border-b border-white/10 px-5">
         {/* Yellow wordmark on the near-black rail — 11.9:1, the variant
             Caravann's own site uses on dark. */}
@@ -70,6 +70,7 @@ export function Sidebar({
       <div className="px-3 pt-4">
         <Link
           href="/dashboard/new"
+          prefetch
           className="flex items-center justify-center gap-2 rounded-lg bg-rfp-gold-bright px-3 py-2.5 text-sm font-semibold text-rfp-black press hover:opacity-90"
         >
           <PlusIcon className="h-4 w-4" />
@@ -93,9 +94,10 @@ export function Sidebar({
                     key={item.key}
                     href={item.href}
                     aria-current={active ? "page" : undefined}
-                    className={`press press-row flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
+                    prefetch
+                    className={`press press-row relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
                       active
-                        ? "bg-white/10 text-white"
+                        ? "nav-rail bg-white/10 text-white"
                         : "text-white/60 hover:bg-white/5 hover:text-white/90"
                     }`}
                   >

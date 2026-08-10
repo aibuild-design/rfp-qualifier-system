@@ -55,9 +55,27 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   };
 
   return (
-    <div className="flex min-h-screen w-full bg-rfp-page">
+    /* The app is exactly one viewport tall and never scrolls itself. Only the
+       content column does.
+
+       It was min-h-screen, which lets the OUTER container grow with whatever is
+       inside it — so a long page (Settings, or a full queue) scrolled the entire
+       layout and carried the sidebar off the top of the screen with it.
+       Navigation should not be something you scroll back up to reach.
+
+       h-dvh rather than h-screen: on a phone 100vh is the tallest the viewport
+       ever gets, so a fixed-height layout using it hides its last rows behind
+       the browser's address bar. dvh tracks the real height. */
+    <div className="flex h-dvh w-full overflow-hidden bg-rfp-page">
       <Sidebar userEmail={user.email ?? null} counts={counts} attention={attention} />
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+      {/* min-w-0 is load-bearing: a flex child defaults to min-width:auto and
+          refuses to shrink below its content's intrinsic width, which is how a
+          wide table makes the whole app scroll sideways on a phone.
+
+          overflow-y-auto makes THIS the scroll container — which is also what
+          keeps the Topbar pinned to the top of the content rather than to a page
+          sliding underneath it. */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         <Topbar counts={counts} />
         <main className="flex-1 p-5 lg:p-8">
           <PageTransition>{children}</PageTransition>

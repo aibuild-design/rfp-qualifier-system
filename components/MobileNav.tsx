@@ -22,6 +22,7 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
           <Link
             key={item.key}
             href={item.href}
+            prefetch
             aria-current={active ? "page" : undefined}
             className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-medium press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold ${
               active

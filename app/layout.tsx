@@ -25,7 +25,20 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    // suppressHydrationWarning because the script below mutates <html> before
+    // React hydrates, which React would otherwise flag as a mismatch.
+    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        {/* Applies the saved theme before first paint. Without it a dark-mode
+            user gets a full-white flash on every navigation, because the
+            stylesheet only learns the choice once React has mounted. Inline and
+            blocking on purpose — it is two lines and it has to run first. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("rfp-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-rfp-page text-rfp-ink">
         {children}
       </body>
