@@ -632,8 +632,19 @@ heading("13 · Cleanup");
 {
   const { data: removed } = await admin.from("rfps").delete().like("external_id", `${PREFIX}%`).select("id");
   ok("test rows removed", true, `${removed?.length ?? 0} deleted`);
+  // The claim is that *this script* cleaned up after itself — not that the queue
+  // may only ever hold demo data. Real solicitations living alongside the demo
+  // rows is the normal end state, and asserting otherwise turned the first real
+  // row anyone added into a failing check.
+  const { data: strays } = await admin.from("rfps").select("external_id").like("external_id", `${PREFIX}%`);
+  ok("no verify- rows left behind", (strays ?? []).length === 0, `${strays?.length ?? 0} stray`);
   const { data: left } = await admin.from("rfps").select("is_demo");
-  ok("only demo rows remain", (left ?? []).every((r) => r.is_demo), `${left?.length ?? 0} rows`);
+  const real = (left ?? []).filter((r) => !r.is_demo).length;
+  ok(
+    "the queue is intact",
+    (left ?? []).length > 0,
+    `${left?.length ?? 0} rows — ${(left ?? []).length - real} demo, ${real} real`
+  );
 }
 
 // ── summary ─────────────────────────────────────────────────────────────────

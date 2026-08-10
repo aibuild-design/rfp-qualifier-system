@@ -30,31 +30,35 @@ export const SOURCES = {
  * Thirteen names, replacing three invented ones ("A. Rivera", "J. Okonkwo",
  * "M. Chen") that were placeholders from the demo seed.
  *
- * The deck pairs each person with a descriptor ("the happiness researcher",
- * "the visuals virtuoso", and so on), but the slide's extracted text lists all
- * the names and then all the descriptors, so the pairing is not recoverable
- * with certainty. Rather than guess which label belongs to whom — and put words
- * in a named real person's mouth — roles are left blank for Khaled to fill. The
- * descriptors are recorded once, unattributed, in TEAM_DESCRIPTORS below.
+ * Each person's descriptor is now attached. The first pass read this slide as
+ * plain extracted text, which lists every name and then every label with no way
+ * to pair them, so they were deliberately left unattributed. The PDF renders the
+ * slide properly — each label sits beside its portrait with an arrow — so the
+ * pairing is recoverable after all.
+ *
+ * These are self-descriptions from a client-facing deck, not job titles. They
+ * go in `qualifications` where they say something about capability and are left
+ * out where they are purely affectionate.
  */
 export const SOURCED_TEAM = [
   { name: "Khaled El-Sawaf", role: "Principal / Lead Facilitator", qualifications: ["Lead facilitator", "Strategic planning", "Governing-body facilitation"] },
-  { name: "Kia Afcari", role: null, qualifications: [] },
-  { name: "Emiliana Simon-Thomas", role: null, qualifications: [] },
-  { name: "Terrell Holmes", role: null, qualifications: [] },
-  { name: "DB Bedford", role: null, qualifications: [] },
-  { name: "Crystal Fullwood", role: null, qualifications: [] },
-  { name: "Deb Samuel", role: null, qualifications: [] },
-  { name: "Sarah Lightfoot", role: null, qualifications: [] },
-  { name: "Brenda Goodwin", role: null, qualifications: [] },
-  { name: "Trudie Mitschang", role: null, qualifications: [] },
-  { name: "Isabel Gabaldon", role: null, qualifications: [] },
-  { name: "Priscilla Kwok", role: null, qualifications: [] },
-  { name: "Trent Wakenight", role: null, qualifications: [] },
+  { name: "Kia Afcari", role: "Strategy, culture and DEI", qualifications: ["Strategy", "Culture transformation", "DEI"] },
+  { name: "Terrell Holmes", role: "Organisational development", qualifications: ["Organisational development"] },
+  { name: "Emiliana Simon-Thomas", role: "Happiness research", qualifications: ["Wellbeing research", "Prosocial behaviour"] },
+  { name: "Crystal Fullwood", role: "Wellness", qualifications: ["Mental health and wellbeing"] },
+  { name: "Deb Samuel", role: "Organisational psychology", qualifications: ["Organisational psychology", "Burnout"] },
+  { name: "Sarah Lightfoot", role: "Organisational development and facilitation", qualifications: ["Organisational development", "Group facilitation"] },
+  { name: "DB Bedford", role: "Emotional intelligence", qualifications: ["Emotional intelligence", "Executive coaching"] },
+  { name: "Brenda Goodwin", role: "Coaching", qualifications: ["Executive coaching"] },
+  { name: "Trent Wakenight", role: "Visuals", qualifications: ["Graphic recording", "Graphic facilitation"] },
+  { name: "Priscilla Kwok", role: "Design", qualifications: ["Design"] },
+  { name: "Isabel Gabaldon", role: "Cross-functional delivery", qualifications: [] },
+  { name: "Trudie Mitschang", role: "Change and communications", qualifications: ["Change management", "Communication strategy"] },
 ];
 
-/** Recorded verbatim, unattributed, so the information is not lost while the
- *  name-to-descriptor mapping stays honest about being unknown. */
+/** The deck's own affectionate labels, kept verbatim for the proposal writer —
+ *  they are part of how Caravann presents itself and are better material than
+ *  anything paraphrased. */
 export const TEAM_DESCRIPTORS = [
   "The happiness researcher",
   "The comms & engagement guru",
@@ -133,6 +137,98 @@ export const SOURCED_LANGUAGE_BLOCKS = [
     won: true,
   },
 ];
+
+/**
+ * Caravann's own capability taxonomy, stated as three columns on the
+ * "Consulting services and key capabilities" slide.
+ *
+ * This is what a solicitation's scope should actually be judged against. The
+ * sector map answers "have you worked in this world before?"; this answers
+ * "do you do this kind of work at all?" — and a solicitation asking for
+ * executive coaching or graphic recording is a much better fit than a sector
+ * count alone suggests.
+ */
+export const CAPABILITIES = {
+  functional_areas: [
+    "Change management",
+    "Assessment and insights",
+    "Communication strategy",
+    "Culture transformation",
+    "Strategic planning",
+    "OKRs and priority setting",
+    "Employee engagement",
+    "Mental health and well-being",
+  ],
+  key_capabilities: [
+    "Executive coaching",
+    "Group facilitation",
+    "Training and development",
+    "Keynote presentations",
+    "Leadership retreats",
+    "Graphic recording",
+    "Mission, vision and values",
+    "Culture summits and rituals",
+  ],
+  subject_areas: [
+    "Return to work",
+    "Human-centered design",
+    "Organizational psychology",
+    "Burnout",
+    "Emotional intelligence",
+    "Prosocial workplaces",
+  ],
+};
+
+/**
+ * Organisations named on the deck's logo wall.
+ *
+ * READ THE CAVEAT BEFORE USING THIS ANYWHERE NEAR A BID. The slide is titled
+ * "Some of the organizations **our consultants** have worked with" — that is
+ * consultants' prior individual experience, not Caravann firm engagements. The
+ * distinction is not pedantic: citing a consultant's former employer as a firm
+ * engagement in a proposal is a misrepresentation, and misrepresentation in a
+ * public procurement is the kind of thing that gets a bid thrown out and a firm
+ * remembered for it.
+ *
+ * So this is recorded as evidence of the team's reach, and deliberately NOT fed
+ * into the sector map as engagement counts.
+ */
+export const CONSULTANT_PRIOR_ORGANISATIONS = {
+  caveat:
+    "Prior work by individual consultants, not Caravann firm engagements. Never cite as firm experience without confirming which were delivered under Caravann.",
+  higher_education: ["UC Berkeley", "UCSF", "UC Santa Cruz", "University of Auckland", "Baruch College (CUNY)"],
+  healthcare: ["Kaiser Permanente", "Alameda Health System"],
+  research: ["Berkeley Lab"],
+  technology: ["Apple", "Intuit", "Juniper Networks", "VMware", "Lookout", "NU"],
+  financial_services: ["Visa", "Valley Strong Credit Union"],
+  philanthropy: ["Energy Foundation"],
+};
+
+/**
+ * The single most useful thing to come out of reading this deck.
+ *
+ * The placeholder sector map rates "Public agencies (general)" as Caravann's
+ * deepest sector at 34 engagements over 12 years, with higher education fourth
+ * at 9. The deck points the other way: five named universities, two health
+ * systems, a national lab and a wall of corporates — and **not one named city,
+ * county, transit district or other municipal body**.
+ *
+ * That does not prove the public-agency figure is wrong. This deck was written
+ * to win a university engagement, so it leads with university work, and the
+ * UCSF engagement itself is a public institution. But it does mean the number
+ * we are scoring every public-sector solicitation against has no support in the
+ * one real document we have, while the sector it rates fourth has the most.
+ *
+ * Worth putting to Khaled as a specific question rather than as "please confirm
+ * your sector map": how many engagements has *Caravann as a firm* delivered for
+ * city, county, transit or other municipal clients?
+ */
+export const SECTOR_MAP_CONTRADICTION = {
+  claimed_strongest: { sector: "Public agencies (general)", years: 12, engagements: 34, evidence: "none in the UCSF deck" },
+  best_evidenced: { sector: "Higher education", claimed: { years: 6, engagements: 9 }, evidence: "5 named institutions" },
+  question_for_khaled:
+    "How many engagements has Caravann as a firm — not its consultants individually — delivered for city, county, transit or other municipal clients?",
+};
 
 /**
  * A real engagement's phase-level pricing, useful as the reference point for

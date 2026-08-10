@@ -62,6 +62,9 @@ export interface Database {
           certifications: string[];
           set_aside_status: string[];
           notes: string | null;
+          /** What Caravann does, in its own words — functional areas, key
+           *  capabilities and subject areas. Judged alongside the sector map. */
+          capabilities: { functional_areas?: string[]; key_capabilities?: string[]; subject_areas?: string[] } | null;
           /** Coverage carried, in Caravann's own words. Read by the gate so an
            *  insurance requirement resolves rather than sitting unclear. */
           insurance_coverage: string | null;

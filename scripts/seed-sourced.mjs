@@ -17,7 +17,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
-import { SOURCED_TEAM, SOURCED_LANGUAGE_BLOCKS, SOURCES } from "../data/caravann-sourced.mjs";
+import { SOURCED_TEAM, SOURCED_LANGUAGE_BLOCKS, SOURCES, CAPABILITIES } from "../data/caravann-sourced.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const APPLY = process.argv.includes("--apply");
@@ -94,6 +94,16 @@ const { error: insErr } = await supabase.from("language_blocks").insert(
   SOURCED_LANGUAGE_BLOCKS.map((b) => ({ won: false, weight: 0, ...b, source: SOURCES.ucsf }))
 );
 if (insErr) throw new Error(`language insert: ${insErr.message}`);
+
+// What Caravann does, stated on its own capability slide. This is the only
+// place the desk can learn that a "cultural transformation" solicitation is
+// core business rather than an adjacent guess.
+const { error: capErr } = await supabase.from("org_profile").update({ capabilities: CAPABILITIES }).eq("id", true);
+if (capErr) throw new Error(`capabilities: ${capErr.message}`);
+console.log(
+  `  capabilities: ${CAPABILITIES.functional_areas.length} functional areas, ` +
+  `${CAPABILITIES.key_capabilities.length} capabilities, ${CAPABILITIES.subject_areas.length} subject areas`
+);
 
 const { data: profile } = await supabase.from("org_profile").select("profile_confirmed").eq("id", true).maybeSingle();
 console.log(bold("\nWritten."));
