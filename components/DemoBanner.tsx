@@ -13,7 +13,13 @@ export function DemoBanner({ count }: { count: number }) {
         <p className="text-sm font-semibold text-rfp-ink">
           Showing {count} example {count === 1 ? "solicitation" : "solicitations"} — not real
         </p>
-        <p className="mt-1 text-sm leading-relaxed text-rfp-ink-secondary">
+        {/* The full explanation is desktop-only. On a phone this paragraph ran
+            to nine lines and pushed the entire queue below the fold — a warning
+            nobody can scroll past stops being a warning and becomes an
+            obstacle. The headline above carries the actual message on every
+            breakpoint; the detail (and a shell command, which is useless on a
+            phone anyway) waits for a screen with room for it. */}
+        <p className="mt-1 hidden text-sm leading-relaxed text-rfp-ink-secondary sm:block">
           These are seeded to demonstrate the dashboard. The agencies, deadlines, and budgets
           are invented, and the sector map behind their scores holds placeholder figures.
           Do not act on any verdict here. Remove them with{" "}
@@ -21,6 +27,9 @@ export function DemoBanner({ count }: { count: number }) {
             npm run seed:demo -- --purge
           </code>
           .
+        </p>
+        <p className="mt-1 text-sm leading-relaxed text-rfp-ink-secondary sm:hidden">
+          Invented agencies, deadlines and budgets. Do not act on any verdict here.
         </p>
       </div>
     </div>
