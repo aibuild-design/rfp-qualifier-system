@@ -20,7 +20,8 @@
     "test:modules": "node --experimental-strip-types scripts/test-modules.mjs",
     "test:extract": "node --experimental-strip-types scripts/test-extract.mjs",
     "verify": "node --experimental-strip-types scripts/verify-all.mjs",
-    "seed:sourced": "node scripts/seed-sourced.mjs"
+    "seed:sourced": "node scripts/seed-sourced.mjs",
+    "reset:queue": "node scripts/reset-queue.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

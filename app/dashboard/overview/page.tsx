@@ -133,17 +133,19 @@ export default async function OverviewPage() {
             summary="Two doors in: an email that mentions an RFP, or one you add by hand."
             href="/dashboard/new"
             hrefLabel="Add one now"
+            warn={
+              !triageConfigured ? (
+                <Warn>
+                  <code>N8N_BASE_URL</code> or <code>RFP_INTAKE_API_KEY</code> is not set on this
+                  deployment, so anything submitted will sit in the queue as pending with no verdict.
+                </Warn>
+              ) : null
+            }
           >
             The n8n workflow polls the mailbox every minute - not daily, because a solicitation
             posted at 9pm should be scored before the morning. Anything the mailbox misses, or
             anything you find yourself, goes in through{" "}
             <Nav href="/dashboard/new">Add a solicitation</Nav>.
-            {!triageConfigured && (
-              <Warn>
-                <code>N8N_BASE_URL</code> or <code>RFP_INTAKE_API_KEY</code> is not set on this
-                deployment, so anything submitted will sit in the queue as pending with no verdict.
-              </Warn>
-            )}
             <Aside>
               The Gmail account is connected and the trigger is switched on. It watches for
               subjects mentioning an RFP, RFQ or solicitation - deliberately broad, because
@@ -172,6 +174,16 @@ export default async function OverviewPage() {
             summary="Go, maybe or no-go with a score, judged against Caravann's own profile."
             href="/dashboard"
             hrefLabel="See the queue"
+            warn={
+              !profileReady ? (
+                <Warn>
+                  The sector experience map in <Nav href="/dashboard/settings">Settings</Nav> is
+                  empty, so mandatory minimums like &ldquo;5+ years facilitating for public
+                  agencies&rdquo; fail on an empty record. Verdicts will read no-go on work
+                  Caravann would win until those numbers are in.
+                </Warn>
+              ) : null
+            }
           >
             The same pass pulls out the budget, the gap list, the compliance checklist with its
             deadlines, the disqualifier checks, and the questions worth asking the agency before
@@ -194,14 +206,7 @@ export default async function OverviewPage() {
                 <Nav href="/dashboard/settings">Change them in Settings</Nav>.
               </span>
             </span>
-            {!profileReady && (
-              <Warn>
-                The sector experience map in <Nav href="/dashboard/settings">Settings</Nav> is
-                empty, so mandatory minimums like &ldquo;5+ years facilitating for public
-                agencies&rdquo; fail on an empty record. Verdicts will read no-go on work Caravann
-                would win until those numbers are in.
-              </Warn>
-            )}
+
           </Step>
 
           <Step
@@ -209,25 +214,29 @@ export default async function OverviewPage() {
             title="The bid gets prepared"
             state={libraryReady && rosterReady ? "live" : "needs-setup"}
             summary="A team suggestion off the roster, and a first draft stitched from past wins."
+            warn={
+              <>
+                {!libraryReady && (
+                  <Warn>
+                    The <Nav href="/dashboard/library">approved-language library</Nav> is empty, so
+                    every section will come back as needs-writing. Loading it from past winning
+                    proposals is what makes a draft sound like Caravann.
+                  </Warn>
+                )}
+                {!rosterReady && (
+                  <Warn>
+                    No active team members in <Nav href="/dashboard/settings">Settings</Nav>, so
+                    there is nobody to match against.
+                  </Warn>
+                )}
+              </>
+            }
           >
             Team match ranks the roster against what the solicitation actually asks for; nothing is
             assigned until you confirm it. The draft is assembled only from approved language -
             a section with nothing on file comes back marked{" "}
             <em>needs writing by hand</em> rather than filled with invented text, because this
             document goes to a public agency. Finished drafts export as .docx.
-            {!libraryReady && (
-              <Warn>
-                The <Nav href="/dashboard/library">approved-language library</Nav> is empty, so
-                every section will come back as needs-writing. Loading it from past winning
-                proposals is what makes a draft sound like Caravann.
-              </Warn>
-            )}
-            {!rosterReady && (
-              <Warn>
-                No active team members in <Nav href="/dashboard/settings">Settings</Nav>, so there
-                is nobody to match against.
-              </Warn>
-            )}
           </Step>
 
           <Step
@@ -365,6 +374,7 @@ function Step({
   summary,
   href,
   hrefLabel,
+  warn,
   children,
 }: {
   n: number;
@@ -373,6 +383,9 @@ function Step({
   summary: string;
   href?: string;
   hrefLabel?: string;
+  /** Anything needing action. Rendered outside the fold, because a warning
+   *  nobody opens is not a warning. */
+  warn?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const meta = STEP_STATE[state];
@@ -397,9 +410,23 @@ function Step({
             </span>
           </div>
           <p className="mt-1 text-sm font-medium text-rfp-ink-secondary">{summary}</p>
-          <div className="mt-2 space-y-2 text-[13px] leading-relaxed text-rfp-ink-muted">
-            {children}
-          </div>
+          {warn}
+          {/* The detail is folded away by default.
+              Each step carried a paragraph explaining why it works the way it
+              does, which is genuinely useful the first time and a wall of text
+              every time after. Five of them stacked turned a dashboard into an
+              essay. The title, the state and one line of summary are what you
+              actually scan for; the reasoning is one click away when you want
+              it, and closed when you do not. */}
+          <details className="group mt-2">
+            <summary className="press inline-flex cursor-pointer list-none items-center gap-1 text-xs font-semibold text-rfp-ink-muted hover:text-rfp-ink">
+              <span className="inline-block transition-transform duration-200 group-open:rotate-90">›</span>
+              How this works
+            </summary>
+            <div className="mt-2 space-y-2 text-[13px] leading-relaxed text-rfp-ink-muted">
+              {children}
+            </div>
+          </details>
           {href && (
             <Link
               href={href}
@@ -414,9 +441,10 @@ function Step({
   );
 }
 
+/** Sits outside the fold on purpose: a warning nobody opens is not a warning. */
 function Warn({ children }: { children: React.ReactNode }) {
   return (
-    <p className="rounded-lg border border-rfp-warning/40 bg-rfp-warning/10 p-2.5 text-[13px] leading-relaxed text-rfp-ink-secondary">
+    <p className="mt-2 rounded-lg border border-rfp-warning/40 bg-rfp-warning/10 p-2.5 text-[13px] leading-relaxed text-rfp-ink-secondary">
       {children}
     </p>
   );
