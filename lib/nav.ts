@@ -11,7 +11,7 @@ export type NavCountKey = "queue" | "review";
 
 export type NavItem = {
   /** Stable id — also the icon lookup key. */
-  key: "overview" | "queue" | "new" | "library" | "review" | "settings";
+  key: "overview" | "queue" | "library" | "review" | "settings";
   label: string;
   href: string;
   /** Which live count to show as a badge, if any. */
@@ -54,7 +54,6 @@ export const NAV_GROUPS: NavGroup[] = [
         countTone: "neutral",
         alsoMatches: ["/dashboard/rfps"],
       },
-      { key: "new", label: "Add a solicitation", href: "/dashboard/new" },
     ],
   },
   {

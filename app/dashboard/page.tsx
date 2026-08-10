@@ -102,16 +102,11 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           <h1 className="font-display text-2xl font-semibold text-rfp-ink">{heading.title}</h1>
           <p className="mt-1 text-sm text-rfp-ink-secondary">{heading.blurb}</p>
         </div>
-        {/* Every target clears 44px so these are tappable on a phone. The
-            primary action comes first on mobile (where it's the reason you
-            opened the page) and last on desktop (where the eye ends up). */}
+        {/* View controls only. Adding a solicitation lives in the rail on
+            desktop and the top bar on mobile — one of which is always on
+            screen — so repeating it here only ever duplicated whichever was
+            already visible. */}
         <div className="flex w-full flex-wrap items-center gap-2 text-xs font-medium sm:w-auto">
-          <Link
-            href="/dashboard/new"
-            className="order-first inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-rfp-black px-4 font-semibold text-white press hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold focus-visible:ring-offset-2 sm:order-last sm:flex-none"
-          >
-            Add a solicitation
-          </Link>
           <a
             href={`/api/rfps/export${demoCount ? "?include_demo=1" : ""}`}
             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-rfp-border px-3 text-rfp-ink-secondary press hover:bg-rfp-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
