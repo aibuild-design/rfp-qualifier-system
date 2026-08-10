@@ -19,7 +19,8 @@
     "access": "node scripts/manage-access.mjs",
     "test:modules": "node --experimental-strip-types scripts/test-modules.mjs",
     "test:extract": "node --experimental-strip-types scripts/test-extract.mjs",
-    "verify": "node --experimental-strip-types scripts/verify-all.mjs"
+    "verify": "node --experimental-strip-types scripts/verify-all.mjs",
+    "seed:sourced": "node scripts/seed-sourced.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
