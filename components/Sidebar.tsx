@@ -70,7 +70,7 @@ export function Sidebar({
       <div className="px-3 pt-4">
         <Link
           href="/dashboard/new"
-          className="flex items-center justify-center gap-2 rounded-lg bg-rfp-gold-bright px-3 py-2.5 text-sm font-semibold text-rfp-black transition-opacity hover:opacity-90"
+          className="flex items-center justify-center gap-2 rounded-lg bg-rfp-gold-bright px-3 py-2.5 text-sm font-semibold text-rfp-black press hover:opacity-90"
         >
           <PlusIcon className="h-4 w-4" />
           Add a solicitation
@@ -93,7 +93,7 @@ export function Sidebar({
                     key={item.key}
                     href={item.href}
                     aria-current={active ? "page" : undefined}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    className={`press press-row flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
                       active
                         ? "bg-white/10 text-white"
                         : "text-white/60 hover:bg-white/5 hover:text-white/90"
@@ -165,7 +165,7 @@ function AttentionPanel({ attention }: { attention: AttentionCounts }) {
             <Link
               key={row.label}
               href={row.href}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/5 hover:text-white/90"
+              className="press press-row flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/60 hover:bg-white/5 hover:text-white/90"
             >
               <span
                 className={`tabular w-6 shrink-0 text-sm font-semibold ${

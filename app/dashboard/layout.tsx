@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { SupabaseNotConfigured } from "@/components/SupabaseNotConfigured";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
+import { PageTransition } from "@/components/PageTransition";
 import { isoDaysFromNow } from "@/lib/rfp";
 import type { AttentionCounts, NavCounts } from "@/lib/nav";
 
@@ -58,7 +59,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       <Sidebar userEmail={user.email ?? null} counts={counts} attention={attention} />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <Topbar counts={counts} />
-        <main className="flex-1 p-5 lg:p-8">{children}</main>
+        <main className="flex-1 p-5 lg:p-8">
+          <PageTransition>{children}</PageTransition>
+        </main>
       </div>
     </div>
   );

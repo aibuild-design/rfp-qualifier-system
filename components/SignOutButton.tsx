@@ -22,7 +22,7 @@ export function SignOutButton({ userEmail }: { userEmail: string | null }) {
       type="button"
       onClick={handleSignOut}
       disabled={loading}
-      className="flex w-full items-center gap-3 border-t border-white/10 px-5 py-4 text-left transition-colors hover:bg-white/5 disabled:opacity-60"
+      className="flex w-full items-center gap-3 border-t border-white/10 px-5 py-4 text-left press hover:bg-white/5 disabled:opacity-60"
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-rfp-gold-bright ring-2 ring-white/15">
         {(userEmail ?? "?").charAt(0).toUpperCase()}

@@ -106,7 +106,7 @@ function LoginForm() {
                   type="button"
                   onClick={handleForgotPassword}
                   disabled={resetLoading}
-                  className="-mr-2 inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-medium text-rfp-ink-muted transition-colors hover:text-rfp-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold disabled:opacity-50"
+                  className="-mr-2 inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-medium text-rfp-ink-muted press hover:text-rfp-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold disabled:opacity-50"
                 >
                   {resetLoading ? "Sending…" : resetSent ? "Email sent ✓" : "Forgot password?"}
                 </button>
@@ -128,7 +128,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-rfp-black px-4 text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-rfp-black px-4 text-sm font-semibold text-white press hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>

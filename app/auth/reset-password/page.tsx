@@ -84,7 +84,7 @@ function ResetPasswordForm() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full rounded-lg bg-rfp-black text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold focus-visible:ring-offset-2 disabled:opacity-50"
+              className="mt-2 w-full rounded-lg bg-rfp-black text-sm font-semibold text-white press hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold focus-visible:ring-offset-2 disabled:opacity-50"
             >
               {loading ? "Updating…" : "Update password"}
             </button>

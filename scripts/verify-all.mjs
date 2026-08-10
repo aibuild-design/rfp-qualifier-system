@@ -455,10 +455,69 @@ heading("12 · The dashboard, in a real browser");
       skip("browser checks", "playwright not installed — npm i -D playwright && npx playwright install chromium");
     }
     if (chromium) {
+      // The motion system is checked on the login page, before the credential
+      // gate below — it is the one screen that needs no password, and the
+      // tokens are global, so a regression here is a regression everywhere.
+      // Worth having in the always-runs tier: motion is exactly the kind of
+      // thing that rots silently when someone swaps a class.
+      {
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+          await page.goto(`${APP}/login`, { waitUntil: "domcontentloaded" });
+
+          const missing = await page.evaluate(() => {
+            const cs = getComputedStyle(document.documentElement);
+            return ["--dur-press", "--dur-fast", "--dur-base", "--ease-out", "--ease-spring"]
+              .filter((t) => !cs.getPropertyValue(t).trim());
+          });
+          ok("motion tokens are defined", missing.length === 0, missing.join(", ") || "all five present");
+
+          const button = page.locator("button[type=submit]").first();
+          await button.waitFor({ timeout: 15000 });
+          const box = await button.boundingBox();
+          const idle = await button.evaluate((el) => getComputedStyle(el).transform);
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          await page.mouse.down();
+          await page.waitForTimeout(140);
+          const pressed = await button.evaluate((el) => getComputedStyle(el).transform);
+          await page.mouse.up();
+          await page.waitForTimeout(280);
+          const released = await button.evaluate((el) => getComputedStyle(el).transform);
+
+          ok("a press visibly responds", pressed !== idle && pressed !== "none", `${idle} → ${pressed}`);
+          ok("and it returns on release", released === idle, released);
+
+          // Animating width/height/top/left goes through layout every frame and
+          // drops below 60fps on the phone this is actually used on.
+          const props = await button.evaluate((el) => getComputedStyle(el).transitionProperty);
+          ok(
+            "motion uses transform, never layout",
+            props.includes("transform") && !/\b(width|height|top|left|margin|padding)\b/.test(props),
+            props.slice(0, 56)
+          );
+
+          const reduced = await browser.newContext({ reducedMotion: "reduce" });
+          const rPage = await reduced.newPage();
+          await rPage.goto(`${APP}/login`, { waitUntil: "domcontentloaded" });
+          const rButton = rPage.locator("button[type=submit]").first();
+          await rButton.waitFor({ timeout: 15000 });
+          const rBox = await rButton.boundingBox();
+          await rPage.mouse.move(rBox.x + rBox.width / 2, rBox.y + rBox.height / 2);
+          await rPage.mouse.down();
+          await rPage.waitForTimeout(140);
+          const rPressed = await rButton.evaluate((el) => getComputedStyle(el).transform);
+          await rPage.mouse.up();
+          ok("prefers-reduced-motion removes all movement", rPressed === "none", rPressed);
+        } finally {
+          await browser.close();
+        }
+      }
+
       const email = process.env.VERIFY_LOGIN_EMAIL;
       const password = process.env.VERIFY_LOGIN_PASSWORD;
       if (!email || !password) {
-        skip("browser checks", "set VERIFY_LOGIN_EMAIL and VERIFY_LOGIN_PASSWORD");
+        skip("signed-in browser checks", "set VERIFY_LOGIN_EMAIL and VERIFY_LOGIN_PASSWORD");
       } else {
         const browser = await chromium.launch();
         try {

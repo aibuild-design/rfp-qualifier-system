@@ -19,7 +19,7 @@ import type { InputHTMLAttributes, ReactNode } from "react";
 
 export const fieldClass =
   "w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 " +
-  "text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted transition-colors " +
+  "text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted press " +
   "focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none " +
   "focus-visible:ring-2 focus-visible:ring-rfp-gold/60 " +
   "disabled:cursor-not-allowed disabled:opacity-50";
@@ -27,14 +27,14 @@ export const fieldClass =
 /** Primary action. 44px tall, real focus ring, honest disabled state. */
 export const buttonClass =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-rfp-black px-4 " +
-  "text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2 " +
+  "text-sm font-semibold text-white press hover:bg-rfp-black-2 " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold " +
   "focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
 /** Secondary action — same geometry, lower emphasis. */
 export const buttonSecondaryClass =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-rfp-border " +
-  "bg-rfp-surface px-4 text-sm font-semibold text-rfp-ink-secondary transition-colors " +
+  "bg-rfp-surface px-4 text-sm font-semibold text-rfp-ink-secondary press " +
   "hover:bg-rfp-surface-sunken focus-visible:outline-none focus-visible:ring-2 " +
   "focus-visible:ring-rfp-gold focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -134,7 +134,7 @@ export function Toggle({
   return (
     <label
       htmlFor={id}
-      className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+      className={`press press-row flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border p-3 ${
         checked && tone === "caution"
           ? "border-rfp-serious/50 bg-rfp-serious/5"
           : "border-rfp-border hover:bg-rfp-surface-sunken/60"

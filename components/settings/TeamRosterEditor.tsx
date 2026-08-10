@@ -71,7 +71,7 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
                 </select>
               </td>
               <td className="px-4 py-2 text-right">
-                <button onClick={() => remove(row.id)} className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-medium text-rfp-ink-muted transition-colors hover:bg-rfp-critical/10 hover:text-rfp-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-critical">
+                <button onClick={() => remove(row.id)} className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-medium text-rfp-ink-muted press hover:bg-rfp-critical/10 hover:text-rfp-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-critical">
                   Remove
                 </button>
               </td>
@@ -93,7 +93,7 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
         />
         <button
           onClick={addMember}
-          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-rfp-black px-4 text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
+          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-rfp-black px-4 text-sm font-semibold text-white press hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
         >
           Add
         </button>

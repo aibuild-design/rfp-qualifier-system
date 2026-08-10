@@ -297,7 +297,7 @@ export default async function OverviewPage() {
           </div>
           <Link
             href="/dashboard"
-            className="rounded-lg border border-rfp-border px-3 py-1.5 text-xs font-medium text-rfp-ink-secondary transition-colors hover:bg-rfp-surface-sunken"
+            className="rounded-lg border border-rfp-border px-3 py-1.5 text-xs font-medium text-rfp-ink-secondary press hover:bg-rfp-surface-sunken"
           >
             Open the queue
           </Link>
@@ -317,7 +317,7 @@ export default async function OverviewPage() {
                   <li key={rfp.id}>
                     <Link
                       href={`/dashboard/rfps/${rfp.id}`}
-                      className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-rfp-surface-sunken/60"
+                      className="flex items-center gap-4 px-5 py-3.5 press hover:bg-rfp-surface-sunken/60"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-rfp-ink">

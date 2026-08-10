@@ -34,7 +34,7 @@ export function TeamMatch({ rfpId, assignments }: { rfpId: string; assignments: 
             })
           }
           disabled={pending}
-          className="rounded-lg border border-rfp-border px-3.5 py-2 text-sm font-semibold text-rfp-ink-secondary transition-colors hover:bg-rfp-surface-sunken disabled:opacity-50"
+          className="rounded-lg border border-rfp-border px-3.5 py-2 text-sm font-semibold text-rfp-ink-secondary press hover:bg-rfp-surface-sunken disabled:opacity-50"
         >
           {pending ? "Matching…" : assignments.length ? "Re-run match" : "Suggest team"}
         </button>

@@ -84,7 +84,7 @@ export function NewSolicitationForm() {
             key={m}
             type="button"
             onClick={() => setMode(m)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium press ${
               mode === m ? "bg-rfp-black text-white" : "text-rfp-ink-secondary hover:bg-rfp-surface-sunken"
             }`}
           >
@@ -123,7 +123,7 @@ export function NewSolicitationForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-rfp-black py-2.5 text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2 disabled:opacity-50"
+        className="w-full rounded-lg bg-rfp-black py-2.5 text-sm font-semibold text-white press hover:bg-rfp-black-2 disabled:opacity-50"
       >
         {pending ? "Submitting…" : "Submit for triage"}
       </button>

@@ -44,7 +44,7 @@ export function ProposalDraft({
           {sections.length > 0 && (
             <a
               href={`/api/rfps/${rfpId}/docx`}
-              className="rounded-lg border border-rfp-border px-3.5 py-2 text-sm font-semibold text-rfp-ink-secondary transition-colors hover:bg-rfp-surface-sunken"
+              className="rounded-lg border border-rfp-border px-3.5 py-2 text-sm font-semibold text-rfp-ink-secondary press hover:bg-rfp-surface-sunken"
             >
               Download .docx
             </a>
@@ -52,7 +52,7 @@ export function ProposalDraft({
           <button
             onClick={rebuild}
             disabled={pending}
-            className="rounded-lg bg-rfp-black px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:bg-rfp-black-2 disabled:opacity-50"
+            className="rounded-lg bg-rfp-black px-3.5 py-2 text-sm font-semibold text-white press hover:bg-rfp-black-2 disabled:opacity-50"
           >
             {pending ? "Building…" : sections.length ? "Rebuild draft" : "Build draft"}
           </button>

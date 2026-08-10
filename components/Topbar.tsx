@@ -29,7 +29,7 @@ export function Topbar({ counts }: { counts: NavCounts }) {
           {/* The rail's primary action, mirrored for the breakpoints that hide it. */}
           <Link
             href="/dashboard/new"
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-rfp-black px-4 text-xs font-semibold text-white transition-colors hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold lg:hidden"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-rfp-black px-4 text-xs font-semibold text-white press hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold lg:hidden"
           >
             <PlusIcon className="h-3.5 w-3.5" />
             Add
