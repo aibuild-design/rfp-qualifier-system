@@ -241,6 +241,26 @@ heading("7 · Intake, thresholds and idempotency");
       return { res, row: data };
     };
 
+    // The calibration record. Without somewhere to disagree, the one piece of
+    // evidence that would show whether the verdicts are any good is discarded
+    // every time it is produced.
+    {
+      const probe = await send(`${PREFIX}human`, { score_percent: 95, disqualifier_checks: okChecks });
+      const id = probe.row?.id;
+      await admin.from("rfps").update({
+        human_verdict: "no_go",
+        human_verdict_at: new Date().toISOString(),
+        human_verdict_note: "No healthcare references — we would never place.",
+      }).eq("id", id);
+      const { data: after } = await admin.from("rfps").select("status,human_verdict,human_verdict_note").eq("id", id).maybeSingle();
+      ok("a human verdict can be recorded", after?.human_verdict === "no_go", `human=${after?.human_verdict}`);
+      ok("and it does not overwrite the computed one", after?.status === "go", `computed still ${after?.status}`);
+      ok("the reason is kept", Boolean(after?.human_verdict_note), after?.human_verdict_note?.slice(0, 40));
+
+      const { error: bad } = await admin.from("rfps").update({ human_verdict: "definitely" }).eq("id", id);
+      ok("an invalid verdict is refused by the database", Boolean(bad), bad?.code ?? "ACCEPTED");
+    }
+
     // The profile interlock. An unconfirmed eligibility profile must mark every
     // verdict provisional, and a caller must not be able to talk its way out of
     // it — the whole point is that it cannot be forgotten in the off position.

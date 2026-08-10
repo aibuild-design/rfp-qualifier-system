@@ -83,7 +83,7 @@ export const TEAM_DESCRIPTORS = [
  */
 export const SOURCED_LANGUAGE_BLOCKS = [
   {
-    section_type: "methodology",
+    section_type: "approach",
     title: "Four-phase needs assessment and strategic planning approach",
     body: [
       "Our approach proceeds in four phases.",
@@ -110,7 +110,7 @@ export const SOURCED_LANGUAGE_BLOCKS = [
     is_boilerplate: true,
   },
   {
-    section_type: "capabilities",
+    section_type: "firm_profile",
     title: "Consulting services and key capabilities",
     body: [
       "Define Strategy for Winning — what are the deliberate bets we are making that will help us win in the marketplace?",
@@ -126,7 +126,7 @@ export const SOURCED_LANGUAGE_BLOCKS = [
     is_boilerplate: true,
   },
   {
-    section_type: "experience",
+    section_type: "relevant_experience",
     title: "Higher education and global health — UCSF IGHS",
     body: [
       "Caravann designed and facilitated a needs assessment and four-to-five-year strategic plan for the UCSF Institute for Global Health Sciences, an institute of seven centres facing fragmentation across the wider university and a rapidly changing global health funding landscape.",
@@ -135,6 +135,32 @@ export const SOURCED_LANGUAGE_BLOCKS = [
     ].join("\n"),
     is_boilerplate: false,
     won: true,
+  },
+  {
+    section_type: "work_plan",
+    title: "Detailed tasks across the four phases",
+    body: [
+      "Phase 1 — Needs assessment. Review existing materials. Initial conversation with the project team to map stakeholders and key personnel. Create a stakeholder map with learning objectives for each group. Develop and implement a change management and communication plan describing the overall process of engagement. Design and implement interviews, focus groups and surveys with a representative sample of stakeholders. Biweekly meetings with the project team to keep the project on track.",
+      "",
+      "Phase 2 — Insights report. Development of an insights report highlighting strengths and areas for improvement as they relate to strategic direction, the necessary elements of the desired future state, and the behaviours that will help execute the strategy. Create an engagement plan for each stakeholder group.",
+      "",
+      "Phase 3 — Strategic planning process. Creation of a representative Strategic Planning Committee. Gathering input from internal and external sources. Facilitated sessions to align the roadmap — north star, strategic imperatives and 'we statements'. Facilitated sessions to agree an outline for the written plan. A draft visual graphic of the roadmap.",
+      "",
+      "Phase 4 — Composition. Design a process to assign and compile written sections. Facilitate the compiling of input. Edit and finalise the written plan. Finalise the roadmap with the committee and gather feedback. Digitize the completed roadmap. Create team structure recommendations.",
+    ].join("\n"),
+    is_boilerplate: false,
+  },
+  {
+    section_type: "team",
+    title: "The full team",
+    body: [
+      "Caravann fields a team of thirteen consultants spanning strategy, organisational development, facilitation, coaching, research and design.",
+      "",
+      "Khaled El-Sawaf — Principal and lead facilitator. Kia Afcari — strategy, culture and DEI. Terrell Holmes — organisational development. Emiliana Simon-Thomas — happiness and wellbeing research. Crystal Fullwood — wellness. Deb Samuel — organisational psychology and burnout. Sarah Lightfoot — organisational development and facilitation. DB Bedford — emotional intelligence and executive coaching. Brenda Goodwin — coaching. Trent Wakenight — graphic recording and visual facilitation. Priscilla Kwok — design. Isabel Gabaldon — cross-functional delivery. Trudie Mitschang — change and communications.",
+      "",
+      "Graphic recording and visioning allow us to distill and illustrate the main ideas shared by speakers, facilitators and participants — driving strategic thinking, collaboration, clarity and alignment; visualising and implementing change; mapping thinking and processes; and building trust by reflecting back each individual's contributions.",
+    ].join("\n"),
+    is_boilerplate: false,
   },
 ];
 

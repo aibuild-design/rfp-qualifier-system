@@ -156,6 +156,11 @@ export interface Database {
           verdict_why: string | null;
           verdict_why_not: string | null;
           verdict_set_at: string | null;
+          /** What a human decided, when they disagreed with the computed
+           *  verdict. Never overwrites `status` — the gap is the measurement. */
+          human_verdict: RfpStatus | null;
+          human_verdict_at: string | null;
+          human_verdict_note: string | null;
           is_demo: boolean;
           filing_status: FilingStatus;
           filing_error: string | null;

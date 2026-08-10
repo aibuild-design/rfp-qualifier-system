@@ -59,6 +59,42 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
   };
 }
 
+/**
+ * Record what a human actually decided.
+ *
+ * Deliberately does not touch `status`. The computed verdict stays exactly as
+ * it was, because the point is the *gap* between the two — overwriting it would
+ * destroy the only evidence of whether the desk is any good. The UI shows the
+ * human call as the one that counts; the machine call stays underneath it.
+ *
+ * Passing null clears the override, so a mis-click is recoverable.
+ */
+export async function setHumanVerdict(
+  rfpId: string,
+  verdict: "go" | "no_go" | "maybe" | null,
+  note: string
+): Promise<ActionResult> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
+
+  const { error } = await supabase
+    .from("rfps")
+    .update({
+      human_verdict: verdict,
+      human_verdict_at: verdict ? new Date().toISOString() : null,
+      // The note is the valuable part, so it is kept whenever there is one —
+      // including on a verdict that agrees with the desk, where "right call,
+      // but only because we know the incumbent" is worth having.
+      human_verdict_note: verdict ? note.trim() || null : null,
+    })
+    .eq("id", rfpId);
+  if (error) return safeError("record your decision", error);
+
+  revalidatePath(`/dashboard/rfps/${rfpId}`);
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 export async function approveSection(rfpId: string, sectionId: string): Promise<ActionResult> {
   const { supabase, denied } = await requireUser();
   if (denied) return denied;

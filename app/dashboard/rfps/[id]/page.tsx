@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { DemoTag } from "@/components/DemoBanner";
 import { ProvisionalTag } from "@/components/ProfileIncompleteBanner";
+import { HumanVerdict } from "@/components/HumanVerdict";
 import { QuestionMemo } from "@/components/QuestionMemo";
 import { TeamMatch } from "@/components/TeamMatch";
 import { ProposalDraft } from "@/components/ProposalDraft";
@@ -168,6 +169,14 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
             )}
           </div>
         )}
+
+        <HumanVerdict
+          rfpId={rfp.id}
+          computed={rfp.status}
+          current={rfp.human_verdict}
+          currentNote={rfp.human_verdict_note}
+          decidedAt={rfp.human_verdict_at}
+        />
 
         {rfp.source_url && (
           <a
