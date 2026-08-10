@@ -63,6 +63,7 @@ type IntakeBody = Partial<TableInsert<"rfps">> & {
 // validation is the only thing standing between the request body and the
 // table. Anything not named here is dropped.
 const RFP_FIELDS = [
+  "is_provisional",
   "external_id",
   "title",
   "client_agency",
@@ -133,15 +134,31 @@ export async function POST(req: NextRequest) {
   // for why. Only applied once triage has actually run — a freshly submitted
   // row with no checks and no score stays `pending`.
   const triaged = (disqualifier_checks?.length ?? 0) > 0 || body.score_percent !== undefined;
+  // Never caller-controlled. It is in the field allowlist so the value we
+  // compute below reaches the insert, which would otherwise also let a caller
+  // post `is_provisional: false` and mark its own verdict trustworthy. Stripped
+  // first, set second.
+  delete body.is_provisional;
+
   let decision = null;
   if (triaged) {
     // Thresholds are Khaled's, read fresh per verdict so a change in Settings
     // applies to the next solicitation without a deploy.
-    const { data: settings } = await supabase
-      .from("scoring_settings")
-      .select("go_threshold,maybe_threshold,preferred_misses_are_fatal,max_score_spread,rubric_weights")
-      .eq("id", true)
-      .maybeSingle();
+    const [{ data: settings }, { data: orgProfile }] = await Promise.all([
+      supabase
+        .from("scoring_settings")
+        .select("go_threshold,maybe_threshold,preferred_misses_are_fatal,max_score_spread,rubric_weights")
+        .eq("id", true)
+        .maybeSingle(),
+      supabase.from("org_profile").select("profile_confirmed").eq("id", true).maybeSingle(),
+    ]);
+
+    // Stamped per row, not read at display time. A verdict reached against an
+    // unconfirmed profile does not become correct later because someone ticked
+    // a box afterwards — only re-triaging it does. Recording the state at the
+    // moment of the decision is what keeps that honest, and it defaults to
+    // provisional so a missing profile row fails safe.
+    body.is_provisional = orgProfile?.profile_confirmed !== true;
 
     // The score is computed here from the rubric classifications, not taken
     // from the model. Asking for an open-ended 0-100 is what produced the

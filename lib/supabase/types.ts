@@ -62,6 +62,9 @@ export interface Database {
           certifications: string[];
           set_aside_status: string[];
           notes: string | null;
+          /** Ticked on the settings screen once a human has checked this
+           *  against reality. Until then every verdict is stored provisional. */
+          profile_confirmed: boolean;
           updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["org_profile"]["Row"]>;
@@ -128,6 +131,9 @@ export interface Database {
           project_type: string | null;
           source: RfpSource;
           source_url: string | null;
+          /** True when this verdict was computed against an unconfirmed
+           *  eligibility profile. Only a re-triage clears it. */
+          is_provisional: boolean;
           drive_folder_url: string | null;
           received_at: string;
           due_at: string | null;

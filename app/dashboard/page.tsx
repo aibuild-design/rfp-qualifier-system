@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { StatCard } from "@/components/StatCard";
-import { ProfileIncompleteBanner } from "@/components/ProfileIncompleteBanner";
+import { ProfileIncompleteBanner, ProvisionalTag } from "@/components/ProfileIncompleteBanner";
 import { DemoBanner, DemoTag } from "@/components/DemoBanner";
 import { ChartIcon, CheckCircleIcon, ClockIcon, DocumentIcon } from "@/components/icons";
 import { daysUntil, deadlineColor, deadlineWindowsFrom, formatBudget, formatDate, isoDaysFromNow } from "@/lib/rfp";
@@ -66,6 +66,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     { count: pendingCount },
     { count: dueThisWeekCount },
     { count: sectorCount },
+    { data: orgProfile },
     { count: demoCount },
   ] = await Promise.all([
     sortByDeadline
@@ -81,6 +82,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       .not("due_at", "is", null)
       .lte("due_at", isoDaysFromNow(windows.warningDays)),
     supabase.from("sector_experience").select("*", { count: "exact", head: true }),
+    supabase.from("org_profile").select("profile_confirmed").eq("id", true).maybeSingle(),
     supabase.from("rfps").select("*", { count: "exact", head: true }).eq("is_demo", true),
   ]);
 
@@ -89,7 +91,11 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   return (
     <div className="mx-auto max-w-6xl">
       <DemoBanner count={demoCount ?? 0} />
-      {!sectorCount && <ProfileIncompleteBanner />}
+      {!sectorCount ? (
+        <ProfileIncompleteBanner reason="no-sectors" />
+      ) : orgProfile?.profile_confirmed !== true ? (
+        <ProfileIncompleteBanner reason="unconfirmed" />
+      ) : null}
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -191,6 +197,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                         <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-rfp-ink">
                           {rfp.title}
                           {rfp.is_demo && <DemoTag />}
+                          {rfp.is_provisional && <ProvisionalTag />}
                         </p>
                         <VerdictBadge status={rfp.status} />
                       </div>
@@ -247,6 +254,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                           <p className="font-medium text-rfp-ink">
                             {rfp.title}
                             {rfp.is_demo && <DemoTag />}
+                          {rfp.is_provisional && <ProvisionalTag />}
                           </p>
                           <p className="text-xs text-rfp-ink-muted">
                             {rfp.client_agency}

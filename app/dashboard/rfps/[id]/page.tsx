@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { DemoTag } from "@/components/DemoBanner";
+import { ProvisionalTag } from "@/components/ProfileIncompleteBanner";
 import { QuestionMemo } from "@/components/QuestionMemo";
 import { TeamMatch } from "@/components/TeamMatch";
 import { ProposalDraft } from "@/components/ProposalDraft";
@@ -96,6 +97,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
             <h1 className="font-display text-xl font-semibold text-rfp-ink">
               {rfp.title}
               {rfp.is_demo && <DemoTag />}
+              {rfp.is_provisional && <ProvisionalTag />}
             </h1>
             <p className="mt-1 text-sm text-rfp-ink-secondary">
               {rfp.client_agency}
@@ -104,6 +106,14 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
           </div>
           <VerdictBadge status={rfp.status} />
         </div>
+
+        {rfp.is_provisional && (
+          <p className="mt-4 rounded-lg border border-rfp-warning/30 bg-rfp-warning/5 px-3 py-2 text-[13px] leading-relaxed text-rfp-ink-secondary">
+            This verdict was computed against an <span className="font-medium text-rfp-ink">unconfirmed
+            eligibility profile</span>. Confirming the profile now will not make it correct — re-run
+            triage on this solicitation before acting on it.
+          </p>
+        )}
 
         <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>

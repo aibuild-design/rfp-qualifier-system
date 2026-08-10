@@ -241,6 +241,31 @@ heading("7 · Intake, thresholds and idempotency");
       return { res, row: data };
     };
 
+    // The profile interlock. An unconfirmed eligibility profile must mark every
+    // verdict provisional, and a caller must not be able to talk its way out of
+    // it — the whole point is that it cannot be forgotten in the off position.
+    {
+      const { data: before } = await admin.from("org_profile").select("profile_confirmed").eq("id", true).maybeSingle();
+
+      await admin.from("org_profile").update({ profile_confirmed: false }).eq("id", true);
+      const unconf = await send(`${PREFIX}prov-off`, { score_percent: 95, disqualifier_checks: okChecks });
+      ok("an unconfirmed profile marks the verdict provisional", unconf.row?.is_provisional === true, `is_provisional=${unconf.row?.is_provisional}`);
+
+      const forged = await send(`${PREFIX}prov-forge`, { score_percent: 95, disqualifier_checks: okChecks, is_provisional: false });
+      ok("and a caller cannot clear the flag itself", forged.row?.is_provisional === true, `is_provisional=${forged.row?.is_provisional}`);
+
+      await admin.from("org_profile").update({ profile_confirmed: true }).eq("id", true);
+      const conf = await send(`${PREFIX}prov-on`, { score_percent: 95, disqualifier_checks: okChecks });
+      ok("a confirmed profile produces a normal verdict", conf.row?.is_provisional === false, `is_provisional=${conf.row?.is_provisional}`);
+
+      // Confirming afterwards must not retroactively bless the earlier call.
+      const { data: still } = await admin.from("rfps").select("is_provisional").eq("external_id", `${PREFIX}prov-off`).maybeSingle();
+      ok("confirming later does not clear an old provisional verdict", still?.is_provisional === true, `is_provisional=${still?.is_provisional}`);
+
+      await admin.from("org_profile").update({ profile_confirmed: before?.profile_confirmed ?? false }).eq("id", true);
+      ok("profile confirmation restored after the test", true, `back to ${before?.profile_confirmed}`);
+    }
+
     // The model's label is discarded and recomputed.
     const below = await send(`${PREFIX}below`, { status: "go", score_percent: goBar - 10, disqualifier_checks: okChecks });
     ok(`a claimed "go" below the bar is stored as maybe`, below.row?.status === "maybe", `stored ${below.row?.status}`);
