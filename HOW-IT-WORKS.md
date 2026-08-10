@@ -29,8 +29,9 @@ Everything else in this system is in service of that one sentence.
 It arrives
    an email that mentions an RFP, or you paste one in yourself
         |
-n8n fetches the document
-   downloads the PDF or Word file, pulls the text out
+n8n gets the document
+   the PDF attached to the email, or a link in the body, or the text
+   you pasted - whichever is the real solicitation
         |
 It is read three times
    by Claude, against Caravann's profile: what you do, where you have
@@ -41,7 +42,7 @@ The app decides
         |
 It lands on the dashboard
    verdict - why - what would disqualify you - compliance checklist -
-   drafted questions for the agency - a first proposal draft
+   drafted questions for the agency - a suggested team - a first draft
 ```
 
 **n8n is the errand runner.** It watches the inbox, fetches documents, calls the model, files to
@@ -69,6 +70,82 @@ thresholds are Khaled's to set, not something to argue with a model about.
 **Read three times** because one read can be a bad read. The three are reconciled: the
 classifications are voted on, the compliance checklists are merged, and a mandatory requirement
 only closes a bid when all three reads agree it fails.
+
+---
+
+## What lands on the card
+
+Every solicitation gets one page with everything on it.
+
+**The verdict** - go, maybe or no-go, the score, and the reasoning in plain
+prose. Underneath, the five scored dimensions with the level each was given.
+
+**Disqualifier checks** - every mandatory requirement the solicitation names,
+marked pass, fail or unconfirmed against Caravann's profile.
+
+**Compliance checklist** - page limits, fonts, submission method, insurance,
+both deadlines. The things that lose a bid on a technicality rather than on
+merit.
+
+**Gap list** - what a partner firm would need to bring, if anything.
+
+**Drafted questions** - what is worth asking the agency before the question
+window shuts. You approve, then mark them sent.
+
+**Suggested team** - see below.
+
+**Proposal draft** - assembled from Caravann's own approved language, section by
+section. A section with nothing on file comes back marked *needs writing by
+hand* rather than filled with invented text, because this goes to a public
+agency.
+
+**Do you agree with this verdict?** - where you disagree, and say why.
+
+---
+
+## The team
+
+Caravann is not one person. The roster holds the **thirteen consultants** from
+Caravann's own capability deck:
+
+> Khaled El-Sawaf (principal and lead facilitator), Kia Afcari, Terrell Holmes,
+> Emiliana Simon-Thomas, Crystal Fullwood, Deb Samuel, Sarah Lightfoot,
+> DB Bedford, Brenda Goodwin, Trent Wakenight, Priscilla Kwok, Isabel Gabaldon,
+> Trudie Mitschang.
+
+Each carries what they do - executive coaching, graphic recording,
+organisational psychology, change and communications - taken from the deck, not
+invented.
+
+**Team match** reads the solicitation's stated minimum requirements and ranks the
+roster against them, with a one-line reason each: *"satisfies 2 of 3 stated
+minimums"*. Deliberately keyword-based rather than another model call, because
+the roster is small and a recommendation you can check beats a score you cannot.
+
+**Nothing is ever auto-assigned.** Each name comes with a Confirm button and
+stays a suggestion until you press it. Re-running the matcher clears the
+suggestions and never touches a confirmation you already made.
+
+Bandwidth (open, limited, full) tips the ranking but never rules anyone out - if
+one person is the only one who satisfies a stated minimum, they surface even at
+capacity, because that is a fact about the bid rather than a scheduling problem.
+
+**What is still missing:** rates. Only Khaled's is recorded, at $285/hr. Without
+the rest, the cost side of a proposal cannot be assembled.
+
+---
+
+## Folders
+
+The queue sorts by score and filters by verdict, which answers *what is worth
+doing* but not *what am I working on this month* or *what is the transit pile*.
+
+So you can make folders, rename them, file solicitations into them, and group
+them. Each chip shows how many are inside.
+
+Deleting a folder asks you to type **delete**, and says plainly what happens:
+the solicitations inside are **not** deleted, they return to the unfiled queue
+with their verdicts intact. A folder is a label; the bids are the work.
 
 ---
 
@@ -109,14 +186,15 @@ rather than code.
 
 Worth knowing up front rather than discovering:
 
-- **An RFP attached to an email is not read** - only links in the body. An agency that attaches
-  the PDF gets triaged on the covering note alone.
 - **A digest email listing twelve notices becomes one row**, not twelve.
 - **An addendum that amends a live RFP** creates a second entry rather than updating the first.
 - **Verdicts live in the dashboard only.** No Slack, no email.
 - **The proposal draft uses a generic section list**, not Caravann's own Word template, and does
   not yet read the required sections out of the solicitation itself.
-- **No AI-detection pass** on drafts.
+- **No humanisation pass** on drafts yet, so they can read as machine-written to a
+  procurement reviewer.
+- **Verdicts do not reach you.** They wait in the dashboard rather than arriving
+  in Slack or by email.
 
 ---
 
