@@ -23,15 +23,51 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { document_url?: string };
+  let body: { document_url?: string; content_base64?: string; filename?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  // An emailed attachment has no URL to fetch. Agencies attach the RFP as often
+  // as they link it, and until this existed those emails were triaged on the
+  // covering note alone - the one intake path that silently judged a bid on the
+  // wrong document.
+  //
+  // No SSRF guard here and none needed: nothing is fetched. The bytes arrive in
+  // the request from a caller already holding the shared secret, and they go
+  // through exactly the same sniffing and extraction as a downloaded file, so
+  // format detection stays in one place.
+  if (body.content_base64) {
+    let bytes: Uint8Array;
+    try {
+      bytes = Uint8Array.from(Buffer.from(body.content_base64, "base64"));
+    } catch {
+      return NextResponse.json({ error: "content_base64 is not valid base64" }, { status: 400 });
+    }
+    if (bytes.byteLength === 0) {
+      return NextResponse.json({ error: "The attachment is empty" }, { status: 400 });
+    }
+    if (bytes.byteLength > MAX_BYTES) {
+      return NextResponse.json(
+        { error: `The attachment is ${Math.round(bytes.byteLength / 1e6)}MB, over the ${MAX_BYTES / 1e6}MB limit` },
+        { status: 413 }
+      );
+    }
+    try {
+      const out = await extractText(bytes);
+      return NextResponse.json({ ...out, source: "attachment", filename: body.filename ?? null });
+    } catch (e) {
+      return NextResponse.json(
+        { error: `Could not read that attachment: ${e instanceof Error ? e.message : "unknown"}` },
+        { status: 422 }
+      );
+    }
+  }
+
   if (!body.document_url) {
-    return NextResponse.json({ error: "document_url is required" }, { status: 400 });
+    return NextResponse.json({ error: "document_url or content_base64 is required" }, { status: 400 });
   }
 
   // The same guard the dashboard form uses. This route is reachable by anything
