@@ -1,15 +1,18 @@
 import {
   AlignmentType,
+  BorderStyle,
   Document,
   Footer,
   Header,
   HeadingLevel,
   PageNumber,
   Paragraph,
+  TabStopType,
   TextRun,
 } from "docx";
+import { DOCUMENT_FURNITURE } from "./proposal.ts";
 import type { ProposalSectionRow, RfpRow } from "@/lib/supabase/types";
-import { formatDeadline } from "./rfp.ts";
+import { formatDeadline, DISPLAY_TIME_ZONE } from "./rfp.ts";
 
 /**
  * Builds the proposal draft as a real .docx.
@@ -34,7 +37,7 @@ import { formatDeadline } from "./rfp.ts";
  * where that requirement is recorded.
  */
 export function buildProposalDocx(
-  rfp: Pick<RfpRow, "title" | "client_agency" | "due_at" | "budget_amount" | "budget_source">,
+  rfp: Pick<RfpRow, "title" | "client_agency" | "due_at" | "budget_amount" | "budget_source" | "external_id">,
   sections: ProposalSectionRow[]
 ): Document {
   const body: Paragraph[] = [];
@@ -136,6 +139,15 @@ export function buildProposalDocx(
     }
   }
 
+  // The two red fields. Neither is invented: the number comes from the
+  // solicitation's own id when there is one, and Caravann's own placeholder is
+  // used when there is not, so an unfilled field is visibly unfilled rather
+  // than quietly blank.
+  const solicitationNumber = rfp.external_id?.trim() || DOCUMENT_FURNITURE.unknownSolicitationNumber;
+  const dueDate = rfp.due_at
+    ? new Date(rfp.due_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: DISPLAY_TIME_ZONE })
+    : "[Insert due date]";
+
   return new Document({
     creator: "Caravann Consulting",
     title: rfp.title,
@@ -155,13 +167,37 @@ export function buildProposalDocx(
             margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
           },
         },
+        // Caravann's own furniture, copied from the San Mateo submission rather
+        // than invented: three stacked navy lines with a rule beneath, the
+        // solicitation number on the left of line three and the due date hard
+        // right. An evaluator sees this before any of the writing, and a
+        // proposal whose masthead does not match the firm's other submissions
+        // reads as assembled by someone else.
         headers: {
           default: new Header({
             children: [
               new Paragraph({
-                alignment: AlignmentType.RIGHT,
+                children: [new TextRun({ text: DOCUMENT_FURNITURE.header.firm, size: 20, color: DOCUMENT_FURNITURE.ink })],
+              }),
+              new Paragraph({
+                children: [new TextRun({ text: DOCUMENT_FURNITURE.header.serviceLine, size: 20, color: DOCUMENT_FURNITURE.ink })],
+              }),
+              new Paragraph({
+                // A right tab at the margin puts the due date on the same line
+                // as the number without a table.
+                tabStops: [{ type: TabStopType.RIGHT, position: 9360 }],
+                border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: DOCUMENT_FURNITURE.ink, space: 2 } },
                 children: [
-                  new TextRun({ text: `${rfp.client_agency} - ${rfp.title}`, size: 16, color: "888888" }),
+                  new TextRun({
+                    text: `${DOCUMENT_FURNITURE.header.numberLabel} ${solicitationNumber}`,
+                    size: 20,
+                    color: DOCUMENT_FURNITURE.ink,
+                  }),
+                  new TextRun({
+                    text: `\t${DOCUMENT_FURNITURE.header.dueLabel} ${dueDate}`,
+                    size: 20,
+                    color: DOCUMENT_FURNITURE.ink,
+                  }),
                 ],
               }),
             ],
@@ -171,12 +207,11 @@ export function buildProposalDocx(
           default: new Footer({
             children: [
               new Paragraph({
-                alignment: AlignmentType.CENTER,
+                tabStops: [{ type: TabStopType.RIGHT, position: 9360 }],
                 children: [
-                  new TextRun({ text: "Caravann Consulting - Page ", size: 16, color: "888888" }),
-                  new TextRun({ children: [PageNumber.CURRENT], size: 16, color: "888888" }),
-                  new TextRun({ text: " of ", size: 16, color: "888888" }),
-                  new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16, color: "888888" }),
+                  new TextRun({ text: DOCUMENT_FURNITURE.footer, size: 20, color: DOCUMENT_FURNITURE.ink }),
+                  new TextRun({ text: "\t", size: 20 }),
+                  new TextRun({ children: [PageNumber.CURRENT], size: 20, color: DOCUMENT_FURNITURE.ink }),
                 ],
               }),
             ],

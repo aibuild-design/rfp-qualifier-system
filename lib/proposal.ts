@@ -1,20 +1,61 @@
 import type { LanguageBlockRow, RfpRow } from "@/lib/supabase/types";
 import { DISPLAY_TIME_ZONE } from "./rfp.ts";
 
-// The sections a facilitation/strategic-planning response is normally
-// required to carry. A real solicitation states its own required sections;
-// once the compliance pass extracts those reliably this list becomes the
-// fallback rather than the source of truth.
+/**
+ * Caravann's own proposal structure, taken from the San Mateo County Transit
+ * District submission rather than guessed at.
+ *
+ * The previous list here was a consulting-proposal shape - cover letter, firm
+ * profile, approach, references, cost. Caravann's real one is a public
+ * procurement shape, and the difference is not cosmetic: "Offeror", "Period for
+ * Acceptance of Offers" and "Acknowledgement of Solicitation Amendments" are
+ * FAR-derived headings that an evaluator scores against a checklist. A draft in
+ * the wrong shape reads as a firm that has not bid to government before.
+ *
+ * Nine sections, in the order Caravann files them. A real solicitation states
+ * its own required sections and takes precedence; this is what gets used when
+ * it does not, and it is now a real default rather than an invention.
+ */
 export const DEFAULT_SECTIONS = [
-  { section_type: "cover_letter", heading: "Cover Letter", sort_order: 10 },
-  { section_type: "firm_profile", heading: "Firm Profile and Qualifications", sort_order: 20 },
-  { section_type: "relevant_experience", heading: "Relevant Experience", sort_order: 30 },
-  { section_type: "approach", heading: "Approach and Methodology", sort_order: 40 },
-  { section_type: "work_plan", heading: "Scope of Work and Deliverables", sort_order: 50 },
-  { section_type: "team", heading: "Project Team and Key Personnel", sort_order: 60 },
-  { section_type: "references", heading: "References", sort_order: 70 },
-  { section_type: "cost", heading: "Cost Proposal", sort_order: 80 },
+  { section_type: "introduction", heading: "Introduction", sort_order: 10 },
+  { section_type: "background", heading: "Background", sort_order: 20 },
+  { section_type: "scope", heading: "Scope", sort_order: 30 },
+  { section_type: "technical_description", heading: "Technical Description", sort_order: 40 },
+  { section_type: "past_performance", heading: "Past Performance", sort_order: 50 },
+  { section_type: "price", heading: "Price and Discounts", sort_order: 60 },
+  { section_type: "terms", heading: "Terms and Conditions / Warranty", sort_order: 70 },
+  { section_type: "amendments", heading: "Acknowledgement of Solicitation Amendments", sort_order: 80 },
+  { section_type: "acceptance_period", heading: "Offeror Period for Acceptance of Offers", sort_order: 90 },
 ] as const;
+
+/**
+ * The header and footer Caravann puts on every submission, taken from the same
+ * document. Word keeps these in separate parts of the file that text extraction
+ * does not touch, so they had to be read out of the archive directly - see
+ * lib/extract.ts.
+ *
+ * `[Insert sol#]` is Caravann's own placeholder, from the template variant of
+ * the header. The SOW calls these "the red-field placeholders", and filling
+ * them is the difference between a draft and a submission.
+ */
+export const DOCUMENT_FURNITURE = {
+  /** Three stacked lines, navy, with a rule beneath. Line three carries the
+   *  solicitation number on the left and the due date hard right. */
+  header: {
+    firm: "Caravann Consulting",
+    serviceLine: "Facilitator Services",
+    numberLabel: "Solicitation Number:",
+    dueLabel: "Solicitation Due Date:",
+  },
+  /** Firm and site on the left, page number on the right. */
+  footer: "Caravann Consulting / www.caravann.co",
+  /** Caravann's own placeholder, from the template variant of the header. The
+   *  SOW calls these the red fields; filling them is what turns a draft into a
+   *  submission. */
+  unknownSolicitationNumber: "[Insert sol#]",
+  /** Sampled from the document. Navy, not black. */
+  ink: "1F3B73",
+} as const;
 
 /** Ranking the SOW is explicit about: proven winners outrank boilerplate.
  *  Boilerplate still sorts high within its own section because it is meant to

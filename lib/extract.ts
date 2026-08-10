@@ -82,6 +82,33 @@ export function htmlToText(html: string): string {
  * solicitation. Worth saying out loud: the most common real-world failure is
  * not a corrupt PDF, it is a link that quietly resolves to "please sign in".
  */
+/**
+ * The text of every header and footer in a .docx, appended to the body.
+ *
+ * Deliberately best-effort: a document whose furniture cannot be read is still
+ * a document, and losing the body over a malformed header part would be a much
+ * worse trade than losing the header.
+ */
+async function docxFurniture(bytes: Uint8Array): Promise<string> {
+  try {
+    const JSZip = (await import("jszip")).default;
+    const zip = await JSZip.loadAsync(bytes);
+    const parts = Object.keys(zip.files).filter((n) => /^word\/(header|footer)\d*\.xml$/.test(n)).sort();
+    const out: string[] = [];
+    for (const name of parts) {
+      const xml = await zip.files[name].async("string");
+      const runs = [...xml.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => m[1]);
+      const joined = runs.join("").replace(/\s+/g, " ").trim();
+      if (joined) out.push(joined);
+    }
+    // Deduplicated: the same header usually repeats across several parts, and
+    // three copies of it would skew anything counting words.
+    return [...new Set(out)].join("\n");
+  } catch {
+    return "";
+  }
+}
+
 export function looksUnusable(text: string, format: DocumentFormat): string | undefined {
   const trimmed = text.trim();
   if (trimmed.length < 400) {
@@ -119,7 +146,16 @@ export async function extractText(
     case "docx": {
       const mammoth = (await import("mammoth")).default;
       const { value } = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });
-      text = value;
+      // Headers and footers live in separate parts of the archive and mammoth
+      // returns none of them. That is not cosmetic on a solicitation: agencies
+      // routinely put the page limit, the solicitation number and the due date
+      // in the header, and extraction that quietly drops them succeeds while
+      // returning less than the document says. Proved on a purpose-built file -
+      // body found, header and footer both missing.
+      //
+      // jszip is already present as one of mammoth's own dependencies, so
+      // reading them costs nothing new.
+      text = [value, await docxFurniture(bytes)].filter(Boolean).join("\n\n");
       break;
     }
     case "doc":

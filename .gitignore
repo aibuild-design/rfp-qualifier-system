@@ -40,3 +40,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Client source documents. Caravann's real proposals, templates, pricing sheets
+# and certificates get dropped in here to be read; none of them belong in a
+# repository, and this one is public. Ignored by extension rather than by name
+# so the next file to arrive is covered before anyone thinks about it.
+*.docx
+*.doc
+*.pdf
+*.xlsx
+*.pptx
+!public/**
