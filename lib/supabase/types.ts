@@ -131,6 +131,21 @@ export interface Database {
         Relationships: [];
       };
 
+      rfp_folders: {
+        Row: {
+          id: string;
+          name: string;
+          /** Folders can be grouped. Null means top level. */
+          parent_id: string | null;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["rfp_folders"]["Row"]> & { name: string };
+        Update: Partial<Database["public"]["Tables"]["rfp_folders"]["Row"]>;
+        Relationships: [];
+      };
+
       rfps: {
         Row: {
           id: string;
@@ -161,6 +176,9 @@ export interface Database {
           human_verdict: RfpStatus | null;
           human_verdict_at: string | null;
           human_verdict_note: string | null;
+          /** Which folder this sits in, null for unfiled. Cleared rather than
+           *  cascaded when a folder is deleted - a label is not the bid. */
+          folder_id: string | null;
           is_demo: boolean;
           filing_status: FilingStatus;
           filing_error: string | null;
@@ -385,6 +403,7 @@ export interface Database {
 export type TableInsert<T extends keyof Database["public"]["Tables"]> =
   Database["public"]["Tables"][T]["Insert"];
 
+export type FolderRow = Database["public"]["Tables"]["rfp_folders"]["Row"];
 export type OrgProfileRow = Database["public"]["Tables"]["org_profile"]["Row"];
 export type ScoringSettingsRow = Database["public"]["Tables"]["scoring_settings"]["Row"];
 export type SectorExperienceRow = Database["public"]["Tables"]["sector_experience"]["Row"];

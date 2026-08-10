@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { StatCard } from "@/components/StatCard";
 import { ScoreMeter } from "@/components/ScoreMeter";
+import { FolderBar } from "@/components/FolderBar";
+import { MoveToFolder } from "@/components/MoveToFolder";
 import { ProfileIncompleteBanner, ProvisionalTag } from "@/components/ProfileIncompleteBanner";
 import { DemoBanner, DemoTag } from "@/components/DemoBanner";
 import { ChartIcon, CheckCircleIcon, ClockIcon, DocumentIcon } from "@/components/icons";
@@ -20,6 +22,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   // than adding a second convention beside it. The stat cards above the queue
   // set it, so a number is also the way into the rows behind it.
   const view = typeof params.view === "string" ? params.view : null;
+  const folder = typeof params.folder === "string" ? params.folder : null;
   const showNoGo = view === "no-go";
   const sortByDeadline = params.sort === "deadline";
 
@@ -46,7 +49,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     .maybeSingle();
   const windows = deadlineWindowsFrom(scoring);
 
-  const baseQuery = supabase.from("rfps").select("*");
+  const baseQuery = folder
+    ? supabase.from("rfps").select("*").eq("folder_id", folder)
+    : supabase.from("rfps").select("*");
   const listQuery =
     view === "no-go"
       ? baseQuery.eq("status", "no_go")
@@ -68,6 +73,8 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     { count: dueThisWeekCount },
     { count: sectorCount },
     { data: orgProfile },
+    { data: folders },
+    { data: allFolderIds },
     { count: demoCount },
   ] = await Promise.all([
     sortByDeadline
@@ -84,10 +91,19 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       .lte("due_at", isoDaysFromNow(windows.warningDays)),
     supabase.from("sector_experience").select("*", { count: "exact", head: true }),
     supabase.from("org_profile").select("profile_confirmed").eq("id", true).maybeSingle(),
+    supabase.from("rfp_folders").select("*").order("sort_order").order("name"),
+    supabase.from("rfps").select("folder_id"),
     supabase.from("rfps").select("*", { count: "exact", head: true }).eq("is_demo", true),
   ]);
 
   const rows = rfps ?? [];
+
+  // One pass over the id list rather than a count query per folder, which would
+  // be one round trip per chip on the busiest page in the app.
+  const folderCounts: Record<string, number> = {};
+  for (const r of allFolderIds ?? []) {
+    if (r.folder_id) folderCounts[r.folder_id] = (folderCounts[r.folder_id] ?? 0) + 1;
+  }
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -129,6 +145,16 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           </Link>
         </div>
       </div>
+
+      {/* Folders sit between the verdict cards and the list: the cards say what
+          kind of work it is, the folders say which pile it belongs to, and both
+          narrow the same queue underneath. */}
+      <FolderBar
+        folders={folders ?? []}
+        counts={folderCounts}
+        active={folder}
+        unfiled={(allFolderIds ?? []).filter((r) => !r.folder_id).length}
+      />
 
       {/* Each card filters the queue below it. `rise-stagger` brings them in
           left to right, which reads as the numbers being counted up rather than
@@ -252,6 +278,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                         </div>
                       </dl>
                     </Link>
+                    <div className="border-t border-rfp-border px-4 py-2">
+                      <MoveToFolder rfpId={rfp.id} folders={folders ?? []} current={rfp.folder_id} />
+                    </div>
                   </li>
                 );
               })}
@@ -264,6 +293,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                   <th scope="col" className="px-5 py-3">Verdict</th>
                   <th scope="col" className="px-5 py-3">Score</th>
                   <th scope="col" className="px-5 py-3">Budget</th>
+                  <th scope="col" className="hidden px-5 py-3 lg:table-cell">Folder</th>
                   <th scope="col" className="px-5 py-3">Due</th>
                 </tr>
               </thead>
@@ -300,6 +330,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                         />
                       </td>
                       <td className="tabular px-5 py-3.5 text-rfp-ink-secondary">{formatBudget(rfp)}</td>
+                      <td className="hidden px-5 py-3.5 lg:table-cell">
+                        <MoveToFolder rfpId={rfp.id} folders={folders ?? []} current={rfp.folder_id} />
+                      </td>
                       <td className="px-5 py-3.5" style={{ color: deadlineColor(days, windows) }}>
                         {formatDate(rfp.due_at)}
                         {days !== null && (
