@@ -1,9 +1,9 @@
 # Does it work?
 
-Short answer: **yes, the whole flow runs end to end**, and the verdict instability that made
-it untrustworthy is now fixed and measured — 67/67 automated checks in the last run, plus 19
-browser checks that passed on the previous run and were skipped this time only for want of a
-login password.
+Short answer: **yes, the whole flow runs end to end** — **91 of 91 automated checks pass with
+nothing skipped**, including a real solicitation going through n8n and the model, and the whole
+dashboard driven in a real browser at desktop and phone sizes. The verdict instability that made
+it untrustworthy is fixed and measured.
 
 What is left is not code. The system now says clearly what it does not know about Caravann,
 and answering those questions is Khaled's part — see
@@ -21,11 +21,9 @@ npm run verify -- --fast       # skip the model call, no spend
 npm run verify -- --no-ui      # skip the browser checks
 ```
 
-Browser checks need a login:
-
-```bash
-VERIFY_LOGIN_EMAIL=khaled@caravann.co VERIFY_LOGIN_PASSWORD=… npm run verify
-```
+Browser checks need a login. `VERIFY_LOGIN_EMAIL` and `VERIFY_LOGIN_PASSWORD` are in
+`.env.local` (gitignored) and are picked up automatically — the same single account Khaled uses,
+because there is only one.
 
 First time only: `npx playwright install chromium`.
 
@@ -36,8 +34,7 @@ demo rows or the eligibility profile, and it restores any setting it changes.
 
 ## What the last run proved
 
-**67 of 67 passed**, with the 19 browser checks skipped this run for want of a login password
-(they passed on the previous run). Grouped by what each section actually establishes:
+**91 of 91 passed, nothing skipped.** Grouped by what each section actually establishes:
 
 | # | Section | What it proves | Result |
 |---|---|---|---|
@@ -52,17 +49,26 @@ demo rows or the eligibility profile, and it restores any setting it changes.
 | 9 | **Live triage** | A solicitation goes into n8n and a verdict comes back in ~40s, with the budget read from the document, both deadlines, 4 gate checks, 9 compliance items and 3 drafted questions | 9/9 |
 | 10 | Downstream modules | Proposal assembly, team match, portal rules, filing status | 6/6 |
 | 11 | Exports | CSV neutralises formula injection; the Word export is a real Office file | 3/3 |
-| 12 | The dashboard | All 6 pages plus an RFP detail page render signed-in with no runtime errors; nothing scrolls sideways on an iPhone; every input ≥16px and every touch target ≥44px | 19/19 |
+| 12 | The dashboard | All 6 pages plus an RFP detail page render signed-in with no runtime errors; nothing scrolls sideways on an iPhone; every input ≥16px and every touch target ≥44px; motion tokens defined, a press visibly responds and returns, motion never animates layout, and `prefers-reduced-motion` removes all movement | 24/24 |
 | 13 | Cleanup | Test rows removed, only the 6 demo rows remain | 2/2 |
 
-Two findings from writing the tests, worth recording because reading the code would not have
-surfaced either:
+Findings from writing the tests, worth recording because reading the code would not have
+surfaced any of them:
 
 - A mobile run failed sign-in on a rate limit, which put the **login screen** under the
   touch-target check and caught a 40px sign-in button and a 16px "Forgot password?" link — on
   the one screen every user has to get through.
 - A click failed because the queue now renders twice (cards below `md`, table above), so the
   first matching link was the hidden one. The app was right; the test was naive.
+- The first time the dashboard was driven **signed in**, screenshots showed three things every
+  assertion had passed straight over: the "Pending triage" pill wrapped mid-label and stretched
+  its row, the demo banner ran to nine lines on a phone and pushed the whole queue below the
+  fold, and the stat cards stacked one per row — four cards to scroll before a single
+  solicitation. Tests confirm what you thought to check; looking at it catches the rest.
+- A motion run reported a button with the wrong brand tokens entirely. A different project's dev
+  server already held port 3000, so `npm start` had died on `EADDRINUSE` and the checks had been
+  driving someone else's app. Worth the reminder that a green-looking result proves nothing until
+  you confirm what it was pointed at.
 
 ---
 
@@ -227,6 +233,43 @@ that `unclear` is for silence, not for imperfect wording.
 Three reads instead of one, with reasoning on: roughly **$0.30 per solicitation** rather than
 $0.09, and 25–55 seconds rather than ~40. Against $855 of principal time per solicitation, that
 is the easiest trade on the board.
+
+---
+
+## The interface
+
+Every interactive surface had `transition-colors` and nothing else — no response to a press,
+which on a phone is the only feedback there is, since there is no hover to fall back on.
+
+Motion is now a **token system** in [`app/globals.css`](app/globals.css) rather than a decision
+re-made per component. That matters more than it sounds: what makes an interface feel built
+rather than assembled is that everything moves the same way. A 300ms button beside a 120ms row
+reads as two products.
+
+Three rules the tokens encode:
+
+- **Only `transform` and `opacity` animate.** Anything touching width, height, top or left goes
+  through layout on every frame and drops below 60fps on the device this is actually used on.
+- **Exits run ~65% of entrance duration.** Waiting for something to leave is what feels sluggish;
+  arriving slowly reads as considered.
+- **Press feedback is 90ms.** Under 100ms the interface feels like it is responding to your
+  finger. Over ~150ms it feels like it is deciding.
+
+Press ratios scale with the surface — 0.97 on a button, 0.994 on a card, 0.998 on a table row.
+Equal *pixel* travel is what reads as one system; equal percentage does not. Hover effects sit
+behind `@media (hover: hover)`, which fixes a real bug: a tap used to leave a row stuck looking
+selected until you tapped elsewhere.
+
+**The stat cards now filter the queue.** They were dead numbers. A number that names a subset
+should get you to that subset — "3 pending triage" is a question, and the click is the answer.
+The active card is marked, so the page always says which subset is on screen.
+
+`prefers-reduced-motion` removes movement entirely. Colour transitions stay: those carry state
+rather than motion, and dropping them makes the interface feel broken rather than calm.
+
+Five motion assertions run in the always-on tier of `npm run verify`, deliberately placed ahead
+of the credential gate — they only need the login page, and motion is exactly the kind of thing
+that rots silently when someone swaps a class.
 
 ---
 
