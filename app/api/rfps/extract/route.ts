@@ -23,6 +23,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // A raw binary POST, which is how n8n hands over an email attachment.
+  //
+  // Base64 in JSON works and is kept below, but it forces the caller to turn
+  // binary into a string first. n8n stores attachments by reference rather than
+  // inline once they are past a certain size, so a Code node reaching for the
+  // base64 gets a filesystem id instead of the bytes - a failure that only
+  // appears on real attachments, not on the small ones you test with. Letting
+  // the HTTP node stream the binary straight through avoids the whole class.
+  const contentType = req.headers.get("content-type") ?? "";
+  if (contentType && !contentType.includes("application/json")) {
+    const bytes = new Uint8Array(await req.arrayBuffer());
+    if (bytes.byteLength === 0) {
+      return NextResponse.json({ error: "The attachment is empty" }, { status: 400 });
+    }
+    if (bytes.byteLength > MAX_BYTES) {
+      return NextResponse.json(
+        { error: `The attachment is ${Math.round(bytes.byteLength / 1e6)}MB, over the ${MAX_BYTES / 1e6}MB limit` },
+        { status: 413 }
+      );
+    }
+    try {
+      const out = await extractText(bytes);
+      return NextResponse.json({ ...out, source: "attachment" });
+    } catch (e) {
+      return NextResponse.json(
+        { error: `Could not read that attachment: ${e instanceof Error ? e.message : "unknown"}` },
+        { status: 422 }
+      );
+    }
+  }
+
   let body: { document_url?: string; content_base64?: string; filename?: string };
   try {
     body = await req.json();
