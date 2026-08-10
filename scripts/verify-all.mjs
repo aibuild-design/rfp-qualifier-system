@@ -675,7 +675,40 @@ heading("12 · The dashboard, in a real browser");
 
 // ── cleanup ─────────────────────────────────────────────────────────────────
 // ── data integrity ──────────────────────────────────────────────────────────
-heading("13 · Nothing orphaned, nothing phantom");
+heading("13 · Voice check on drafts");
+{
+  const { checkVoice, voiceSummary } = await import(join(ROOT, "lib/voice.ts"));
+
+  const machine = "We leverage cutting-edge methodology to foster robust outcomes and unlock transformative value, utilizing a seamless approach that serves as a testament to innovative thinking.";
+  const human = "We run four phases. First we work out what to ask, then we ask it, then we write down what we heard, then we help you decide what to do about it.";
+
+  const bad = checkVoice(machine);
+  ok("machine register is flagged", bad.total >= 8, `${bad.total} tells: ${bad.flags.slice(0, 4).map((f) => f.term).join(", ")}`);
+  ok("and it is summarised in one line", Boolean(voiceSummary(bad)), voiceSummary(bad)?.slice(0, 60));
+
+  const good = checkVoice(human);
+  ok("plain writing is left alone", good.total === 0, `${good.total} tells`);
+  ok("and produces no note", voiceSummary(good) === null);
+
+  ok("empty input does not throw", checkVoice(null).total === 0);
+
+  // A word is not a tell inside another word.
+  ok("matches whole words only", checkVoice("The revitalized realm").flags.some((f) => f.term === "realm") && !checkVoice("delivered").flags.length);
+
+  const longSentence = "word ".repeat(50);
+  ok("an over-long sentence is noticed", checkVoice(longSentence).longestSentence >= 45, `${checkVoice(longSentence).longestSentence} words`);
+
+  // Caravann's real language should pass its own check.
+  const { data: blocks } = await admin.from("language_blocks").select("title,body");
+  const flagged = (blocks ?? []).map((b) => ({ t: b.title, r: checkVoice(b.body) })).filter((x) => x.r.total > 0);
+  ok(
+    "Caravann's own approved language reads as human",
+    flagged.length === 0,
+    flagged.map((f) => `${f.t}: ${f.r.flags.map((x) => x.term).join("/")}`).join(" | ") || `${(blocks ?? []).length} blocks clean`
+  );
+}
+
+heading("14 · Nothing orphaned, nothing phantom");
 {
   // The bug this exists to catch: a "Weekly review 2" badge sitting over a
   // queue with nothing in it. Edge cases carry an rfp_id, the seeded ones leave
@@ -713,7 +746,7 @@ heading("13 · Nothing orphaned, nothing phantom");
   ok("the desk reports a coherent count on any queue size", Number.isInteger(rfpCount ?? 0), `${rfpCount ?? 0} solicitations`);
 }
 
-heading("14 · Cleanup");
+heading("15 · Cleanup");
 {
   const { data: removed } = await admin.from("rfps").delete().like("external_id", `${PREFIX}%`).select("id");
   ok("test rows removed", true, `${removed?.length ?? 0} deleted`);

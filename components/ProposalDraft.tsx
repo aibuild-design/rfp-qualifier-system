@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { checkVoice, voiceSummary } from "@/lib/voice";
 import { approveSection, buildDraft } from "@/app/dashboard/rfps/[id]/actions";
 import type { ProposalSectionRow } from "@/lib/supabase/types";
 
@@ -102,6 +103,21 @@ export function ProposalDraft({
                           the library so the next bid starts from it.
                         </p>
                       )}
+                      {/* Flagged, never rewritten. The body is Caravann's own
+                          approved language, and silently editing it would
+                          defeat the point of having a library. This says "a
+                          procurement officer will read this as generated, here
+                          it is" and leaves the call to a person. */}
+                      {(() => {
+                        const note = voiceSummary(checkVoice(s.body));
+                        return note ? (
+                          <p className="mt-3 rounded-lg border border-rfp-warning/30 bg-rfp-warning/5 px-3 py-2 text-[12px] leading-relaxed text-rfp-ink-secondary">
+                            <span className="font-semibold text-rfp-ink">Reads as machine-written.</span>{" "}
+                            {note}.
+                          </p>
+                        ) : null;
+                      })()}
+
                       {s.status !== "approved" && s.body && (
                         <button
                           onClick={() => start(async () => void (await approveSection(rfpId, s.id)))}
