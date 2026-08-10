@@ -16,6 +16,7 @@ and migrations-first pattern.
 
 | | |
 |---|---|
+| **[HOW-IT-WORKS.md](HOW-IT-WORKS.md)** | What this is and how it runs, in plain language. Start here. |
 | **[TESTING.md](TESTING.md)** | How to test it - a session to run with Khaled, and the commands to run alone |
 | **[STATUS.md](STATUS.md)** | What works, what was fixed and measured, and what is still needed |
 | **[SECURITY.md](SECURITY.md)** | Security review findings, how credentials are split, what to rotate at handover |
@@ -26,11 +27,13 @@ and migrations-first pattern.
 ## How it fits together
 
 ```
-solicitation ──▶ n8n workflow ──▶ OpenRouter (one pass, whole document)
+solicitation ──▶ n8n workflow ──▶ OpenRouter ×3 (whole document, each time)
                       │                    │
                       │   GET /api/rfps/context   (eligibility profile + sector map)
                       │                    ↓
+                      │            reconciled: vote per dimension, merge checklists
                       └──────▶ POST /api/rfps/intake ──▶ Supabase ──▶ dashboard
+                                   score + verdict computed here, in code
 ```
 
 n8n holds no Supabase credential - it only ever talks to this app and
