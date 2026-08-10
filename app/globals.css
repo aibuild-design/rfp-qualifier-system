@@ -383,6 +383,18 @@ body {
   }
 }
 
+/* A slow breath rather than a blink. Something working is calm; something
+   flashing is an alarm, and this runs for a minute at a time in the corner of
+   the eye. */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.82); }
+}
+
+.pulse-dot {
+  animation: pulse-dot 1.8s var(--ease-out) infinite;
+}
+
 @keyframes shimmer {
   from {
     background-position: 200% 0;
@@ -417,6 +429,7 @@ body {
     animation: none !important;
   }
 
+  .pulse-dot,
   .score-fill,
   .pipeline::before,
   .dialog[open],

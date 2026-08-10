@@ -108,6 +108,20 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
           <VerdictBadge status={rfp.status} />
         </div>
 
+        {rfp.status === "pending" && (
+          <div className="mt-4 flex items-start gap-3 rounded-lg border border-rfp-gold/30 bg-rfp-gold/5 px-4 py-3">
+            <span aria-hidden className="pulse-dot mt-1.5 h-2 w-2 shrink-0 rounded-full bg-rfp-gold" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-rfp-ink">Being read now</p>
+              <p className="mt-0.5 text-[13px] leading-relaxed text-rfp-ink-secondary">
+                The whole document, three times over, then the reads are reconciled. About a
+                minute. <span className="font-medium text-rfp-ink">You can close this page</span> -
+                it carries on without you and the verdict will be here when you come back.
+              </p>
+            </div>
+          </div>
+        )}
+
         {rfp.is_provisional && (
           <p className="mt-4 rounded-lg border border-rfp-warning/30 bg-rfp-warning/5 px-3 py-2 text-[13px] leading-relaxed text-rfp-ink-secondary">
             This verdict was computed against an <span className="font-medium text-rfp-ink">unconfirmed

@@ -12,6 +12,7 @@ import {
   SettingsIcon,
 } from "./icons";
 import { SignOutButton } from "./SignOutButton";
+import { TriageStatus } from "./TriageStatus";
 import {
   NAV_GROUPS,
   isNavItemActive,
@@ -154,6 +155,11 @@ function AttentionPanel({ attention }: { attention: AttentionCounts }) {
 
   return (
     <div className="mt-auto border-t border-white/10 px-3 py-4">
+      {/* Above the attention list, because "working right now" is a different
+          kind of fact from "waiting for you" and answers a different question:
+          not what to do next, but whether to keep waiting. */}
+      <TriageStatus pending={attention.pendingTriage} href="/dashboard?view=pending" />
+
       <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-widest text-white/35">
         Needs attention
       </p>

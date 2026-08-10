@@ -33,7 +33,7 @@ export function NewSolicitationForm() {
         <p className="text-sm font-semibold text-rfp-ink">In the queue</p>
         <p className="mt-1.5 text-sm leading-relaxed text-rfp-ink-secondary">
           {done.warning ??
-            "It shows as “Pending triage” for about a minute while the whole document is read, then the verdict, gap list and compliance checklist appear."}
+            "It is being read now - the whole document, three times over. About a minute, and you can close this: it runs on the server and carries on without you."}
         </p>
         <div className="mt-4 flex gap-2">
           <button

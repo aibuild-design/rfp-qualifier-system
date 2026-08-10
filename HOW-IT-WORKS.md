@@ -67,7 +67,7 @@ So the model no longer chooses. It answers five fixed questions with fixed optio
 and the score is arithmetic on those answers. Same document, same verdict, every time. And the
 thresholds are Khaled's to set, not something to argue with a model about.
 
-**Read three times** because one read can be a bad read. The three are reconciled: the
+**Read three times, concurrently** because one read can be a bad read. The three are reconciled: the
 classifications are voted on, the compliance checklists are merged, and a mandatory requirement
 only closes a bid when all three reads agree it fails.
 
@@ -146,6 +146,24 @@ them. Each chip shows how many are inside.
 Deleting a folder asks you to type **delete**, and says plainly what happens:
 the solicitations inside are **not** deleted, they return to the unfiled queue
 with their verdicts intact. A folder is a label; the bids are the work.
+
+---
+
+## It runs in the background
+
+Submitting does not tie you to the page. The row appears in the queue at once,
+the reading happens on the server, and you can close the tab.
+
+While anything is being read, the rail shows a pulsing **"Being read now"** that
+links straight to it and says how long. It clears itself when the last one
+lands - the page updates on its own, with no refreshing.
+
+The document is read **three times at once** rather than one after another. On a
+short solicitation that is invisible; on a forty-page one it is the difference
+between paying the model's latency once and paying it three times.
+
+**How long:** about 40 seconds for a short solicitation, around 75 for a
+thirty-four page one. Measured, not estimated.
 
 ---
 
