@@ -20,6 +20,8 @@
  */
 
 export const SOURCES = {
+  samtrans:
+    "SamTrans RFP Estimated Hours and Cost (xlsx) - Caravann's own pricing sheet for the San Mateo County Transit District bid",
   ucsf:
     "UCSF IGHS Needs Assessment & Strategic Plan x Caravann (Google Slides, Sept 2024) - Caravann's own proposal deck",
 };
@@ -254,6 +256,51 @@ export const SECTOR_MAP_CONTRADICTION = {
   best_evidenced: { sector: "Higher education", claimed: { years: 6, engagements: 9 }, evidence: "5 named institutions" },
   question_for_khaled:
     "How many engagements has Caravann as a firm - not its consultants individually - delivered for city, county, transit or other municipal clients?",
+};
+
+/**
+ * Rates, from Caravann's own SamTrans cost sheet.
+ *
+ * Three things in it are worth stating rather than quietly applying.
+ *
+ * First, rates are per ROLE, not per person. Khaled bills $250 doing project
+ * management, $275 as principal consultant and $300 co-facilitating, on the
+ * same engagement. A single rate per person cannot express that, and the
+ * summary rate is an average of whatever mix that bid happened to need.
+ *
+ * Second, the summary puts Khaled at $275/hr. The profile currently says $285.
+ * Both are plausible - one is a blended rate for a specific bid, the other may
+ * be his standard - so neither is overwritten here. It is a question for him.
+ *
+ * Third, Rahul appears with 194 hours at $325, the second-largest share of the
+ * engagement, and is not on the UCSF deck's team slide at all. Either the deck
+ * predates him or he is a subcontractor. Also a question.
+ */
+export const SOURCED_RATES = {
+  /** Summary rates, as billed on the SamTrans bid. */
+  summary: [
+    { name: "Khaled El-Sawaf", title: "Principal Consultant / Project Manager / Co-Facilitator", hours: 326, rate: 275 },
+    { name: "Rahul", title: "Lead Facilitator / Facilitation Designer", hours: 194, rate: 325 },
+    { name: "Trent Wakenight", title: "Graphic Recorder", hours: 30, rate: 125 },
+  ],
+  /** The rate actually charged for each kind of work, which is what a cost
+   *  proposal is built from. */
+  byRole: [
+    { role: "Project Manager", rate: 250 },
+    { role: "Principal Consultant", rate: 275 },
+    { role: "Process Improvement Consultant", rate: 275 },
+    { role: "Co-Facilitator", rate: 300 },
+    { role: "Facilitation Designer", rate: 300 },
+    { role: "Senior Review / Facilitation Advisor", rate: 300 },
+    { role: "Lead Facilitator", rate: 350 },
+    { role: "Graphic Recording", rate: 125 },
+  ],
+  totalHours: 508,
+  openQuestions: [
+    "Khaled's rate: the cost sheet says $275, the profile says $285. Which is standard?",
+    "Rahul is 38% of the hours on this bid and is not on the team slide. Employee or subcontractor, and what is his surname?",
+    "Are these rates current, or specific to the SamTrans bid?",
+  ],
 };
 
 /**

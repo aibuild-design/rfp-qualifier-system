@@ -17,7 +17,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
-import { SOURCED_TEAM, SOURCED_LANGUAGE_BLOCKS, SOURCES, CAPABILITIES } from "../data/caravann-sourced.mjs";
+import { SOURCED_TEAM, SOURCED_LANGUAGE_BLOCKS, SOURCES, CAPABILITIES, SOURCED_RATES } from "../data/caravann-sourced.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const APPLY = process.argv.includes("--apply");
@@ -94,6 +94,21 @@ const { error: insErr } = await supabase.from("language_blocks").insert(
   SOURCED_LANGUAGE_BLOCKS.map((b) => ({ won: false, weight: 0, ...b, source: SOURCES.ucsf }))
 );
 if (insErr) throw new Error(`language insert: ${insErr.message}`);
+
+// Only the rate that is unambiguous. Trent's $125 for graphic recording is the
+// same figure everywhere it appears in the cost sheet. Khaled's is left alone
+// because the sheet and the profile disagree, and Rahul is not added because a
+// person with no surname is not something to write into a roster that ends up
+// on a proposal.
+const trent = SOURCED_RATES.summary.find((r) => r.name === "Trent Wakenight");
+if (trent) {
+  const { data: row } = await supabase.from("team_members").select("id,rate").eq("name", trent.name).maybeSingle();
+  if (row && row.rate === null) {
+    await supabase.from("team_members").update({ rate: trent.rate }).eq("id", row.id);
+    console.log(`  rate: ${trent.name} -> $${trent.rate}/hr ${dim("(from the SamTrans cost sheet)")}`);
+  }
+}
+console.log(dim(`  ${SOURCED_RATES.openQuestions.length} rate questions for Khaled - see data/caravann-sourced.mjs`));
 
 // What Caravann does, stated on its own capability slide. This is the only
 // place the desk can learn that a "cultural transformation" solicitation is
