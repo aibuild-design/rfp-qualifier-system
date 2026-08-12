@@ -4,7 +4,9 @@ import { isAuthorized } from "@/lib/api-auth";
 import { isServiceRoleConfigured } from "@/lib/supabase/config";
 import { toTimestamp } from "@/lib/rfp";
 import { decideVerdict, thresholdsFromSettings } from "@/lib/verdict";
-import { assembleDraft, DEFAULT_SECTIONS } from "@/lib/proposal";
+import { assembleDraft, DEFAULT_SECTIONS, proposalFileName } from "@/lib/proposal";
+import { buildProposalDocx } from "@/lib/docx-export";
+import { Packer } from "docx";
 import { scoreFromRubric, type RubricBreakdown, type RubricWeights } from "@/lib/rubric";
 import type { Database, TableInsert } from "@/lib/supabase/types";
 
@@ -274,15 +276,36 @@ export async function POST(req: NextRequest) {
   //
   // Only for bids worth pursuing. A no-go does not need a proposal, and writing
   // one into the folder would suggest otherwise.
-  let proposal: { heading: string; body: string | null }[] | null = null;
+  // Returned as a real Word file, not as text for something downstream to lay
+  // out. The formatting is the point: Caravann's three-line navy masthead with
+  // the rule beneath, the solicitation number and due date on the same line,
+  // Times New Roman, one-inch margins, the footer on every page. An evaluator
+  // sees the masthead before a word of the writing, and a proposal whose
+  // furniture does not match the firm's other submissions reads as assembled by
+  // someone else.
+  //
+  // Base64 so it survives a JSON response; n8n decodes it straight back to a
+  // .docx and files it. Uploaded that way Drive converts it to a Google Doc with
+  // the styling intact, which plain text could never do.
+  let proposal_docx: string | null = null;
+  let proposal_name: string | null = null;
   if (body.status === "go" || body.status === "maybe") {
-    const { data: blocks } = await supabase.from("language_blocks").select("*");
-    proposal = assembleDraft(
-      { title: body.title ?? "", client_agency: body.client_agency ?? "", project_type: body.project_type ?? null, due_at: body.due_at ?? null },
-      blocks ?? [],
-      DEFAULT_SECTIONS
-    ).map((s) => ({ heading: s.heading, body: s.body }));
+    const [{ data: blocks }, { data: full }] = await Promise.all([
+      supabase.from("language_blocks").select("*"),
+      supabase.from("rfps").select("*").eq("id", rfpId).maybeSingle(),
+    ]);
+    if (full) {
+      const sections = assembleDraft(full, blocks ?? [], DEFAULT_SECTIONS).map((s, i) => ({
+        id: `s${i}`, rfp_id: rfpId, section_type: s.section_type, heading: s.heading,
+        body: s.body, status: s.status, sort_order: s.sort_order,
+        source_block_ids: s.source_block_ids, notes: s.notes,
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      }));
+      const buffer = await Packer.toBuffer(buildProposalDocx(full, sections as never));
+      proposal_docx = Buffer.from(buffer).toString("base64");
+      proposal_name = `${proposalFileName(full)}.docx`;
+    }
   }
 
-  return NextResponse.json({ id: rfpId, status: "ok", proposal });
+  return NextResponse.json({ id: rfpId, status: "ok", proposal_docx, proposal_name });
 }
