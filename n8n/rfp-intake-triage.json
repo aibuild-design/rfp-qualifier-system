@@ -674,50 +674,52 @@
       "onError": "continueRegularOutput"
     },
     {
-      "id": "drv-prop",
-      "name": "Proposal as a document",
+      "id": "prop-mp",
+      "name": "Proposal as multipart",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         2800,
-        460
+        620
       ],
       "parameters": {
-        "jsCode": "// The bid desk hands back a finished Word document, not text to lay out here.\n// That is deliberate: the formatting is the deliverable. Caravann's three-line\n// navy masthead with the rule beneath, the solicitation number and due date on\n// one line, Times New Roman, one-inch margins, the footer on every page. An\n// evaluator reads the masthead before a word of the writing.\n//\n// Uploaded as .docx, Drive converts it to a Google Doc with the styling intact.\n// A text file could never carry any of it.\nconst filing = $('Folder to file into').first().json;\nconst desk = $('POST to bid desk').first().json;\nif (!desk?.proposal_docx) return [];\n\nreturn [{\n  json: { ...filing, doc_name: (desk.proposal_name || filing.drive_file_base + '.docx').replace(/\\.docx$/, '') },\n  binary: {\n    data: await this.helpers.prepareBinaryData(\n      Buffer.from(desk.proposal_docx, 'base64'),\n      desk.proposal_name || filing.drive_file_base + '.docx',\n      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'\n    ),\n  },\n}];"
+        "jsCode": "const filing = $('Folder to file into').first().json;\nconst desk = $('POST to bid desk').first().json;\nif (!desk?.proposal_docx) return [];\n\nconst name = (desk.proposal_name || filing.drive_file_base + '.docx').replace(/\\.docx$/, '');\nconst boundary = 'caravann' + '-'.repeat(4) + 'boundary';\n\n// mimeType on the metadata is what asks Drive to convert; the part after it is\n// the Word file it converts from. Get this wrong and Drive stores the .docx\n// untouched, which is exactly what the node was doing.\nconst metadata = JSON.stringify({\n  name,\n  parents: [filing.folder_id],\n  mimeType: 'application/vnd.google-apps.document',\n});\n\nconst body = Buffer.concat([\n  Buffer.from(`--${boundary}\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n${metadata}\\r\\n`),\n  Buffer.from(`--${boundary}\\r\\nContent-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\\r\\n\\r\\n`),\n  Buffer.from(desk.proposal_docx, 'base64'),\n  Buffer.from(`\\r\\n--${boundary}--\\r\\n`),\n]);\n\nreturn [{\n  json: { boundary, name },\n  binary: { data: await this.helpers.prepareBinaryData(body, 'upload.bin', `multipart/related; boundary=${boundary}`) },\n}];"
       }
     },
     {
-      "id": "drv-upprop",
-      "name": "Drive — file the proposal",
-      "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 3,
+      "id": "prop-up",
+      "name": "Drive — file the proposal as a Doc",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         3000,
-        460
+        620
       ],
       "credentials": {
-        "googleDriveOAuth2Api": {
-          "id": "FjFIQxop7CmuPays",
-          "name": "Google Drive account"
+        "googleDocsOAuth2Api": {
+          "id": "8aO3NeEhxLE9P4U6",
+          "name": "Google Docs account"
         }
       },
       "parameters": {
-        "name": "={{ $json.doc_name }}",
-        "driveId": {
-          "__rl": true,
-          "mode": "list",
-          "value": "My Drive"
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDocsOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "=multipart/related; boundary={{ $json.boundary }}"
+            }
+          ]
         },
-        "folderId": {
-          "__rl": true,
-          "mode": "id",
-          "value": "={{ $json.folder_id }}"
-        },
-        "options": {
-          "convertToGoogleDocument": true
-        }
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
       },
-      "alwaysOutputData": true,
       "onError": "continueRegularOutput"
     }
   ],
@@ -1031,25 +1033,25 @@
       "main": [
         [
           {
-            "node": "Proposal as a document",
+            "node": "Proposal as multipart",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Proposal as a document": {
+    "Proposal as multipart": {
       "main": [
         [
           {
-            "node": "Drive — file the proposal",
+            "node": "Drive — file the proposal as a Doc",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Drive — file the proposal": {
+    "Drive — file the proposal as a Doc": {
       "main": [
         [
           {
