@@ -825,6 +825,34 @@ heading("14 · Filling Caravann's own template");
     })();
     ok("unknown agency fields stay visible as red placeholders", partialXml.includes("[Insert Agency POC]"), "a blank reads as an oversight nobody caught");
 
+    // The drafted prose has to land under the right heading, replacing the
+    // template's writing instruction and leaving the lead sentence above it.
+    const drafted = await fillTemplate(template, {
+      title: "T", solicitationNumber: "RFP 2026-25", dueDate: "D", agencyName: "Clackamas County",
+      sections: { Introduction: "CARAVANN_INTRO_MARKER.", Scope: "CARAVANN_SCOPE_MARKER.", "Technical Description": "CARAVANN_TECH_MARKER." },
+    });
+    writeFileSync("/tmp/verify-drafted.docx", drafted.buffer);
+    const draftXml = execSync("unzip -p /tmp/verify-drafted.docx word/document.xml").toString();
+    const paras = draftXml.match(/<w:p[ >][\s\S]*?<\/w:p>/g) || [];
+    const textOf = (par) => [...par.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => m[1]).join("").trim();
+    const under = (headingText) => {
+      let seen = false;
+      const out = [];
+      for (const par of paras) {
+        const t = textOf(par);
+        if (!t) continue;
+        if (/<w:pStyle w:val="Heading1"/.test(par)) { if (seen) break; seen = t === headingText; continue; }
+        if (seen) out.push(t);
+      }
+      return out;
+    };
+    ok("drafted prose lands under its own heading", under("Introduction")[1] === "CARAVANN_INTRO_MARKER.", "second paragraph, where the instruction was");
+    ok("the boilerplate lead sentence survives above it", under("Introduction")[0]?.startsWith("Caravann Consulting is pleased"), "carries the company and solicitation number");
+    ok("a section with no draft keeps its writing instruction", under("Background")[1]?.startsWith("[Insert brief background"), "the writer still sees what is needed");
+    ok("an unbracketed instruction is replaced too", under("Technical Description")[1] === "CARAVANN_TECH_MARKER.", "matched by position, not by punctuation");
+    ok("the underscore blank is filled", !/solicitation_{4,}/.test(draftXml), "not just the bracketed placeholders");
+    ok("both spellings of the title placeholder are caught", !/\[insert title\]/i.test(draftXml), "[Insert Title] and [insert title]");
+
     // Ampersands are common in solicitation titles and would break the XML.
     const amp = await fillTemplate(template, { title: "Leadership & Culture", solicitationNumber: "S", dueDate: "D", agencyName: "A & B" });
     writeFileSync("/tmp/verify-amp.docx", amp.buffer);

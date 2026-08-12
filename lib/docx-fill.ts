@@ -35,6 +35,17 @@ export type TemplateValues = {
   agencyPocName?: string;
   agencyPocPhone?: string;
   agencyPocEmail?: string;
+  /**
+   * Drafted prose, keyed by the template's own heading text. Each section in
+   * the template carries a boilerplate lead sentence and then a bracketed
+   * instruction to whoever is writing it - "[Insert brief introduction
+   * statement about your firm...]". Supplying a body replaces that instruction.
+   *
+   * A heading with no entry keeps its instruction, which is the right default:
+   * the writer still sees what the section needs, rather than finding a gap
+   * where guidance used to be.
+   */
+  sections?: Record<string, string>;
 };
 
 const COMPANY = "Caravann Consulting";
@@ -59,10 +70,17 @@ function substitutions(v: TemplateValues): [string, string][] {
   const keep = (value: string | undefined, placeholder: string) => value?.trim() || placeholder;
   return [
     ["[Insert Company Name]", COMPANY],
+    // Not a bracketed placeholder - the template writes the blank as a run of
+    // underscores, so it needs its own substitution or the finished document
+    // reads "for solicitation________".
+    ["solicitation________", `solicitation ${esc(v.solicitationNumber)}`],
     ["[Insert Title]", esc(v.title)],
     ["[Insert sol#]", esc(v.solicitationNumber)],
     ["[Insert due date]", esc(v.dueDate)],
     ["[insert customer name]", esc(v.agencyName)],
+    // The template writes the title placeholder two ways. Both need catching,
+    // or the Introduction reads "...for solicitation RFP 2026-25, [insert title]".
+    ["[insert title]", esc(v.title)],
     ["[Insert Agency Name]", esc(keep(v.agencyName, "[Insert Agency Name]"))],
     ["[Insert Agency Address]", esc(keep(v.agencyAddress, "[Insert Agency Address]"))],
     ["[Insert Agency POC Telephone]", esc(keep(v.agencyPocPhone, "[Insert Agency POC Telephone]"))],
@@ -125,6 +143,14 @@ export async function fillTemplate(template: Buffer | Uint8Array, values: Templa
     zip.file(name, xml);
   }
 
+  // Write the drafted prose over the template's writing instructions.
+  if (values.sections && Object.keys(values.sections).length > 0) {
+    const documentPart = zip.file("word/document.xml")!;
+    const filled = injectSections(await documentPart.async("string"), values.sections);
+    zip.file("word/document.xml", filled.xml);
+    replacements += filled.written;
+  }
+
   // Report anything left rather than trusting the substitution ran. A template
   // edit that splits a placeholder across runs would otherwise ship a proposal
   // with "[Insert sol#]" on its cover.
@@ -157,3 +183,78 @@ export const TEMPLATE_PLACEHOLDERS = [
   "[Insert Agency POC Telephone]",
   "[Insert Agency POC Email]",
 ] as const;
+
+
+/**
+ * Replace each section's writing instruction with the drafted prose.
+ *
+ * Works on the paragraph sequence rather than on the raw string, because the
+ * target is positional: the instruction is whatever bracketed paragraph follows
+ * a given heading. A blind search-and-replace cannot express "the bracketed
+ * text under Scope" and would happily rewrite the identical instruction under
+ * Background.
+ *
+ * The paragraph's first run takes the new text and the rest are emptied rather
+ * than removed. Word stores formatting per run, so deleting them would drop the
+ * paragraph's styling, and an emptied run renders as nothing.
+ */
+function injectSections(xml: string, sections: Record<string, string>): { xml: string; written: number } {
+  const paragraphs = xml.match(/<w:p[ >][\s\S]*?<\/w:p>/g);
+  if (!paragraphs) return { xml, written: 0 };
+
+  const textOf = (p: string) =>
+    [...p.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => m[1]).join("").trim();
+  const isHeading = (p: string) => /<w:pStyle w:val="Heading[12]"/.test(p);
+
+  // Headings are matched loosely - the template writes "Representations &amp;
+  // Certifications" in the XML and "Representations & Certifications" is what a
+  // caller will pass.
+  const normalise = (t: string) =>
+    t.replace(/&amp;/g, "&").replace(/\s+/g, " ").trim().toLowerCase();
+  const wanted = new Map(Object.entries(sections).map(([k, v]) => [normalise(k), v]));
+
+  let written = 0;
+  let currentHeading: string | null = null;
+  /** Content paragraphs seen under each heading so far, so the second one can
+   *  be identified without relying on how it is punctuated. */
+  const seenUnder = new Map<string, number>();
+  const out = paragraphs.map((p) => {
+    if (isHeading(p)) {
+      currentHeading = normalise(textOf(p));
+      return p;
+    }
+    if (!currentHeading) return p;
+
+    const body = wanted.get(currentHeading);
+    const text = textOf(p);
+    if (!body || !text) return p;
+
+    // The first paragraph under a heading is Caravann's own lead sentence and
+    // must survive - it is the one carrying the company name and solicitation
+    // number. The second is the writing instruction, and that is what the
+    // draft replaces.
+    //
+    // Position, not shape. Most instructions are wrapped in square brackets but
+    // not all: under Technical Description it is unbracketed FAR guidance
+    // ("A technical description of the items being offered..."), and a
+    // bracket test silently skipped it.
+    seenUnder.set(currentHeading, (seenUnder.get(currentHeading) ?? 0) + 1);
+    if (seenUnder.get(currentHeading) !== 2) return p;
+
+    wanted.delete(currentHeading);
+    written++;
+
+    let first = true;
+    return p.replace(/(<w:t[^>]*>)([^<]*)(<\/w:t>)/g, (_all, open: string, _old: string, close: string) => {
+      if (!first) return `${open}${close}`;
+      first = false;
+      // xml:space="preserve" so leading and trailing spaces in the prose are
+      // not collapsed by Word.
+      const tag = open.includes("xml:space") ? open : open.replace(/>$/, ' xml:space="preserve">');
+      return `${tag}${esc(body)}${close}`;
+    });
+  });
+
+  let i = 0;
+  return { xml: xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, () => out[i++]), written };
+}

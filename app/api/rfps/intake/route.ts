@@ -319,6 +319,12 @@ export async function POST(req: NextRequest) {
             ? new Date(full.due_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" })
             : "[Insert due date]",
           agencyName: full.client_agency,
+          // Keyed by the template's own heading text, so the assembler's
+          // section list and the template stay joined by something visible in
+          // both rather than by an index nobody would notice drifting.
+          sections: Object.fromEntries(
+            sections.filter((sec) => sec.body).map((sec) => [sec.heading, sec.body as string])
+          ),
         });
         if (filled.unreplaced.length) {
           console.warn(`[intake ${body.external_id}] template placeholders left unfilled: ${filled.unreplaced.join(", ")}`);
