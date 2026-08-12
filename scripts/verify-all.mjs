@@ -868,6 +868,31 @@ heading("14 · Filling Caravann's own template");
           ![...par.matchAll(/<w:t[ >][^>]*>([^<]*)<\/w:t>|<w:t>([^<]*)<\/w:t>/g)].map((m) => m[1] ?? m[2]).join("").trim()
       ).length;
     ok("no empty paragraph forces a blank page", emptyBreaks(draftXml) === 0, "4 removed, 50 real breaks kept");
+    // Four empty paragraphs in a row fill a page on their own, which is what
+    // page 2 was. Collapsed to one; paragraphs holding a section break are
+    // never dropped, since that would merge two sections and take the header
+    // and footer assignment with them.
+    const longestEmptyRun = (x) => {
+      const paras = x.match(/<w:p[ >][\s\S]*?<\/w:p>/g) || [];
+      let run = 0, max = 0;
+      for (const par of paras) {
+        const empty = !/<w:sectPr|<w:drawing|<w:tbl|instrText/.test(par) &&
+          [...par.matchAll(/<w:t[ >][^>]*>([^<]*)<\/w:t>|<w:t>([^<]*)<\/w:t>/g)].map((m) => m[1] ?? m[2]).join("").trim() === "";
+        if (empty) { run++; max = Math.max(max, run); } else run = 0;
+      }
+      return max;
+    };
+    ok("no run of empty paragraphs can fill a page", longestEmptyRun(draftXml) <= 1, "the template had a run of 6");
+    ok("every section break survives", (draftXml.match(/<w:sectPr/g) || []).length === 6, "dropping one would move the headers and footers");
+
+    // footer1 keeps the text and the field in separate paragraphs, so the
+    // number sits on its own line however the stops are set. Page 2 uses it.
+    for (const f of ["footer1", "footer2", "footer3"]) {
+      const fz = execSync(`unzip -p /tmp/verify-filled.docx word/${f}.xml`).toString();
+      const withField = (fz.match(/<w:p[ >][\s\S]*?<\/w:p>/g) || []).filter((x) => /PAGE/.test(x));
+      ok(`${f} keeps the number on the text's own line`, withField.length === 1 && /<w:t[ >]/.test(withField[0]), "field merged into the text paragraph");
+    }
+
     ok("page numbering restarts only once", (draftXml.match(/<w:pgNumType[^>]*w:start="1"/g) || []).length === 1, "the template restarts three times, so the appendices began at 1 again");
 
     const fx2 = execSync("unzip -p /tmp/verify-filled.docx word/footer2.xml").toString();

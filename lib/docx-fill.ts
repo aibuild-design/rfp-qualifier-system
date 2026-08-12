@@ -189,6 +189,46 @@ export async function fillTemplate(template: Buffer | Uint8Array, values: Templa
     if (removed > 0) zip.file("word/document.xml", xml);
   }
 
+  // Runs of empty paragraphs. Between the contents and the body the template
+  // has four in a row, and four empty paragraphs are enough to fill a page on
+  // their own - which is the blank page 2 that survived removing their page
+  // breaks. Collapsed to one, so deliberate spacing is kept and the padding is
+  // not.
+  //
+  // Paragraphs carrying a section break are never touched: dropping one would
+  // merge two sections and take the header and footer assignment with it.
+  {
+    const documentPart = zip.file("word/document.xml")!;
+    const xml = await documentPart.async("string");
+    const paragraphs = xml.match(/<w:p[ >][\s\S]*?<\/w:p>/g);
+    if (paragraphs) {
+      const isEmpty = (par: string) =>
+        !/<w:sectPr/.test(par) &&
+        !/<w:drawing|<w:tbl|instrText/.test(par) &&
+        [...par.matchAll(/<w:t[ >][^>]*>([^<]*)<\/w:t>|<w:t>([^<]*)<\/w:t>/g)]
+          .map((m) => m[1] ?? m[2])
+          .join("")
+          .trim() === "";
+
+      const drop = new Set<number>();
+      let run = 0;
+      paragraphs.forEach((par, i) => {
+        if (isEmpty(par)) {
+          run++;
+          if (run > 1) drop.add(i);
+        } else {
+          run = 0;
+        }
+      });
+
+      if (drop.size > 0) {
+        let i = 0;
+        const collapsed = xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, (par) => (drop.has(i++) ? "" : par));
+        zip.file("word/document.xml", collapsed);
+      }
+    }
+  }
+
   // The template restarts page numbering in three of its sections, which is why
   // the appendices begin at 1 again while the contents lists them as A, B and C.
   // Only the first restart is wanted - that is the one putting page 1 at the
@@ -407,7 +447,15 @@ function injectSections(xml: string, sections: Record<string, string>): { xml: s
  * reaches.
  */
 function fixFooter(xml: string): string {
-  return xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, (paragraph) => {
+  // Two shapes to handle. In footer2 and footer3 the text and the field share a
+  // paragraph. In footer1 - which is what page 2 actually uses, because section
+  // two defines only a first-page footer and later pages fall back to the
+  // previous section's - they are separate paragraphs, so the number sits on
+  // its own line however the tab stops are set. That one has to be merged
+  // before anything else will help.
+  const merged = mergePageNumberIntoText(xml);
+
+  return merged.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, (paragraph) => {
     if (!/PAGE/.test(paragraph)) return paragraph;
 
     let out = paragraph
@@ -421,16 +469,58 @@ function fixFooter(xml: string): string {
       ? out.replace("<w:pPr>", `<w:pPr>${stops}`)
       : out.replace(/(<w:p[ >][^>]*>)/, `$1<w:pPr>${stops}</w:pPr>`);
 
-    // The hand-typed run of tabs becomes one, so the number stops at the right
-    // margin rather than marching past it on default half-inch stops.
     out = out.replace(/(?:<w:tab\/>\s*){2,}/g, "<w:tab/>");
 
-    // And one before the text, to put it on the centre stop.
-    // `<w:t[^>]*>` also matches `<w:tabs>` - "abs" satisfies [^>]* - which put
-    // the leading tab inside <w:pPr> before the tab-stop definition, where it
-    // does nothing at all. `[ >]` after `w:t` matches only a real text run.
-    out = out.replace(/(<w:t[ >])/, "<w:tab/>$1");
+    // `<w:t[^>]*>` would also match `<w:tabs>` - "abs" satisfies [^>]* - which
+    // put this tab among the stop definitions where it did nothing.
+    if (!/<w:tab\/>\s*<w:t[ >]/.test(out)) out = out.replace(/(<w:t[ >])/, "<w:tab/>$1");
 
     return out;
   });
 }
+
+/**
+ * Pull a lone page-number paragraph up into the text paragraph above it.
+ *
+ * `footer1` keeps "Caravann Consulting / www.caravann.co" in one paragraph and
+ * the PAGE field in the next. Two paragraphs are two lines, so no arrangement
+ * of tab stops within either will ever put them side by side - the number has
+ * to move into the same paragraph first.
+ *
+ * The field's runs are appended to the text paragraph with a tab between them,
+ * and the emptied paragraph is dropped.
+ */
+function mergePageNumberIntoText(xml: string): string {
+  const paragraphs = xml.match(/<w:p[ >][\s\S]*?<\/w:p>/g);
+  if (!paragraphs) return xml;
+
+  const hasText = (p: string) =>
+    [...p.matchAll(/<w:t[ >][^>]*>([^<]*)<\/w:t>|<w:t>([^<]*)<\/w:t>/g)]
+      .map((m) => m[1] ?? m[2])
+      .join("")
+      .trim().length > 0;
+
+  const fieldIndex = paragraphs.findIndex((p) => /PAGE/.test(p) && !hasText(p));
+  if (fieldIndex < 1) return xml;
+
+  // The nearest text paragraph above it is the one the number belongs beside.
+  let textIndex = -1;
+  for (let i = fieldIndex - 1; i >= 0; i--) {
+    if (hasText(paragraphs[i])) { textIndex = i; break; }
+  }
+  if (textIndex < 0) return xml;
+
+  const fieldRuns = (paragraphs[fieldIndex].match(/<w:r[ >][\s\S]*?<\/w:r>/g) || []).join("");
+  if (!fieldRuns) return xml;
+
+  const combined = paragraphs[textIndex].replace(/<\/w:p>$/, `<w:r><w:tab/></w:r>${fieldRuns}</w:p>`);
+
+  let i = 0;
+  return xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, () => {
+    const at = i++;
+    if (at === textIndex) return combined;
+    if (at === fieldIndex) return "";
+    return paragraphs[at];
+  });
+}
+
