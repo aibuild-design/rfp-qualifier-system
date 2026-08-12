@@ -92,15 +92,34 @@ precisely to reduce this and it clearly does not eliminate it.
 | pass | the same solicitation twice reuses the folder | two runs, **one** folder |
 | pass | the folder is not empty | the verdict record is written into it |
 
+### What lands in a bid folder
+
+```
+_RFP Desk test artifacts/
+└── [go] On-Call Organizational Development Strategic Consulting Services_
+    Clackamas County, Oregon (H3S)_Caravann Consulting/
+    ├── ... - solicitation        the RFP itself
+    └── ... - proposal draft      all nine sections, Caravann's own language
+```
+
+The solicitation and the proposal. Nothing else: the verdict, the reasoning and
+the compliance checklist stay on the dashboard where they can be ticked off and
+argued with. A frozen copy in Drive goes stale the moment anything changes.
+
+The proposal is filed only for `go` and `maybe`. Filing one for a bid the desk
+just ruled out would read as a recommendation to write it. It comes back from the
+bid desk alongside the verdict rather than needing a second call, and it is
+assembled app-side, because the language library and the section structure are
+the app's to own.
+
+The solicitation is written out only when it arrived as text. If it came as a PDF
+that file is filed as-is, and the extracted text beside it would be a worse copy.
+
 ### Two bugs found here and fixed
 
 **The folders were empty.** This is what "there is nothing in Drive" actually
 was. A folder was created for every bid, but a solicitation pasted in as text has
-no file to upload, so nothing went in it. The desk now writes a record into every
-bid folder - the verdict and reasoning, both deadlines, the budget, the compliance
-checklist as tick boxes, every mandatory requirement with its result, and the
-solicitation text - converted to a Google Doc on upload. Any attached PDF is still
-filed alongside it.
+no file to upload, so nothing went in it.
 
 **Re-triage made a second folder.** Four runs of one solicitation had left four
 identical folders, which is worse than none: it is unclear which holds the current
@@ -110,9 +129,21 @@ same solicitation twice and finding a single folder.
 Also cleaned up: 75 stray folders in the root of the connected Drive from earlier
 testing, plus everything left in the test folder from this run's earlier passes.
 
-**Still imperfect:** each run writes its own record rather than replacing the
-previous one, so a re-triaged bid accumulates a record per run. Defensible as
-history, confusing as a folder listing.
+**Blocked, and it needs you:** the two documents land as plain-text files rather
+than native Google Docs. Both Google credentials in n8n are configured to refuse
+use outside their own node type, so the Drive API cannot be called directly to
+convert on upload, and there is no Google Docs credential connected.
+
+They open fine and Drive offers "Open with Google Docs", but that is a click per
+document rather than the thing you asked for. Fixing it needs one of:
+
+- a **Google Docs** credential added in n8n, or
+- the existing Drive credential **re-authorised with the Docs scope**
+
+Both are a couple of minutes in n8n and neither is something I can do.
+
+**Also imperfect:** each run writes its own copy rather than replacing the
+previous one, so a re-triaged bid accumulates a file per run.
 
 ---
 
