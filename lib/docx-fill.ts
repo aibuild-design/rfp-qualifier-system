@@ -81,6 +81,9 @@ function substitutions(v: TemplateValues): [string, string][] {
     // The template writes the title placeholder two ways. Both need catching,
     // or the Introduction reads "...for solicitation RFP 2026-25, [insert title]".
     ["[insert title]", esc(v.title)],
+    // The first-page footer carries its own placeholder, separate from the one
+    // on the following pages.
+    ["[Insert Offeror Name / Offeror website]", `${COMPANY} / www.caravann.co`],
     ["[Insert Agency Name]", esc(keep(v.agencyName, "[Insert Agency Name]"))],
     ["[Insert Agency Address]", esc(keep(v.agencyAddress, "[Insert Agency Address]"))],
     ["[Insert Agency POC Telephone]", esc(keep(v.agencyPocPhone, "[Insert Agency POC Telephone]"))],
@@ -140,6 +143,7 @@ export async function fillTemplate(template: Buffer | Uint8Array, values: Templa
       xml = xml.split(from).join(to);
       if (xml !== before) replacements += before.split(from).length - 1;
     }
+    if (/^word\/footer/.test(name)) xml = enlargePageNumber(xml);
     zip.file(name, xml);
   }
 
@@ -257,4 +261,28 @@ function injectSections(xml: string, sections: Record<string, string>): { xml: s
 
   let i = 0;
   return { xml: xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, () => out[i++]), written };
+}
+
+
+/**
+ * Bring the page number up to the size of the text beside it.
+ *
+ * The template sets the run holding the PAGE field to `w:sz="8"` - four points,
+ * against eleven for "Caravann Consulting / www.caravann.co" on the same line.
+ * At that size it reads as a speck of dirt rather than a number, which is what
+ * "the numbers are hard to read" turned out to be.
+ *
+ * A deliberate departure from copying the template exactly, and the only one in
+ * this file. Four-point type is not a design decision anybody made; it is what
+ * happens when a page-number field is pasted in and picks up whatever
+ * formatting was on the clipboard. Everything else here is left alone precisely
+ * because the template is more likely to be right than I am - this is the case
+ * where it plainly is not.
+ *
+ * Scoped to footers and to that one size, so nothing else can be caught by it.
+ */
+function enlargePageNumber(xml: string): string {
+  return xml
+    .replace(/<w:sz w:val="8"\/>/g, '<w:sz w:val="22"/>')
+    .replace(/<w:szCs w:val="8"\/>/g, '<w:szCs w:val="22"/>');
 }

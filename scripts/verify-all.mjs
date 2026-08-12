@@ -853,6 +853,15 @@ heading("14 · Filling Caravann's own template");
     ok("the underscore blank is filled", !/solicitation_{4,}/.test(draftXml), "not just the bracketed placeholders");
     ok("both spellings of the title placeholder are caught", !/\[insert title\]/i.test(draftXml), "[Insert Title] and [insert title]");
 
+    // The template sets the page-number run to 4pt against 11pt text beside it,
+    // which reads as a speck rather than a number.
+    for (const f of ["footer1", "footer2", "footer3"]) {
+      const fx = execSync(`unzip -p /tmp/verify-filled.docx word/${f}.xml`).toString();
+      ok(`${f} page number is readable`, !/<w:sz w:val="8"\/>/.test(fx), "4pt raised to 11pt, matching the text");
+    }
+    const f1 = execSync("unzip -p /tmp/verify-filled.docx word/footer1.xml").toString();
+    ok("the first-page footer placeholder is filled", !/\[Insert Offeror/.test(f1), "it is a separate placeholder from the other pages");
+
     // Ampersands are common in solicitation titles and would break the XML.
     const amp = await fillTemplate(template, { title: "Leadership & Culture", solicitationNumber: "S", dueDate: "D", agencyName: "A & B" });
     writeFileSync("/tmp/verify-amp.docx", amp.buffer);
