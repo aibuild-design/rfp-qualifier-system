@@ -42,6 +42,7 @@ import {
   Header,
   PageNumber,
   Paragraph,
+  Tab,
   TabStopType,
   TextRun,
 } from "docx";
@@ -64,6 +65,8 @@ export const TEMPLATE = {
 
   /** Twips. 9360 = 6.5in = an 8.5in page less two 1in margins. */
   rightTab: 9360,
+  /** Half of the text width, so a centre tab lands text in the middle. */
+  centreTab: 4680,
   /** Twips. 1440 = 1 inch on every side. */
   margin: 1440,
 
@@ -116,32 +119,56 @@ export function caravannHeader(solicitationNumber: string, dueDate: string): Hea
       line([navy(TEMPLATE.serviceLine)]),
       line([
         navy(`${TEMPLATE.numberLabel} ${solicitationNumber}`),
-        // A tab rather than the source's run of literal spaces: spaces hold
-        // their position only while the solicitation number stays the same
-        // length, and it never does.
-        navy(`\t${TEMPLATE.dueLabel} ${dueDate}`),
+        // `new Tab()`, not "\t" in the string. A literal tab character inside
+        // <w:t> is not a tab in Word - it needs a <w:tab/> element, and without
+        // one the due date simply butts against the solicitation number. This
+        // is the same defect that welded the page number to the footer URL.
+        new TextRun({
+          children: [new Tab(), `${TEMPLATE.dueLabel} ${dueDate}`],
+          size: TEMPLATE.headerTextSize,
+          color: TEMPLATE.navy,
+        }),
       ]),
     ],
   });
 }
 
 /**
- * Centred firm and site, with the page number tab-right.
+ * Firm and site centred, page number hard right.
  *
- * The source centres the text and then puts the page number in a 4pt run
- * immediately after it, which renders as `www.caravann.co3`. The tab stop and
- * matching text size here are the fix.
+ * Left-aligned with a centre tab and a right tab, which is the standard Word
+ * footer pattern and the only one that actually holds.
+ *
+ * The obvious approach - centre the paragraph and tab before the page number -
+ * does not work, and this is the second time it produced `www.caravann.co3`
+ * with the number jammed against the URL. A centred paragraph centres its whole
+ * content as one block; the tab has nothing to align against and collapses. The
+ * source has the same problem for the same reason, and papered over it with a
+ * 4pt page number so the collision was less obvious.
+ *
+ * Leading tab puts the text on the centre stop, second tab throws the number to
+ * the right margin. Both hold whatever the page count reaches.
+ *
+ * The tabs are `new Tab()` objects, not "\t" in a string. A literal tab
+ * character inside <w:t> renders as nothing in Word; only a <w:tab/> element
+ * moves to the next stop. Getting that wrong is what produced
+ * `www.caravann.co3` both times.
  */
 export function caravannFooter(): Footer {
   return new Footer({
     children: [
       new Paragraph({
-        alignment: AlignmentType.CENTER,
-        tabStops: [{ type: TabStopType.RIGHT, position: TEMPLATE.rightTab }],
+        alignment: AlignmentType.LEFT,
+        tabStops: [
+          { type: TabStopType.CENTER, position: TEMPLATE.centreTab },
+          { type: TabStopType.RIGHT, position: TEMPLATE.rightTab },
+        ],
         children: [
-          new TextRun({ text: TEMPLATE.footerText, size: TEMPLATE.footerTextSize, color: TEMPLATE.navy }),
-          new TextRun({ text: "\t", size: TEMPLATE.footerTextSize }),
-          new TextRun({ children: [PageNumber.CURRENT], size: TEMPLATE.footerTextSize, color: TEMPLATE.navy }),
+          new TextRun({
+            children: [new Tab(), TEMPLATE.footerText, new Tab(), PageNumber.CURRENT],
+            size: TEMPLATE.footerTextSize,
+            color: TEMPLATE.navy,
+          }),
         ],
       }),
     ],

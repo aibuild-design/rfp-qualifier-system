@@ -703,9 +703,19 @@ heading("13 · The document template");
   ok("footer text is 11pt", attr(footer, "sz", "val").every((v) => v === "22"), "w:sz=22 half-points");
   ok("the rule under the header is black, not navy", /<w:bottom[^>]*w:color="000000"/.test(header), "the text is navy, the rule is not");
   ok("the rule sits under all three header lines", (header.match(/<w:pBdr>/g) || []).length === 3, `${(header.match(/<w:pBdr>/g) || []).length} of 3`);
-  ok("the due date is held right by a tab, not by spaces", /w:pos="9360"/.test(header) && /\\t/.test(header) === false, "right tab at 6.5in");
-  ok("the footer is centred", /<w:jc w:val="center"/.test(footer), "matches the source");
-  ok("the page number is tab-separated, not jammed against the URL", /w:pos="9360"/.test(footer) && /PAGE/.test(footer), "right tab at 6.5in");
+  // A literal tab character inside <w:t> renders as nothing in Word; only a
+  // <w:tab/> element moves to the next stop. Getting that wrong is what welded
+  // the page number to the footer URL, and it had quietly done the same to the
+  // due date in the header.
+  ok("the header tabs are real <w:tab/> elements", (header.match(/<w:tab\/>/g) || []).length === 1, "not a literal \\t in the text");
+  ok("no literal tab characters survive in any run", !/<w:t[^>]*>[^<]*\t/.test(header) && !/<w:t[^>]*>[^<]*\t/.test(footer), "Word ignores those");
+  // A centred paragraph centres its whole content as one block, so a tab inside
+  // it has nothing to align against and collapses - which is exactly how the
+  // page number ended up welded to the URL, twice. Left-aligned with a centre
+  // stop and a right stop is the only arrangement that holds.
+  ok("the footer is not centre-aligned, which would collapse the tabs", !/<w:jc w:val="center"/.test(footer), "left-aligned with tab stops");
+  ok("it has both a centre and a right tab stop", /w:val="center"[^>]*w:pos="4680"/.test(footer) && /w:val="right"[^>]*w:pos="9360"/.test(footer), "centre at 3.25in, right at 6.5in");
+  ok("the page number is thrown to the right margin", /PAGE/.test(footer) && (footer.match(/<w:tab\/>/g) || []).length === 2, "two <w:tab/> before the number");
   ok("the page number matches the text size", !/<w:sz w:val="8"/.test(footer), "the source used 4pt, which was unreadable");
   ok("both red fields appear when unknown", (() => {
     const d2 = buildProposalDocx({ title: "x", client_agency: "y", due_at: null, budget_amount: null, budget_source: "none_listed", external_id: null },
