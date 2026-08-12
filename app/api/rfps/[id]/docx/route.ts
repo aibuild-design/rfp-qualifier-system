@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Packer } from "docx";
 import { createClient } from "@/lib/supabase/server";
 import { buildProposalDocx } from "@/lib/docx-export";
+import { caravannLogo } from "@/lib/brand-logo";
 import { proposalFileName } from "@/lib/proposal";
 
 // Downloads the assembled draft as a Word document.
@@ -36,7 +37,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     );
   }
 
-  const doc = buildProposalDocx(rfp, sections);
+  const doc = buildProposalDocx(rfp, sections, (await caravannLogo()) ?? undefined);
   const buffer = await Packer.toBuffer(doc);
   const fileName = `${proposalFileName(rfp)}.docx`;
 

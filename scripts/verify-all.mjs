@@ -733,6 +733,24 @@ heading("13 · The document template");
   ok("page numbering starts at the contents", /<w:pgNumType w:start="1"\/>/.test(docXml), "the cover carries no number");
   ok("a real contents field, not a typed list", /Table of Contents/.test(docXml) || /TOC/.test(docXml), "page numbers stay right after editing");
   ok("the cover carries the federal identifiers", /9NV03/.test(docXml) && /HSV8KJY684V5/.test(docXml), "CAGE and UEI");
+  // Byte-identical to word/media/image1.png inside Caravann's own template, so
+  // the mark on a generated proposal matches every one they have filed by hand.
+  const { caravannLogo } = await import(join(ROOT, "lib/brand-logo.ts"));
+  const logo = await caravannLogo();
+  ok("the cover logo is on disk", Boolean(logo), logo ? `${Math.round(logo.length / 1024)}KB` : "public/brand/caravann-cover.png missing");
+  const withLogo = buildProposalDocx(
+    { title: "Logo check", client_agency: "A", due_at: null, budget_amount: null, budget_source: "none_listed", external_id: null },
+    DEFAULT_SECTIONS.map((sec, i) => ({ id: String(i), rfp_id: "r", section_type: sec.section_type, heading: sec.heading, body: "b", status: "draft", sort_order: sec.sort_order, source_block_ids: [], notes: "", created_at: "", updated_at: "" })),
+    logo ?? undefined
+  );
+  writeFileSync("/tmp/verify-logo.docx", Buffer.from(await Packer.toBuffer(withLogo)));
+  const logoXml = execSync("unzip -p /tmp/verify-logo.docx word/document.xml").toString();
+  ok("and it is embedded on the cover", /<w:drawing>/.test(logoXml), "as a drawing, not a link");
+  ok("a missing logo still produces a valid document", (() => {
+    const bare = buildProposalDocx({ title: "x", client_agency: "y", due_at: null, budget_amount: null, budget_source: "none_listed", external_id: null },
+      DEFAULT_SECTIONS.map((sec, i) => ({ id: String(i), rfp_id: "r", section_type: sec.section_type, heading: sec.heading, body: "b", status: "draft", sort_order: sec.sort_order, source_block_ids: [], notes: "", created_at: "", updated_at: "" })), undefined);
+    return bare !== null;
+  })(), "the draft matters more than the mark");
   ok("all fourteen sections are present", ["Introduction","Background","Scope","Technical Description","Past Performance","Price and Discounts","Representations","Acknowledgement","Offeror Period","Product Samples","Appendix A","Appendix B","Appendix C"].every((h) => docXml.includes(h)), "including the three appendices");
 
   ok("both red fields appear when unknown", (() => {

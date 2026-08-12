@@ -6,6 +6,7 @@ import { toTimestamp } from "@/lib/rfp";
 import { decideVerdict, thresholdsFromSettings } from "@/lib/verdict";
 import { assembleDraft, DEFAULT_SECTIONS, proposalFileName } from "@/lib/proposal";
 import { buildProposalDocx } from "@/lib/docx-export";
+import { caravannLogo } from "@/lib/brand-logo";
 import { Packer } from "docx";
 import { scoreFromRubric, type RubricBreakdown, type RubricWeights } from "@/lib/rubric";
 import type { Database, TableInsert } from "@/lib/supabase/types";
@@ -301,7 +302,7 @@ export async function POST(req: NextRequest) {
         source_block_ids: s.source_block_ids, notes: s.notes,
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       }));
-      const buffer = await Packer.toBuffer(buildProposalDocx(full, sections as never));
+      const buffer = await Packer.toBuffer(buildProposalDocx(full, sections as never, (await caravannLogo()) ?? undefined));
       proposal_docx = Buffer.from(buffer).toString("base64");
       proposal_name = `${proposalFileName(full)}.docx`;
     }

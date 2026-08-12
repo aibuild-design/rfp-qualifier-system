@@ -41,6 +41,7 @@ import {
   Footer,
   Header,
   PageNumber,
+  ImageRun,
   Paragraph,
   Tab,
   TableOfContents,
@@ -55,6 +56,8 @@ export const TEMPLATE = {
   ruleColour: "000000",
   /** The template's own red for unfilled fields. */
   redField: "C00000",
+  /** Points. The source logo is square, so one number does both axes. */
+  logoSize: 150,
 
   /** docx sizes are half-points: 20 = 10pt. */
   headerTextSize: 20,
@@ -219,7 +222,14 @@ export function caravannFooter(): Footer {
  * evaluator seeing `[Insert Agency Name]` knows a step was skipped; a blank
  * space reads as an oversight nobody noticed.
  */
-export function coverPage(title: string, solicitationNumber: string, dueDate: string): Paragraph[] {
+export function coverPage(
+  title: string,
+  solicitationNumber: string,
+  dueDate: string,
+  /** The logo, read from disk by the caller. Passed in rather than read here so
+   *  this module stays free of filesystem access and can run anywhere. */
+  logo?: Buffer | Uint8Array
+): Paragraph[] {
   const o = TEMPLATE.offeror;
 
   const centred = (text: string, opts: { bold?: boolean; size?: number; colour?: string; after?: number } = {}) =>
@@ -242,7 +252,24 @@ export function coverPage(title: string, solicitationNumber: string, dueDate: st
   const red = (text: string) => (/^\[.*\]$/.test(text) ? TEMPLATE.redField : TEMPLATE.navy);
 
   return [
-    new Paragraph({ text: "", spacing: { after: 2400 } }),
+    // The logo sits above everything, as it does on the template's own cover.
+    // Square in the source at 1200x1200, so it is sized by width and the height
+    // follows; scaling one axis alone is how a logo ends up subtly stretched.
+    ...(logo
+      ? [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 720, after: 360 },
+            children: [
+              new ImageRun({
+                data: logo,
+                transformation: { width: TEMPLATE.logoSize, height: TEMPLATE.logoSize },
+                type: "png",
+              }),
+            ],
+          }),
+        ]
+      : [new Paragraph({ text: "", spacing: { after: 2400 } })]),
     centred(TEMPLATE.coverHeading, { bold: true, size: 28, after: 360 }),
     centred(title, { size: 26, colour: red(title), after: 360 }),
     centred(`${TEMPLATE.numberLabel} ${solicitationNumber}`, { bold: true, size: 26, colour: red(solicitationNumber), after: 360 }),

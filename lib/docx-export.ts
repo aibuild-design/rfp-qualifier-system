@@ -39,7 +39,11 @@ import { formatDeadline, DISPLAY_TIME_ZONE } from "./rfp.ts";
  */
 export function buildProposalDocx(
   rfp: Pick<RfpRow, "title" | "client_agency" | "due_at" | "budget_amount" | "budget_source" | "external_id">,
-  sections: ProposalSectionRow[]
+  sections: ProposalSectionRow[],
+  /** Caravann's cover logo, extracted from their own template. Optional so a
+   *  caller without filesystem access still gets a valid document, just without
+   *  the mark on the cover. */
+  logo?: Buffer | Uint8Array
 ): Document {
   const body: Paragraph[] = [];
 
@@ -161,7 +165,7 @@ export function buildProposalDocx(
     sections: [
       {
         properties: PAGE_PROPERTIES,
-        children: coverPage(rfp.title, solicitationNumber, dueDate),
+        children: coverPage(rfp.title, solicitationNumber, dueDate, logo),
       },
       {
         properties: { ...PAGE_PROPERTIES, page: { ...PAGE_PROPERTIES.page, pageNumbers: { start: 1 } } },
