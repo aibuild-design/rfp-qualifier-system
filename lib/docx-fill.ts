@@ -166,6 +166,41 @@ export async function fillTemplate(template: Buffer | Uint8Array, values: Templa
     replacements += filled.written;
   }
 
+  // Blank pages. The template carries 54 paragraphs with pageBreakBefore, and
+  // several of them hold no text at all - an empty paragraph forced onto a new
+  // page is a blank page, which is what shows up as "page 2 is empty".
+  //
+  // Only the empty ones lose the break. A break before a real heading is
+  // deliberate and stays; a break before nothing never was.
+  {
+    const documentPart = zip.file("word/document.xml")!;
+    let xml = await documentPart.async("string");
+    let removed = 0;
+    xml = xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, (paragraph) => {
+      if (!/pageBreakBefore/.test(paragraph)) return paragraph;
+      const text = [...paragraph.matchAll(/<w:t[ >][^>]*>([^<]*)<\/w:t>|<w:t>([^<]*)<\/w:t>/g)]
+        .map((m) => m[1] ?? m[2])
+        .join("")
+        .trim();
+      if (text) return paragraph;
+      removed++;
+      return paragraph.replace(/<w:pageBreakBefore[^>]*\/>/g, "");
+    });
+    if (removed > 0) zip.file("word/document.xml", xml);
+  }
+
+  // The template restarts page numbering in three of its sections, which is why
+  // the appendices begin at 1 again while the contents lists them as A, B and C.
+  // Only the first restart is wanted - that is the one putting page 1 at the
+  // table of contents rather than on the cover.
+  {
+    const documentPart = zip.file("word/document.xml")!;
+    let xml = await documentPart.async("string");
+    let seen = 0;
+    xml = xml.replace(/<w:pgNumType[^>]*w:start="1"[^>]*\/>/g, (match) => (++seen === 1 ? match : ""));
+    if (seen > 1) zip.file("word/document.xml", xml);
+  }
+
   // Report anything left rather than trusting the substitution ran. A template
   // edit that splits a placeholder across runs would otherwise ship a proposal
   // with "[Insert sol#]" on its cover.
@@ -241,7 +276,7 @@ function replaceAcrossRuns(xml: string, subs: [string, string][]): { xml: string
 
     const rebuilt = segments.map((segment) => {
       if (segment === "<w:tab/>") return segment;
-      const runs = [...segment.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)];
+      const runs = [...segment.matchAll(/<w:t[ >][^>]*>([^<]*)<\/w:t>|<w:t>([^<]*)<\/w:t>/g)];
       if (runs.length === 0) return segment;
 
       const joined = runs.map((m) => m[1]).join("");
@@ -391,7 +426,10 @@ function fixFooter(xml: string): string {
     out = out.replace(/(?:<w:tab\/>\s*){2,}/g, "<w:tab/>");
 
     // And one before the text, to put it on the centre stop.
-    out = out.replace(/(<w:t[^>]*>)/, "<w:tab/>$1");
+    // `<w:t[^>]*>` also matches `<w:tabs>` - "abs" satisfies [^>]* - which put
+    // the leading tab inside <w:pPr> before the tab-stop definition, where it
+    // does nothing at all. `[ >]` after `w:t` matches only a real text run.
+    out = out.replace(/(<w:t[ >])/, "<w:tab/>$1");
 
     return out;
   });

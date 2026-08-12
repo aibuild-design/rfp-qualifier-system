@@ -859,6 +859,21 @@ heading("14 · Filling Caravann's own template");
     const h2 = execSync("unzip -p /tmp/verify-filled.docx word/header2.xml").toString();
     ok("placeholders split across runs are still replaced", !/Insert sol#|Insert due date/.test(h2), "joined per tab-segment before substituting");
     ok("and the header keeps its tab between number and date", /<w:tab\/>/.test(h2), "or the two run together");
+    // Four empty paragraphs carried pageBreakBefore, each producing a blank
+    // page. Breaks before real headings are deliberate and stay.
+    const emptyBreaks = (x) =>
+      (x.match(/<w:p[ >][\s\S]*?<\/w:p>/g) || []).filter(
+        (par) =>
+          /pageBreakBefore/.test(par) &&
+          ![...par.matchAll(/<w:t[ >][^>]*>([^<]*)<\/w:t>|<w:t>([^<]*)<\/w:t>/g)].map((m) => m[1] ?? m[2]).join("").trim()
+      ).length;
+    ok("no empty paragraph forces a blank page", emptyBreaks(draftXml) === 0, "4 removed, 50 real breaks kept");
+    ok("page numbering restarts only once", (draftXml.match(/<w:pgNumType[^>]*w:start="1"/g) || []).length === 1, "the template restarts three times, so the appendices began at 1 again");
+
+    const fx2 = execSync("unzip -p /tmp/verify-filled.docx word/footer2.xml").toString();
+    const fpara = (fx2.match(/<w:p[ >][\s\S]*?<\/w:p>/g) || []).find((x) => /PAGE/.test(x)) || "";
+    ok("the footer tab is in the run, not the paragraph properties", !/<w:pPr>[\s\S]*?<w:tab\/>[\s\S]*?<\/w:pPr>/.test(fpara), "a <w:t[^>]*> pattern also matches <w:tabs>");
+
     ok("the second offeror block is filled", !/\[Insert Offeror (Name|Address|Telephone|Email|CAGE|UEI)/.test(draftXml), "name, address, contact, CAGE, UEI, EIN");
 
     // The template sets the page-number run to 4pt against 11pt text beside it,
