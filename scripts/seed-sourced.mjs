@@ -88,7 +88,10 @@ for (const t of SOURCED_TEAM) {
 // citation so a re-run replaces rather than duplicates them.
 const { error: delPlaceholder } = await supabase.from("language_blocks").delete().ilike("source", "Placeholder%");
 if (delPlaceholder) throw new Error(`language delete (placeholders): ${delPlaceholder.message}`);
-const { error: delPrior } = await supabase.from("language_blocks").delete().eq("source", SOURCES.ucsf);
+// Prefix, not equality. The citation text has been edited once already, and
+// an exact match against the new string left every row written under the old
+// one in place - so the library quietly doubled.
+const { error: delPrior } = await supabase.from("language_blocks").delete().ilike("source", "UCSF IGHS%");
 if (delPrior) throw new Error(`language delete (prior run): ${delPrior.message}`);
 const { error: insErr } = await supabase.from("language_blocks").insert(
   SOURCED_LANGUAGE_BLOCKS.map((b) => ({ won: false, weight: 0, ...b, source: SOURCES.ucsf }))

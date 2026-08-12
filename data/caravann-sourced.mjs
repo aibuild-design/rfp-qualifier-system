@@ -85,7 +85,7 @@ export const TEAM_DESCRIPTORS = [
  */
 export const SOURCED_LANGUAGE_BLOCKS = [
   {
-    section_type: "approach",
+    section_type: "technical_description",
     title: "Four-phase needs assessment and strategic planning approach",
     body: [
       "Our approach proceeds in four phases.",
@@ -101,7 +101,7 @@ export const SOURCED_LANGUAGE_BLOCKS = [
     is_boilerplate: false,
   },
   {
-    section_type: "approach",
+    section_type: "introduction",
     title: "What you can expect from us",
     body: [
       "Start from the positive core.",
@@ -112,7 +112,7 @@ export const SOURCED_LANGUAGE_BLOCKS = [
     is_boilerplate: true,
   },
   {
-    section_type: "firm_profile",
+    section_type: "introduction",
     title: "Consulting services and key capabilities",
     body: [
       "Define Strategy for Winning - what are the deliberate bets we are making that will help us win in the marketplace?",
@@ -128,7 +128,7 @@ export const SOURCED_LANGUAGE_BLOCKS = [
     is_boilerplate: true,
   },
   {
-    section_type: "relevant_experience",
+    section_type: "past_performance",
     title: "Higher education and global health - UCSF IGHS",
     body: [
       "Caravann designed and facilitated a needs assessment and four-to-five-year strategic plan for the UCSF Institute for Global Health Sciences, an institute of seven centres facing fragmentation across the wider university and a rapidly changing global health funding landscape.",
@@ -139,7 +139,7 @@ export const SOURCED_LANGUAGE_BLOCKS = [
     won: true,
   },
   {
-    section_type: "work_plan",
+    section_type: "scope",
     title: "Detailed tasks across the four phases",
     body: [
       "Phase 1 - Needs assessment. Review existing materials. Initial conversation with the project team to map stakeholders and key personnel. Create a stakeholder map with learning objectives for each group. Develop and implement a change management and communication plan describing the overall process of engagement. Design and implement interviews, focus groups and surveys with a representative sample of stakeholders. Biweekly meetings with the project team to keep the project on track.",
@@ -153,7 +153,7 @@ export const SOURCED_LANGUAGE_BLOCKS = [
     is_boilerplate: false,
   },
   {
-    section_type: "team",
+    section_type: "technical_description",
     title: "The full team",
     body: [
       "Caravann fields a team of thirteen consultants spanning strategy, organisational development, facilitation, coaching, research and design.",
