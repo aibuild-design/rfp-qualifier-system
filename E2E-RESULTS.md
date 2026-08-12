@@ -230,6 +230,76 @@ buttons. The .docx filed to Drive is assembled in memory at intake time.
 
 ---
 
+## 4b. The email trigger, finally proven
+
+This had never fired. Not once, across the whole build — the mailbox was empty
+and I had no way to send into it, so the entire email path was untested code.
+
+The blocker was that nobody knew the watched address. The Gmail credential is
+locked to Gmail nodes, so the Gmail API's own profile endpoint is unreachable
+through an HTTP node — it fails with *"This credential is configured to prevent
+use within an HTTP Request or GraphQL node"*. Reading the mailbox through a
+Gmail node instead exposed it in a message header: **aibuild@caravann.co**.
+
+The three messages already sitting in that inbox were promotions with nothing
+matching `subject:(RFP OR RFQ OR solicitation …)`, which is exactly why the
+trigger had never had anything to fire on.
+
+Sent one solicitation notice in. The trigger picked it up and ran the whole
+chain — **22 nodes, no errors**, from the email to a filed Google Doc:
+
+| Field | Value | Correct? |
+|---|---|---|
+| `source` | `email` | yes |
+| `external_id` | `gmail-19ff6ef7def5552f` | the message id, so re-delivery updates rather than duplicates |
+| title | Strategic Planning and Board Facilitation Services | yes — the RFP number is stripped from the subject |
+| agency | Marin County Health and Human Services | yes — read out of the body |
+| due | 2026-09-18 | yes |
+| questions due | 2026-09-04 | yes |
+| verdict | maybe, 86% | — |
+| filing | `filed`, folder created | yes |
+
+Both entry points are now demonstrated end to end and both bid folders are in
+Drive: one entered by hand, one that arrived as an email.
+
+---
+
+## 4c. The team matcher was broken, and said so quietly
+
+Run against a real solicitation, the best consultant on the roster scored
+**11** — *"matches 1 of 9 stated requirements"*. That reads as "nobody here is
+suitable". It was the matcher.
+
+**Spelling.** The roster is British English because Khaled wrote it —
+"Organi**s**ational development". American agencies write
+"organi**z**ational". A substring test never fires across that one letter, so
+the single most common word in this domain matched nothing. Same for
+"facilitating" against "facilitation".
+
+**Denominator.** Coverage was divided by every gate check, but most are about
+the document, not the team: a twenty-page limit, a W-9, a certificate of
+insurance, Oregon registration. No human satisfies a page limit, so everyone
+was capped near 11%.
+
+Both fixed — spellings folded on both sides, and the denominator narrowed to
+the requirements at least one member matches, so document rules drop out on
+their own rather than needing a maintained keyword list.
+
+| | Before | After |
+|---|---|---|
+| Sarah Lightfoot | 11 — "1 of 9" | **67 — "2 of 3"** |
+| Kia Afcari | 11 — "1 of 9" | 33 — "1 of 3" |
+| Terrell Holmes | 11 — "1 of 9" | 33 — "1 of 3" |
+
+**Rates are placeholders.** All 13 consultants now carry one so the card renders
+a complete recommendation, but only two are real (Khaled 285, Trent 125); the
+other eleven are plausible tier-based stand-ins. Khaled must replace them before
+any is quoted. Safe to seed because `rate` is display-only — it renders on the
+team card and is never written into the proposal document, so no invented number
+can reach a client-facing file.
+
+---
+
 ## 5. Still not proven
 
 **Accuracy against Khaled's judgement.** Everything above measures consistency
@@ -240,9 +310,6 @@ it needs roughly 20 already-decided solicitations as an answer key.
 **Behaviour on a genuinely long document.** This solicitation is realistic in
 shape but short. A forty-page RFP with addenda is a different problem.
 
-**The live Gmail trigger.** The watched mailbox is still empty and has never
-fired. Send any email with "RFP" in the subject to the connected mailbox and it
-will poll within the minute.
 
 ---
 
