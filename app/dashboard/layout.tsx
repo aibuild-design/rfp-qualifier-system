@@ -76,7 +76,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           keeps the Topbar pinned to the top of the content rather than to a page
           sliding underneath it. */}
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <Topbar counts={counts} />
+        <Topbar userEmail={user.email ?? null} counts={counts} attention={attention} />
         <main className="flex-1 p-5 lg:p-8">
           <PageTransition>{children}</PageTransition>
         </main>

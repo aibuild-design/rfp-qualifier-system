@@ -51,6 +51,30 @@ export function Sidebar({
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col overflow-hidden bg-rfp-black text-white lg:flex">
+      <RailContent userEmail={userEmail} counts={counts} attention={attention} pathname={pathname} />
+    </aside>
+  );
+}
+
+/**
+ * Everything inside the rail. Split out so the mobile drawer renders the real
+ * rail - the same nav, the same attention numbers, the same sign-out - instead
+ * of a reduced copy of it. `pathname` is passed in rather than read here so both
+ * callers stay in charge of their own render.
+ */
+export function RailContent({
+  userEmail,
+  counts,
+  attention,
+  pathname,
+}: {
+  userEmail: string | null;
+  counts: NavCounts;
+  attention: AttentionCounts;
+  pathname: string;
+}) {
+  return (
+    <>
       <div className="flex h-16 flex-col justify-center gap-1 border-b border-white/10 px-5">
         {/* Yellow wordmark on the near-black rail - 11.9:1, the variant
             Caravann's own site uses on dark. */}
@@ -126,7 +150,7 @@ export function Sidebar({
       <AttentionPanel attention={attention} />
 
       <SignOutButton userEmail={userEmail} />
-    </aside>
+    </>
   );
 }
 

@@ -1,21 +1,39 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MobileNav } from "./MobileNav";
 import { PlusIcon } from "./icons";
+import { MobileSidebar } from "./MobileSidebar";
 import { timeZoneLabel } from "@/lib/rfp";
-import type { NavCounts } from "@/lib/nav";
+import type { AttentionCounts, NavCounts } from "@/lib/nav";
 
-export function Topbar({ counts }: { counts: NavCounts }) {
+export function Topbar({
+  userEmail,
+  counts,
+  attention,
+}: {
+  userEmail: string | null;
+  counts: NavCounts;
+  attention: AttentionCounts;
+}) {
   return (
     <header className="sticky top-0 z-20 shrink-0 border-b border-rfp-border bg-rfp-surface/95 backdrop-blur supports-backdrop-blur:bg-rfp-surface/80">
-      <div className="flex h-16 items-center gap-4 px-5 lg:px-8">
+      <div className="flex h-16 items-center gap-3 px-5 lg:px-8">
+        <MobileSidebar userEmail={userEmail} counts={counts} attention={attention} />
+
         {/* Only shown below lg, where the sidebar (and its wordmark) is hidden. */}
         <Image
           src="/brand/caravann-black.png"
           alt="Caravann"
           width={1494}
           height={205}
-          className="h-[18px] w-auto shrink-0 object-contain lg:hidden"
+          className="brand-on-light h-[18px] w-auto shrink-0 object-contain"
+        />
+        <Image
+          src="/brand/caravann-yellow.png"
+          alt=""
+          aria-hidden
+          width={1494}
+          height={205}
+          className="brand-on-dark h-[18px] w-auto shrink-0 object-contain"
         />
 
         <div className="ml-auto flex items-center gap-2.5">
@@ -36,8 +54,6 @@ export function Topbar({ counts }: { counts: NavCounts }) {
           </Link>
         </div>
       </div>
-
-      <MobileNav counts={counts} />
     </header>
   );
 }
