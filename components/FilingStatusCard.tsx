@@ -11,12 +11,12 @@ const STATUS_COPY: Record<RfpRow["filing_status"], { label: string; color: strin
   pending: {
     label: "Queued",
     color: "var(--rfp-warning)",
-    detail: "Queued for filing. The Drive step runs once a Google account is connected.",
+    detail: "Queued for filing. The Drive step has not reported back yet.",
   },
   filed: {
     label: "Filed",
     color: "var(--rfp-good)",
-    detail: "Filed to Drive with the RFP, its addenda, and the draft.",
+    detail: "Filed to Drive: the proposal as a Google Doc, and the solicitation beside it.",
   },
   failed: {
     label: "Failed",
@@ -25,10 +25,14 @@ const STATUS_COPY: Record<RfpRow["filing_status"], { label: string; color: strin
   },
 };
 
-/** Module 10. The folder structure and naming are settled; the Drive API call
- *  is not wired because it needs Google OAuth. Showing the intended
- *  destination is more honest than hiding the module until it works - it makes
- *  clear what is and isn't happening. */
+/** Module 10. Filing is live: n8n creates the bid folder, uploads the
+ *  solicitation and converts the proposal to a native Google Doc, then reports
+ *  back to /api/rfps/filing so this card can show where it went.
+ *
+ *  It used to carry a footer saying filing was "not yet connected" and that no
+ *  files move. That went stale the day the Drive credential was authorised, and
+ *  a card that reports "Not filed" over files that are demonstrably in Drive is
+ *  worse than one that says nothing - it teaches you to distrust the field. */
 export function FilingStatusCard({ rfp }: { rfp: RfpRow }) {
   const meta = STATUS_COPY[rfp.filing_status];
   const folder = rfp.status === "pending" ? "(awaiting verdict)" : `/${rfp.status.replace("_", "-")}/`;
@@ -84,10 +88,12 @@ export function FilingStatusCard({ rfp }: { rfp: RfpRow }) {
           )}
         </dl>
 
-        <p className="mt-4 border-t border-rfp-border pt-3 text-[11px] leading-relaxed text-rfp-ink-muted">
-          Not yet connected. Filing needs a Google account authorised in n8n - the same one-time
-          consent the email trigger needs. Until then this records intent only; no files move.
-        </p>
+        {rfp.filing_status === "not_filed" && (
+          <p className="mt-4 border-t border-rfp-border pt-3 text-[11px] leading-relaxed text-rfp-ink-muted">
+            Filing runs after the verdict. If this stays here once a verdict is in, check the Drive
+            step in n8n.
+          </p>
+        )}
       </div>
     </div>
   );

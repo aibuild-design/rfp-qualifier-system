@@ -403,6 +403,9 @@ export interface Database {
 export type TableInsert<T extends keyof Database["public"]["Tables"]> =
   Database["public"]["Tables"][T]["Insert"];
 
+export type TableUpdate<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Update"];
+
 export type FolderRow = Database["public"]["Tables"]["rfp_folders"]["Row"];
 export type OrgProfileRow = Database["public"]["Tables"]["org_profile"]["Row"];
 export type ScoringSettingsRow = Database["public"]["Tables"]["scoring_settings"]["Row"];
