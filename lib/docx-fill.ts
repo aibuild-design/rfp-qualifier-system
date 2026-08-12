@@ -84,6 +84,19 @@ function substitutions(v: TemplateValues): [string, string][] {
     // The first-page footer carries its own placeholder, separate from the one
     // on the following pages.
     ["[Insert Offeror Name / Offeror website]", `${COMPANY} / www.caravann.co`],
+    // A second offeror block, separate from the filled cover. Values taken from
+    // Caravann's own cover page rather than invented - DUNS is deliberately
+    // left as its placeholder, because no document we hold states one and a
+    // guessed federal identifier on a submission is worse than a visible gap.
+    ["[Insert Offeror Name]", COMPANY],
+    ["[Insert Offeror Address]", "2008 Ninth St, Berkeley, CA 94701"],
+    ["[Insert Offeror Point of Contact:]", "Khaled El-Sawaf"],
+    ["[Insert Offeror Telephone]", "510-224-0070"],
+    ["[Insert Offeror Email]", "khaled@caravann.co"],
+    ["[Insert Offeror Website]", "https://www.caravann.co"],
+    ["[Insert Offeror CAGE Code]", "9NV03"],
+    ["[Insert Offeror UEI#]", "HSV8KJY684V5"],
+    ["[Insert Offeror TAX EIN#]", "92-1867651"],
     ["[Insert Agency Name]", esc(keep(v.agencyName, "[Insert Agency Name]"))],
     ["[Insert Agency Address]", esc(keep(v.agencyAddress, "[Insert Agency Address]"))],
     ["[Insert Agency POC Telephone]", esc(keep(v.agencyPocPhone, "[Insert Agency POC Telephone]"))],
@@ -138,12 +151,10 @@ export async function fillTemplate(template: Buffer | Uint8Array, values: Templa
 
   for (const name of parts) {
     let xml = await zip.file(name)!.async("string");
-    for (const [from, to] of subs) {
-      const before = xml;
-      xml = xml.split(from).join(to);
-      if (xml !== before) replacements += before.split(from).length - 1;
-    }
-    if (/^word\/footer/.test(name)) xml = enlargePageNumber(xml);
+    const result = replaceAcrossRuns(xml, subs);
+    xml = result.xml;
+    replacements += result.count;
+    if (/^word\/footer/.test(name)) xml = fixFooter(xml);
     zip.file(name, xml);
   }
 
@@ -188,6 +199,79 @@ export const TEMPLATE_PLACEHOLDERS = [
   "[Insert Agency POC Email]",
 ] as const;
 
+
+/**
+ * Substitute placeholders even when Word has split them across runs.
+ *
+ * A plain string replace over the raw XML finds a placeholder only when it sits
+ * inside one `<w:t>`. In `word/document.xml` all of them do, which is what an
+ * earlier check confirmed - but the headers are different, and nobody checked
+ * those:
+ *
+ *     'Solicitation Number: ['   'Insert sol#'   ']'
+ *     'Solicitation Due Date: ['  'Insert due date'  ']'
+ *
+ * Three runs each, so `[Insert sol#]` was never found and the running header
+ * shipped with the red placeholder still on it while the title beside it filled
+ * correctly. Word splits runs whenever formatting, language or spellcheck state
+ * changes mid-phrase, so this is normal and will happen again.
+ *
+ * Working per paragraph: join its runs, substitute on the joined text, then put
+ * the result back in the first run and empty the others. Emptied rather than
+ * removed, because Word keeps formatting per run and deleting them would drop
+ * the paragraph's styling.
+ */
+function replaceAcrossRuns(xml: string, subs: [string, string][]): { xml: string; count: number } {
+  let count = 0;
+
+  const out = xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, (paragraph) => {
+    // Split on tabs first and work within each segment.
+    //
+    // Collapsing a whole paragraph into its first run strands any `<w:tab/>`
+    // between the runs it emptied, and the header has exactly that shape -
+    // "Solicitation Number: [", "Insert sol#", "]", <w:tab/>, "Solicitation Due
+    // Date: [", ... - so the first attempt produced
+    // "Solicitation Number: RFP 2026-25Solicitation Due Date: August 27" with
+    // the tab pushed to the end and the due date no longer at the right margin.
+    //
+    // A placeholder never spans a tab, so joining within a segment is enough to
+    // reunite one, and the tabs keep their positions.
+    const segments = paragraph.split(/(<w:tab\/>)/);
+    let touched = false;
+
+    const rebuilt = segments.map((segment) => {
+      if (segment === "<w:tab/>") return segment;
+      const runs = [...segment.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)];
+      if (runs.length === 0) return segment;
+
+      const joined = runs.map((m) => m[1]).join("");
+      let replaced = joined;
+      for (const [from, to] of subs) {
+        if (!replaced.includes(from)) continue;
+        count += replaced.split(from).length - 1;
+        replaced = replaced.split(from).join(to);
+      }
+      if (replaced === joined) return segment;
+      touched = true;
+
+      // The segment's text goes into its first run and the rest are emptied
+      // rather than removed - Word keeps formatting per run, so deleting them
+      // would drop the styling. Losing the split is the point: it was an
+      // artefact of how the placeholder was typed, not a deliberate mix.
+      let first = true;
+      return segment.replace(/(<w:t[^>]*>)([^<]*)(<\/w:t>)/g, (_all, open: string, _old: string, close: string) => {
+        if (!first) return `${open}${close}`;
+        first = false;
+        const tag = open.includes("xml:space") ? open : open.replace(/>$/, ' xml:space="preserve">');
+        return `${tag}${replaced}${close}`;
+      });
+    });
+
+    return touched ? rebuilt.join("") : paragraph;
+  });
+
+  return { xml: out, count };
+}
 
 /**
  * Replace each section's writing instruction with the drafted prose.
@@ -265,24 +349,50 @@ function injectSections(xml: string, sections: Record<string, string>): { xml: s
 
 
 /**
- * Bring the page number up to the size of the text beside it.
+ * Make the footer's page number readable, and put it at the right margin.
  *
- * The template sets the run holding the PAGE field to `w:sz="8"` - four points,
- * against eleven for "Caravann Consulting / www.caravann.co" on the same line.
- * At that size it reads as a speck of dirt rather than a number, which is what
- * "the numbers are hard to read" turned out to be.
+ * Two departures from copying the template, and the only ones in this file.
+ * Both are cases where the template is plainly not what anyone intended.
  *
- * A deliberate departure from copying the template exactly, and the only one in
- * this file. Four-point type is not a design decision anybody made; it is what
- * happens when a page-number field is pasted in and picks up whatever
- * formatting was on the clipboard. Everything else here is left alone precisely
- * because the template is more likely to be right than I am - this is the case
- * where it plainly is not.
+ * Size: the run holding the PAGE field is set to `w:sz="8"` - four points,
+ * against eleven for the firm and website beside it. At that size it reads as a
+ * speck of dirt. That is not a decision anybody made; it is what happens when a
+ * page-number field is pasted in and picks up the clipboard's formatting.
  *
- * Scoped to footers and to that one size, so nothing else can be caught by it.
+ * Position: the paragraph is centred and carries **seven literal tabs** between
+ * the text and the field - someone tabbing the number across by hand. Centring
+ * aligns a paragraph's whole content as one block, so every one of those tabs
+ * collapses to nothing and the number lands directly under the text. Seven tabs
+ * is the tell: it only gets typed that many times when the first six visibly
+ * did nothing.
+ *
+ * Replaced with what was meant: left alignment, a centre stop and a right stop,
+ * one tab before the text and one before the field. The text sits centred, the
+ * number goes to the right margin, and both hold whatever the page count
+ * reaches.
  */
-function enlargePageNumber(xml: string): string {
-  return xml
-    .replace(/<w:sz w:val="8"\/>/g, '<w:sz w:val="22"/>')
-    .replace(/<w:szCs w:val="8"\/>/g, '<w:szCs w:val="22"/>');
+function fixFooter(xml: string): string {
+  return xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, (paragraph) => {
+    if (!/PAGE/.test(paragraph)) return paragraph;
+
+    let out = paragraph
+      .replace(/<w:sz w:val="8"\/>/g, '<w:sz w:val="22"/>')
+      .replace(/<w:szCs w:val="8"\/>/g, '<w:szCs w:val="22"/>')
+      .replace(/<w:jc w:val="center"\/>/g, "");
+
+    const stops =
+      '<w:tabs><w:tab w:val="center" w:pos="4680"/><w:tab w:val="right" w:pos="9360"/></w:tabs>';
+    out = /<w:pPr>/.test(out)
+      ? out.replace("<w:pPr>", `<w:pPr>${stops}`)
+      : out.replace(/(<w:p[ >][^>]*>)/, `$1<w:pPr>${stops}</w:pPr>`);
+
+    // The hand-typed run of tabs becomes one, so the number stops at the right
+    // margin rather than marching past it on default half-inch stops.
+    out = out.replace(/(?:<w:tab\/>\s*){2,}/g, "<w:tab/>");
+
+    // And one before the text, to put it on the centre stop.
+    out = out.replace(/(<w:t[^>]*>)/, "<w:tab/>$1");
+
+    return out;
+  });
 }

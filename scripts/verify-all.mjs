@@ -853,11 +853,24 @@ heading("14 · Filling Caravann's own template");
     ok("the underscore blank is filled", !/solicitation_{4,}/.test(draftXml), "not just the bracketed placeholders");
     ok("both spellings of the title placeholder are caught", !/\[insert title\]/i.test(draftXml), "[Insert Title] and [insert title]");
 
+    // The headers split their placeholders across runs - "Solicitation Number: [",
+    // "Insert sol#", "]" - so a plain string replace never found them and the
+    // running header shipped with red placeholders on every page.
+    const h2 = execSync("unzip -p /tmp/verify-filled.docx word/header2.xml").toString();
+    ok("placeholders split across runs are still replaced", !/Insert sol#|Insert due date/.test(h2), "joined per tab-segment before substituting");
+    ok("and the header keeps its tab between number and date", /<w:tab\/>/.test(h2), "or the two run together");
+    ok("the second offeror block is filled", !/\[Insert Offeror (Name|Address|Telephone|Email|CAGE|UEI)/.test(draftXml), "name, address, contact, CAGE, UEI, EIN");
+
     // The template sets the page-number run to 4pt against 11pt text beside it,
     // which reads as a speck rather than a number.
-    for (const f of ["footer1", "footer2", "footer3"]) {
+    for (const f of ["footer2", "footer3"]) {
       const fx = execSync(`unzip -p /tmp/verify-filled.docx word/${f}.xml`).toString();
-      ok(`${f} page number is readable`, !/<w:sz w:val="8"\/>/.test(fx), "4pt raised to 11pt, matching the text");
+      const para = (fx.match(/<w:p[ >][\s\S]*?<\/w:p>/g) || []).find((x) => /PAGE/.test(x)) || "";
+      ok(`${f} page number is readable`, !/<w:sz w:val="8"\/>/.test(para), "4pt raised to 11pt, matching the text beside it");
+      // Centring collapses every tab in the paragraph, which is why the
+      // template's seven hand-typed ones did nothing.
+      ok(`${f} is not centred`, !/<w:jc w:val="center"/.test(para), "left-aligned, so the tab stops apply");
+      ok(`${f} number goes to the right margin`, /w:val="right"[^>]*w:pos="9360"/.test(para) && (para.match(/<w:tab\/>/g) || []).length === 2, "one tab to centre the text, one to throw the number right");
     }
     const f1 = execSync("unzip -p /tmp/verify-filled.docx word/footer1.xml").toString();
     ok("the first-page footer placeholder is filled", !/\[Insert Offeror/.test(f1), "it is a separate placeholder from the other pages");
