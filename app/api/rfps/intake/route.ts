@@ -54,6 +54,13 @@ type Child<T extends keyof Database["public"]["Tables"]> = Omit<TableInsert<T>, 
 
 type IntakeBody = Partial<TableInsert<"rfps">> & {
   external_id: string;
+  /** The issuing agency's own contact block, read off the solicitation. Used on
+   *  the proposal cover and nowhere else, so these are deliberately not columns
+   *  on `rfps` - storing them would imply the desk tracks them. */
+  agency_address?: string | null;
+  agency_poc_name?: string | null;
+  agency_poc_phone?: string | null;
+  agency_poc_email?: string | null;
   title: string;
   client_agency: string;
   gap_items?: Array<Child<"rfp_gap_items">>;
@@ -319,6 +326,13 @@ export async function POST(req: NextRequest) {
             ? new Date(full.due_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" })
             : "[Insert due date]",
           agencyName: full.client_agency,
+          // Straight from the solicitation. Anything the document did not state
+          // is left undefined, and the template's own red placeholder stays -
+          // a visible gap beats a blank an evaluator reads as an oversight.
+          agencyAddress: body.agency_address ?? undefined,
+          agencyPocName: body.agency_poc_name ?? undefined,
+          agencyPocPhone: body.agency_poc_phone ?? undefined,
+          agencyPocEmail: body.agency_poc_email ?? undefined,
           // Keyed by the template's own heading text, so the assembler's
           // section list and the template stay joined by something visible in
           // both rather than by an index nobody would notice drifting.

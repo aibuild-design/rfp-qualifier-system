@@ -915,6 +915,18 @@ heading("14 · Filling Caravann's own template");
     const f1 = execSync("unzip -p /tmp/verify-filled.docx word/footer1.xml").toString();
     ok("the first-page footer placeholder is filled", !/\[Insert Offeror/.test(f1), "it is a separate placeholder from the other pages");
 
+    // The agency block on the cover. Anything the solicitation did not state
+    // must stay as the template's red placeholder rather than going blank.
+    const withAgency = await fillTemplate(template, {
+      title: "T", solicitationNumber: "S", dueDate: "D",
+      agencyName: "Clackamas County", agencyAddress: "2051 Kaen Road, Oregon City, OR 97045",
+      agencyPocName: "Elizabeth Comfort", agencyPocPhone: "503-742-5400", agencyPocEmail: "procurement@clackamas.us",
+    });
+    writeFileSync("/tmp/verify-agency.docx", withAgency.buffer);
+    const agencyXml = execSync("unzip -p /tmp/verify-agency.docx word/document.xml").toString();
+    ok("the agency contact block reaches the cover", /2051 Kaen Road/.test(agencyXml) && /Elizabeth Comfort/.test(agencyXml), "address, contact, phone, email");
+    ok("and nothing of it is left as a placeholder", !/\[Insert Agency (Address|POC)/.test(agencyXml), "all four filled");
+
     // Ampersands are common in solicitation titles and would break the XML.
     const amp = await fillTemplate(template, { title: "Leadership & Culture", solicitationNumber: "S", dueDate: "D", agencyName: "A & B" });
     writeFileSync("/tmp/verify-amp.docx", amp.buffer);
