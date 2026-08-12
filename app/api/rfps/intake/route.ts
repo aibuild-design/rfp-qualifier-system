@@ -4,6 +4,7 @@ import { isAuthorized } from "@/lib/api-auth";
 import { isServiceRoleConfigured } from "@/lib/supabase/config";
 import { toTimestamp } from "@/lib/rfp";
 import { decideVerdict, thresholdsFromSettings } from "@/lib/verdict";
+import { assembleDraft, DEFAULT_SECTIONS } from "@/lib/proposal";
 import { scoreFromRubric, type RubricBreakdown, type RubricWeights } from "@/lib/rubric";
 import type { Database, TableInsert } from "@/lib/supabase/types";
 
@@ -266,5 +267,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ id: rfpId, status: "ok" });
+  // The draft comes back with the verdict so n8n can file it in the bid folder
+  // without a second round trip. Assembled here rather than in n8n because the
+  // language library and the section structure are the app's to own - n8n
+  // moves documents, it does not decide what is in them.
+  //
+  // Only for bids worth pursuing. A no-go does not need a proposal, and writing
+  // one into the folder would suggest otherwise.
+  let proposal: { heading: string; body: string | null }[] | null = null;
+  if (body.status === "go" || body.status === "maybe") {
+    const { data: blocks } = await supabase.from("language_blocks").select("*");
+    proposal = assembleDraft(
+      { title: body.title ?? "", client_agency: body.client_agency ?? "", project_type: body.project_type ?? null, due_at: body.due_at ?? null },
+      blocks ?? [],
+      DEFAULT_SECTIONS
+    ).map((s) => ({ heading: s.heading, body: s.body }));
+  }
+
+  return NextResponse.json({ id: rfpId, status: "ok", proposal });
 }

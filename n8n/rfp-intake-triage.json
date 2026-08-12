@@ -627,8 +627,8 @@
       }
     },
     {
-      "id": "drv-doc",
-      "name": "Build the record",
+      "id": "drv-sol",
+      "name": "Solicitation as a document",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -636,12 +636,12 @@
         460
       ],
       "parameters": {
-        "jsCode": "const filing = $input.first().json;\nconst triaged = $('Reconcile triage runs').first().json.body || {};\nconst cfg = $('Config').first().json;\nconst doc = $('Build triage prompt').first().json;\n\nconst line = (label, value) => `${label}: ${value ?? 'not stated'}`;\nconst body = [\n  filing.title || triaged.title || 'Solicitation',\n  triaged.client_agency || '',\n  '',\n  '--- VERDICT ---------------------------------------------------------------',\n  line('Verdict', String(filing.status || '').toUpperCase()),\n  line('Due', triaged.due_at),\n  line('Questions due', triaged.question_deadline_at),\n  line('Budget', triaged.budget_amount ?? 'none listed in the RFP'),\n  '',\n  triaged.verdict_why ? 'Why: ' + triaged.verdict_why : '',\n  triaged.verdict_why_not ? 'Why not: ' + triaged.verdict_why_not : '',\n  '',\n  '--- COMPLIANCE ------------------------------------------------------------',\n  ...(triaged.compliance_items || []).map((c) => `[ ] ${c.label}${c.due_at ? '  (due ' + String(c.due_at).slice(0,10) + ')' : ''}`),\n  '',\n  '--- MANDATORY REQUIREMENTS ------------------------------------------------',\n  ...(triaged.disqualifier_checks || []).map((c) => `${String(c.result).toUpperCase().padEnd(15)} ${c.requirement_text}`),\n  '',\n  '--- SOLICITATION TEXT -----------------------------------------------------',\n  (doc?.user || '').split('SOLICITATION TEXT')[1] || '(the document was filed separately)',\n].filter((l) => l !== '').join('\\n');\n\nreturn [{\n  json: { ...filing, doc_name: filing.drive_file_base },\n  binary: { data: await this.helpers.prepareBinaryData(Buffer.from(body, 'utf8'), filing.drive_file_base + '.txt', 'text/plain') },\n}];"
+        "jsCode": "// Only when the solicitation arrived as text. If it came as a PDF - attached to\n// the email or downloaded from a link - that file is filed as-is further down,\n// and writing the extracted text beside it would just be a worse copy.\nconst filing = $input.first().json;\nconst prompt = $('Build triage prompt').first().json;\nconst text = (prompt?.user || '').split('SOLICITATION TEXT')[1] || '';\n\nif (!text.trim()) return [];\n\nreturn [{\n  json: { ...filing, doc_name: filing.drive_file_base + ' - solicitation' },\n  binary: {\n    data: await this.helpers.prepareBinaryData(\n      Buffer.from(text.trim(), 'utf8'),\n      filing.drive_file_base + ' - solicitation.txt',\n      'text/plain'\n    ),\n  },\n}];"
       }
     },
     {
-      "id": "drv-updoc",
-      "name": "Drive — write the record",
+      "id": "drv-upsol",
+      "name": "Drive — file the solicitation text",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
@@ -670,6 +670,54 @@
           "convertToGoogleDocument": true
         }
       },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "drv-prop",
+      "name": "Proposal as a document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        460
+      ],
+      "parameters": {
+        "jsCode": "// The bid desk assembles the draft and hands it back with the verdict, so there\n// is no second call. Absent on a no-go, which is deliberate: filing a proposal\n// for a bid the desk just ruled out would read as a recommendation to write it.\nconst filing = $('Folder to file into').first().json;\nconst desk = $('POST to bid desk').first().json;\nconst sections = desk?.proposal;\nif (!Array.isArray(sections) || sections.length === 0) return [];\n\nconst h = ['Caravann Consulting', 'Facilitator Services', ''].join('\\n');\nconst body = [\n  h,\n  filing.title || '',\n  '',\n  ...sections.flatMap((s) => [\n    s.heading.toUpperCase(),\n    '',\n    s.body || '[No approved language on file for this section - needs writing by hand.]',\n    '',\n  ]),\n  'Caravann Consulting / www.caravann.co',\n].join('\\n');\n\nreturn [{\n  json: { ...filing, doc_name: filing.drive_file_base + ' - proposal draft' },\n  binary: {\n    data: await this.helpers.prepareBinaryData(\n      Buffer.from(body, 'utf8'),\n      filing.drive_file_base + ' - proposal draft.txt',\n      'text/plain'\n    ),\n  },\n}];"
+      }
+    },
+    {
+      "id": "drv-upprop",
+      "name": "Drive — file the proposal",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3000,
+        460
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "FjFIQxop7CmuPays",
+          "name": "Google Drive account"
+        }
+      },
+      "parameters": {
+        "name": "={{ $json.doc_name }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.folder_id }}"
+        },
+        "options": {
+          "convertToGoogleDocument": true
+        }
+      },
+      "alwaysOutputData": true,
       "onError": "continueRegularOutput"
     }
   ],
@@ -961,25 +1009,47 @@
       "main": [
         [
           {
-            "node": "Build the record",
+            "node": "Solicitation as a document",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build the record": {
+    "Solicitation as a document": {
       "main": [
         [
           {
-            "node": "Drive — write the record",
+            "node": "Drive — file the solicitation text",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Drive — write the record": {
+    "Drive — file the solicitation text": {
+      "main": [
+        [
+          {
+            "node": "Proposal as a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Proposal as a document": {
+      "main": [
+        [
+          {
+            "node": "Drive — file the proposal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive — file the proposal": {
       "main": [
         [
           {
