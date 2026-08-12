@@ -85,9 +85,15 @@ function substitutions(v: TemplateValues): [string, string][] {
     // on the following pages.
     ["[Insert Offeror Name / Offeror website]", `${COMPANY} / www.caravann.co`],
     // A second offeror block, separate from the filled cover. Values taken from
-    // Caravann's own cover page rather than invented - DUNS is deliberately
-    // left as its placeholder, because no document we hold states one and a
-    // guessed federal identifier on a submission is worse than a visible gap.
+    // Caravann's own cover page rather than invented.
+    //
+    // DUNS was left as a raw "[Insert Offeror DUNS#]" on the theory that a
+    // guessed federal identifier is worse than a visible gap. Both are bad, and
+    // there is a third answer: the federal government retired DUNS in April
+    // 2022 and replaced it with the UEI, which is already stated on the line
+    // above. So the field is not missing, it is obsolete - and saying that is
+    // accurate rather than invented, and reads as deliberate to an evaluator
+    // where a bracketed placeholder reads as unfinished.
     ["[Insert Offeror Name]", COMPANY],
     ["[Insert Offeror Address]", "2008 Ninth St, Berkeley, CA 94701"],
     ["[Insert Offeror Point of Contact:]", "Khaled El-Sawaf"],
@@ -96,6 +102,7 @@ function substitutions(v: TemplateValues): [string, string][] {
     ["[Insert Offeror Website]", "https://www.caravann.co"],
     ["[Insert Offeror CAGE Code]", "9NV03"],
     ["[Insert Offeror UEI#]", "HSV8KJY684V5"],
+    ["[Insert Offeror DUNS#]", "N/A - replaced by UEI (April 2022)"],
     ["[Insert Offeror TAX EIN#]", "92-1867651"],
     ["[Insert Agency Name]", esc(keep(v.agencyName, "[Insert Agency Name]"))],
     ["[Insert Agency Address]", esc(keep(v.agencyAddress, "[Insert Agency Address]"))],
