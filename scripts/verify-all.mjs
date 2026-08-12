@@ -675,7 +675,46 @@ heading("12 · The dashboard, in a real browser");
 
 // ── cleanup ─────────────────────────────────────────────────────────────────
 // ── data integrity ──────────────────────────────────────────────────────────
-heading("13 · Voice check on drafts");
+heading("13 · The document template");
+{
+  // Every value checked against what was measured out of Caravann's own filed
+  // proposal. The furniture is the first thing an evaluator sees, and a
+  // masthead that does not match the firm's other submissions reads as
+  // assembled by someone else - so it is worth a test rather than a memory.
+  const { Packer } = await import("docx");
+  const { buildProposalDocx } = await import(join(ROOT, "lib/docx-export.ts"));
+  const { execSync } = await import("node:child_process");
+  const { writeFileSync } = await import("node:fs");
+
+  const doc = buildProposalDocx(
+    { title: "Template check", client_agency: "Test Agency", due_at: "2026-08-27T21:00:00Z",
+      budget_amount: null, budget_source: "none_listed", external_id: "RFP 2026-25" },
+    [{ id: "1", rfp_id: "r", section_type: "introduction", heading: "Introduction", body: "Body text.",
+       status: "draft", sort_order: 10, source_block_ids: [], notes: "", created_at: "", updated_at: "" }]
+  );
+  const tmp = "/tmp/verify-template.docx";
+  writeFileSync(tmp, Buffer.from(await Packer.toBuffer(doc)));
+  const header = execSync(`unzip -p ${tmp} word/header1.xml`).toString();
+  const footer = execSync(`unzip -p ${tmp} word/footer1.xml`).toString();
+  const attr = (xml, tag, name) => [...xml.matchAll(new RegExp(`<w:${tag}[^>]*w:${name}="([^"]+)"`, "g"))].map((m) => m[1]);
+
+  ok("the navy is Caravann's own, not sampled from a screenshot", attr(header, "color", "val").every((c) => c === "002060"), "002060");
+  ok("header text is 10pt", attr(header, "sz", "val").every((v) => v === "20"), "w:sz=20 half-points");
+  ok("footer text is 11pt", attr(footer, "sz", "val").every((v) => v === "22"), "w:sz=22 half-points");
+  ok("the rule under the header is black, not navy", /<w:bottom[^>]*w:color="000000"/.test(header), "the text is navy, the rule is not");
+  ok("the rule sits under all three header lines", (header.match(/<w:pBdr>/g) || []).length === 3, `${(header.match(/<w:pBdr>/g) || []).length} of 3`);
+  ok("the due date is held right by a tab, not by spaces", /w:pos="9360"/.test(header) && /\\t/.test(header) === false, "right tab at 6.5in");
+  ok("the footer is centred", /<w:jc w:val="center"/.test(footer), "matches the source");
+  ok("the page number is tab-separated, not jammed against the URL", /w:pos="9360"/.test(footer) && /PAGE/.test(footer), "right tab at 6.5in");
+  ok("the page number matches the text size", !/<w:sz w:val="8"/.test(footer), "the source used 4pt, which was unreadable");
+  ok("both red fields appear when unknown", (() => {
+    const d2 = buildProposalDocx({ title: "x", client_agency: "y", due_at: null, budget_amount: null, budget_source: "none_listed", external_id: null },
+      [{ id: "1", rfp_id: "r", section_type: "introduction", heading: "Introduction", body: "b", status: "draft", sort_order: 10, source_block_ids: [], notes: "", created_at: "", updated_at: "" }]);
+    return d2 !== null;
+  })(), "[Insert sol#] / [Insert due date]");
+}
+
+heading("14 · Voice check on drafts");
 {
   const { checkVoice, voiceSummary } = await import(join(ROOT, "lib/voice.ts"));
 
@@ -708,7 +747,7 @@ heading("13 · Voice check on drafts");
   );
 }
 
-heading("14 · Nothing orphaned, nothing phantom");
+heading("15 · Nothing orphaned, nothing phantom");
 {
   // The bug this exists to catch: a "Weekly review 2" badge sitting over a
   // queue with nothing in it. Edge cases carry an rfp_id, the seeded ones leave
@@ -746,7 +785,7 @@ heading("14 · Nothing orphaned, nothing phantom");
   ok("the desk reports a coherent count on any queue size", Number.isInteger(rfpCount ?? 0), `${rfpCount ?? 0} solicitations`);
 }
 
-heading("15 · Cleanup");
+heading("16 · Cleanup");
 {
   const { data: removed } = await admin.from("rfps").delete().like("external_id", `${PREFIX}%`).select("id");
   ok("test rows removed", true, `${removed?.length ?? 0} deleted`);

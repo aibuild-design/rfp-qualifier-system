@@ -10,6 +10,7 @@ import {
   TabStopType,
   TextRun,
 } from "docx";
+import { caravannHeader, caravannFooter, PAGE_PROPERTIES, DOCUMENT_STYLES, TEMPLATE } from "./docx-template.ts";
 import { DOCUMENT_FURNITURE } from "./proposal.ts";
 import type { ProposalSectionRow, RfpRow } from "@/lib/supabase/types";
 import { formatDeadline, DISPLAY_TIME_ZONE } from "./rfp.ts";
@@ -143,80 +144,23 @@ export function buildProposalDocx(
   // solicitation's own id when there is one, and Caravann's own placeholder is
   // used when there is not, so an unfilled field is visibly unfilled rather
   // than quietly blank.
-  const solicitationNumber = rfp.external_id?.trim() || DOCUMENT_FURNITURE.unknownSolicitationNumber;
+  const solicitationNumber = rfp.external_id?.trim() || TEMPLATE.unknownSolicitationNumber;
   const dueDate = rfp.due_at
     ? new Date(rfp.due_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: DISPLAY_TIME_ZONE })
-    : "[Insert due date]";
+    : TEMPLATE.unknownDueDate;
 
   return new Document({
     creator: "Caravann Consulting",
     title: rfp.title,
     description: `Proposal draft for ${rfp.client_agency}`,
-    styles: {
-      default: {
-        document: { run: { font: "Times New Roman", size: 24 } },
-        title: { run: { font: "Times New Roman", size: 40, bold: true, color: "0A0A0A" } },
-        heading1: { run: { font: "Times New Roman", size: 28, bold: true, color: "0A0A0A" } },
-      },
-    },
+    styles: DOCUMENT_STYLES,
     sections: [
       {
-        properties: {
-          page: {
-            // 1 inch in twentieths of a point - the standard public-agency margin.
-            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
-          },
-        },
-        // Caravann's own furniture, copied from the San Mateo submission rather
-        // than invented: three stacked navy lines with a rule beneath, the
-        // solicitation number on the left of line three and the due date hard
-        // right. An evaluator sees this before any of the writing, and a
-        // proposal whose masthead does not match the firm's other submissions
-        // reads as assembled by someone else.
-        headers: {
-          default: new Header({
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: DOCUMENT_FURNITURE.header.firm, size: 20, color: DOCUMENT_FURNITURE.ink })],
-              }),
-              new Paragraph({
-                children: [new TextRun({ text: DOCUMENT_FURNITURE.header.serviceLine, size: 20, color: DOCUMENT_FURNITURE.ink })],
-              }),
-              new Paragraph({
-                // A right tab at the margin puts the due date on the same line
-                // as the number without a table.
-                tabStops: [{ type: TabStopType.RIGHT, position: 9360 }],
-                border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: DOCUMENT_FURNITURE.ink, space: 2 } },
-                children: [
-                  new TextRun({
-                    text: `${DOCUMENT_FURNITURE.header.numberLabel} ${solicitationNumber}`,
-                    size: 20,
-                    color: DOCUMENT_FURNITURE.ink,
-                  }),
-                  new TextRun({
-                    text: `\t${DOCUMENT_FURNITURE.header.dueLabel} ${dueDate}`,
-                    size: 20,
-                    color: DOCUMENT_FURNITURE.ink,
-                  }),
-                ],
-              }),
-            ],
-          }),
-        },
-        footers: {
-          default: new Footer({
-            children: [
-              new Paragraph({
-                tabStops: [{ type: TabStopType.RIGHT, position: 9360 }],
-                children: [
-                  new TextRun({ text: DOCUMENT_FURNITURE.footer, size: 20, color: DOCUMENT_FURNITURE.ink }),
-                  new TextRun({ text: "\t", size: 20 }),
-                  new TextRun({ children: [PageNumber.CURRENT], size: 20, color: DOCUMENT_FURNITURE.ink }),
-                ],
-              }),
-            ],
-          }),
-        },
+        properties: PAGE_PROPERTIES,
+        // Both measured from Caravann's real submission - see lib/docx-template.ts
+        // for every value and where it was read from.
+        headers: { default: caravannHeader(solicitationNumber, dueDate) },
+        footers: { default: caravannFooter() },
         children: body,
       },
     ],
