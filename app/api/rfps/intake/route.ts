@@ -352,5 +352,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ id: rfpId, status: "ok", proposal_docx, proposal_name });
+  // `verdict` is separate from `status` on purpose. `status` is this endpoint's
+  // success flag and always reads "ok" on the happy path; n8n was filing every
+  // bid by it, so `"ok"` fell through the go/maybe/no_go ternary and landed on
+  // "go" - a no-go would have been filed into a folder labelled [go], which is
+  // the one thing the folder name exists to tell you at a glance.
+  return NextResponse.json({
+    id: rfpId,
+    status: "ok",
+    verdict: body.status ?? "pending",
+    proposal_docx,
+    proposal_name,
+  });
 }
