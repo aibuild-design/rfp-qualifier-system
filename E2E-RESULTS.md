@@ -143,24 +143,78 @@ _RFP Desk test artifacts/
 ```
 
 The proposal from this run:
-<https://docs.google.com/document/d/18Nbx2jBIgA37fhIwMfr9zrUV7goQrG6UKrEfTSVB5tM/edit>
+<https://docs.google.com/document/d/1jFbeuFje_V2aqKOg7xJSJdPG5BgApbNr0tzeWjCQROs/edit>
 
 ---
 
-## 4. Known gaps, unchanged by this run
+## 4. Two of those gaps, fixed and re-verified
 
-**The dashboard is never told the bid was filed.** `filing_status` stays
-`not_filed` and `filing_url` stays empty, because no node reports back after the
-Drive step. The files are genuinely in Drive; the dashboard's filing card just
-does not know it. Fixing this needs a small write-back endpoint and one more
-n8n node.
+### Filing now reports back — done
 
-**Duplicates still survive the dedupe.** This run produced the 20-page limit
-twice ("20-page proposal limit" and "20-page narrative limit"), the references
-requirement twice, and the insurance requirement twice — plus two near-identical
-Oregon-presence gaps. Roughly 13 compliance items for ~10 distinct requirements.
-The three reads are unioned to protect recall, and this is the cost of that
-choice.
+`filing_status` sat on `not_filed` and `drive_folder_url` stayed empty, because
+nothing told the dashboard after the Drive step. The card reported "Not filed"
+over files that were demonstrably in Drive — the one state it could never leave.
+A card that contradicts reality is worse than one that says nothing, because it
+teaches you to distrust the field.
+
+Added `POST /api/rfps/filing` and one n8n node that calls it once the Drive work
+is done. Both sides of the "is there a file to file?" branch converge on it: a
+solicitation that arrived as a link still has a folder and a proposal in it, so
+it is still filed.
+
+Verified on a live run:
+
+| Field | Before | After |
+|---|---|---|
+| `filing_status` | `not_filed` | **`filed`** |
+| `filed_at` | null | `2026-08-12T16:12:50Z` |
+| `drive_folder_url` | null | the real folder |
+| `filing_error` | null | null |
+
+`filed_at` is stamped only on success and `filing_error` cleared on it, so a
+folder that failed once and then filed does not keep an old error sitting under
+a green badge.
+
+The card also carried a footer reading *"Not yet connected… no files move."*
+That went stale the day the Drive credential was authorised. Removed.
+
+### Dedupe — improved, not solved
+
+`norm()` **deleted** punctuation rather than splitting on it. So `public-agency`
+became the single token `publicagency`, sharing nothing with `public agency`,
+and `20-page` became `20page`, which meant the `page → pg` synonym never fired
+on the one phrase it exists for. Both duplicate pairs from the previous run
+survived for exactly that reason.
+
+Splitting on punctuation instead: **6 of 6** on the pairs that run produced, up
+from 4 of 6 — and the cases that must *not* merge still don't, because the
+number is its own token:
+
+| Pair | Before | After |
+|---|---|---|
+| "20-page proposal limit" / "20-page narrative limit" | kept both | merged |
+| "Three public-agency references" / "Three public agency references required" | kept both | merged |
+| "20-page limit" / "10-page limit" | kept both | **kept both** |
+| two unrelated deadlines | kept both | **kept both** |
+
+On the next live run the page limit, the references and the insurance rule each
+appeared **once**, where all three had been doubled.
+
+**It is not solved, and it will not be by this approach.** The same run threw up
+new duplicates in new wording — "Evaluation weighting" against "Evaluation
+scoring weights", "Required forms" against "Required forms: W-9 and signed
+Addendum Acknowledgement". Three independent reads phrase things three ways, and
+each run invents fresh ones.
+
+Stemming was tried and **rejected**. It merges weighting/weights correctly, but
+it also merges "Insurance certificates due post-award" with "Insurance minimums
+post-award", which are two different obligations. Net 7 of 8 either way — the
+same score, with the error moved to the expensive side. Merging two distinct
+requirements *loses a compliance rule*; keeping a duplicate costs one redundant
+line. Given that recall is the weakest axis in the system, the trade is wrong,
+so the dedupe stays deliberately conservative.
+
+### Still open
 
 **Item counts move between runs.** The same solicitation produced 15 compliance
 items and 10 gaps on the first run and 13 and 7 on the second. The *verdict* and
