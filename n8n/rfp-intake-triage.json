@@ -338,7 +338,7 @@
     {
       "parameters": {
         "resource": "folder",
-        "name": "={{ $json.drive_lane }}{{ $json.drive_subfolder }}",
+        "name": "={{ $('Build filing path').first().json.drive_lane }}{{ $('Build filing path').first().json.drive_subfolder }}",
         "options": {},
         "folderId": {
           "__rl": true,
@@ -367,7 +367,7 @@
         "folderId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $json.id }}"
+          "value": "={{ $('Folder to file into').first().json.folder_id }}"
         },
         "options": {}
       },
@@ -541,6 +541,136 @@
       ],
       "id": "merge-attachment-0001",
       "name": "Attachment text → payload"
+    },
+    {
+      "id": "drv-find",
+      "name": "Bid folder already there?",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1580,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "FjFIQxop7CmuPays",
+          "name": "Google Drive account"
+        }
+      },
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $json.drive_lane }}{{ $json.drive_subfolder }}",
+        "returnAll": true,
+        "filter": {
+          "whatToSearch": "folders",
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $('Config').first().json.drive_root_folder_id || 'root' }}"
+          }
+        },
+        "options": {
+          "fields": [
+            "id",
+            "name"
+          ]
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "drv-if",
+      "name": "Reuse it?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1780,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-folder",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "drv-pick",
+      "name": "Folder to file into",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        460
+      ],
+      "parameters": {
+        "jsCode": "// The folder id arrives from whichever branch ran - the search that found an\n// existing one, or the node that made a new one. Everything downstream reads it\n// from here so neither branch has to know about the other.\nconst filing = $('Build filing path').first().json;\nconst folderId = $input.first().json.id;\nreturn [{ json: { ...filing, folder_id: folderId } }];"
+      }
+    },
+    {
+      "id": "drv-doc",
+      "name": "Build the record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        460
+      ],
+      "parameters": {
+        "jsCode": "const filing = $input.first().json;\nconst triaged = $('Reconcile triage runs').first().json.body || {};\nconst cfg = $('Config').first().json;\nconst doc = $('Build triage prompt').first().json;\n\nconst line = (label, value) => `${label}: ${value ?? 'not stated'}`;\nconst body = [\n  filing.title || triaged.title || 'Solicitation',\n  triaged.client_agency || '',\n  '',\n  '--- VERDICT ---------------------------------------------------------------',\n  line('Verdict', String(filing.status || '').toUpperCase()),\n  line('Due', triaged.due_at),\n  line('Questions due', triaged.question_deadline_at),\n  line('Budget', triaged.budget_amount ?? 'none listed in the RFP'),\n  '',\n  triaged.verdict_why ? 'Why: ' + triaged.verdict_why : '',\n  triaged.verdict_why_not ? 'Why not: ' + triaged.verdict_why_not : '',\n  '',\n  '--- COMPLIANCE ------------------------------------------------------------',\n  ...(triaged.compliance_items || []).map((c) => `[ ] ${c.label}${c.due_at ? '  (due ' + String(c.due_at).slice(0,10) + ')' : ''}`),\n  '',\n  '--- MANDATORY REQUIREMENTS ------------------------------------------------',\n  ...(triaged.disqualifier_checks || []).map((c) => `${String(c.result).toUpperCase().padEnd(15)} ${c.requirement_text}`),\n  '',\n  '--- SOLICITATION TEXT -----------------------------------------------------',\n  (doc?.user || '').split('SOLICITATION TEXT')[1] || '(the document was filed separately)',\n].filter((l) => l !== '').join('\\n');\n\nreturn [{\n  json: { ...filing, doc_name: filing.drive_file_base },\n  binary: { data: await this.helpers.prepareBinaryData(Buffer.from(body, 'utf8'), filing.drive_file_base + '.txt', 'text/plain') },\n}];"
+      }
+    },
+    {
+      "id": "drv-updoc",
+      "name": "Drive — write the record",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2600,
+        460
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "FjFIQxop7CmuPays",
+          "name": "Google Drive account"
+        }
+      },
+      "parameters": {
+        "name": "={{ $json.doc_name }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.folder_id }}"
+        },
+        "options": {
+          "convertToGoogleDocument": true
+        }
+      },
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
@@ -688,7 +818,7 @@
       "main": [
         [
           {
-            "node": "Drive — create bid folder",
+            "node": "Bid folder already there?",
             "type": "main",
             "index": 0
           }
@@ -699,7 +829,7 @@
       "main": [
         [
           {
-            "node": "Is there a file to file?",
+            "node": "Folder to file into",
             "type": "main",
             "index": 0
           }
@@ -792,6 +922,68 @@
         [
           {
             "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bid folder already there?": {
+      "main": [
+        [
+          {
+            "node": "Reuse it?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reuse it?": {
+      "main": [
+        [
+          {
+            "node": "Folder to file into",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive — create bid folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Folder to file into": {
+      "main": [
+        [
+          {
+            "node": "Build the record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build the record": {
+      "main": [
+        [
+          {
+            "node": "Drive — write the record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive — write the record": {
+      "main": [
+        [
+          {
+            "node": "Is there a file to file?",
             "type": "main",
             "index": 0
           }

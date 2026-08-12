@@ -6,9 +6,9 @@ OpenRouter and Google Drive. Nothing mocked.
 Bid folders are created inside a dedicated Drive folder, `_RFP Desk test
 artifacts`, so test runs stop landing in the root of anyone's Drive.
 
-**Headline: 22 of 24 checks pass.** The two failures are both real and both
-worth reading - one is score variance that the design already absorbs, the other
-is duplicate folders on re-triage.
+**Headline: 24 of 26 checks pass.** The two remaining failures are both real and
+both worth reading; they are score variance and recall, in section B. The Drive
+failures found in the first pass have been fixed and re-verified.
 
 ---
 
@@ -86,16 +86,33 @@ precisely to reduce this and it clearly does not eliminate it.
 
 | Result | Check | Detail |
 |---|---|---|
-| pass | a bid folder is created automatically | verified directly in Drive |
+| pass | a bid folder is created automatically | verified by listing Drive directly |
 | pass | named to Caravann's convention with the verdict lane | `[go] On-Call Organizational Development…_Clackamas County…_Caravann Consulting` |
 | pass | created inside the nominated folder, not the Drive root | `_RFP Desk test artifacts` |
+| pass | the same solicitation twice reuses the folder | two runs, **one** folder |
+| pass | the folder is not empty | the verdict record is written into it |
 
-**A real problem this exposed:** four runs of the same solicitation produced
-**four identical folders**. Re-triaging an RFP should reuse the folder it already
-has, not make another. Before this run there were 76 stray folders in the root of
-the connected Drive from earlier testing; those have been deleted, and the root
-folder setting stops new ones escaping, but the duplicate-on-retriage bug is
-still live.
+### Two bugs found here and fixed
+
+**The folders were empty.** This is what "there is nothing in Drive" actually
+was. A folder was created for every bid, but a solicitation pasted in as text has
+no file to upload, so nothing went in it. The desk now writes a record into every
+bid folder - the verdict and reasoning, both deadlines, the budget, the compliance
+checklist as tick boxes, every mandatory requirement with its result, and the
+solicitation text - converted to a Google Doc on upload. Any attached PDF is still
+filed alongside it.
+
+**Re-triage made a second folder.** Four runs of one solicitation had left four
+identical folders, which is worse than none: it is unclear which holds the current
+work. The desk now looks for the folder before making one. Verified by running the
+same solicitation twice and finding a single folder.
+
+Also cleaned up: 75 stray folders in the root of the connected Drive from earlier
+testing, plus everything left in the test folder from this run's earlier passes.
+
+**Still imperfect:** each run writes its own record rather than replacing the
+previous one, so a re-triaged bid accumulates a record per run. Defensible as
+history, confusing as a folder listing.
 
 ---
 
@@ -157,7 +174,9 @@ the first real evidence that length hurts, and a forty-page RFP would hurt more.
 
 ## Fix list from this run
 
-1. **Reuse the bid folder on re-triage** rather than creating another
-2. **Send one email into the watched mailbox** to prove the trigger fires
-3. **Run one genuinely long RFP** and measure recall against a hand-made list
-4. **Get the eleven missing rates** so the Price section can carry a number
+1. ~~Reuse the bid folder on re-triage~~ **done, verified**
+2. ~~Write something into the bid folder~~ **done, verified**
+3. **Send one email into the watched mailbox** to prove the trigger fires
+4. **Run one genuinely long RFP** and measure recall against a hand-made list
+5. **Get the eleven missing rates** so the Price section can carry a number
+6. Replace the record on re-triage rather than adding another
