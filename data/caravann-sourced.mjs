@@ -24,6 +24,8 @@ export const SOURCES = {
     "SamTrans RFP Estimated Hours and Cost (xlsx) - Caravann's own pricing sheet for the San Mateo County Transit District bid",
   ucsf:
     "UCSF IGHS Needs Assessment & Strategic Plan x Caravann (Google Slides, Sept 2024) - Caravann's own proposal deck",
+  samtrans:
+    "Internal Version: San Mateo County Transit District Facilitator Services Proposal (RFP 27-S-S-003) - Caravann's own submission",
 };
 
 /**
@@ -164,6 +166,55 @@ export const SOURCED_LANGUAGE_BLOCKS = [
     ].join("\n"),
     is_boilerplate: false,
   },
+  {
+    section_type: "introduction",
+    title: "Who Caravann is",
+    body: [
+      "Caravann Consulting is pleased to submit this proposal in response to {{CLIENT}}'s {{ENGAGEMENT}}.",
+      "",
+      "Caravann is a strategy, facilitation, and organizational transformation firm that helps public agencies, mission-driven institutions, and complex multi-stakeholder organizations align leadership, strengthen operating models, and convert difficult conversations into practical action.",
+    ].join("\n"),
+    is_boilerplate: true,
+    weight: 10,
+  },
+  {
+    section_type: "background",
+    title: "Understanding of requirements",
+    body: [
+      "Caravann Consulting has a comprehensive understanding of {{CLIENT}}'s requirements for {{ENGAGEMENT}}. We have provided a summary below to verify our understanding of the project requirements:",
+      "",
+      "[Summarise the agency's situation, the governing documents in play, and what the engagement must produce. This paragraph is written per solicitation - the frame above is the reusable part.]",
+    ].join("\n"),
+    is_boilerplate: true,
+  },
+  {
+    section_type: "price",
+    title: "How the rates were developed",
+    body: [
+      "Caravann Consulting has submitted a separate Cost Proposal in accordance with the RFP requirements.",
+      "",
+      "The proposed rates were developed by assigning each consultant a fully burdened hourly rate that reflects their role, level of responsibility, relevant experience, expected contribution to the engagement, and current market benchmarks for comparable public-sector consulting services. To establish rate reasonableness, Caravann reviewed publicly available labor and consulting benchmarks, including federal labor wage data for comparable roles.",
+    ].join("\n"),
+    is_boilerplate: true,
+  },
+  {
+    section_type: "terms",
+    title: "Terms and conditions / warranty",
+    body: "No additional express warranty is offered beyond the warranties, obligations, and remedies expressly required by the solicitation and resulting contract.",
+    is_boilerplate: true,
+  },
+  {
+    section_type: "amendments",
+    title: "Acknowledgement of solicitation amendments",
+    body: "Caravann Consulting acknowledges the solicitation and all amendments as listed below for {{CLIENT}}'s {{ENGAGEMENT}}, and acknowledges receipt of [list each addendum by number].",
+    is_boilerplate: true,
+  },
+  {
+    section_type: "acceptance_period",
+    title: "Period for acceptance of offers",
+    body: "Caravann Consulting agrees to hold the prices in our offer firm for 180 calendar days from the date specified for receipt of offers unless another time period is specified in an addendum to the solicitation.",
+    is_boilerplate: true,
+  },
 ];
 
 /**
@@ -277,37 +328,32 @@ export const SECTOR_MAP_CONTRADICTION = {
  * predates him or he is a subcontractor. Also a question.
  */
 export const SOURCED_RATES = {
-  /** Summary rates, as billed on the SamTrans bid. */
+  /**
+   * From the SamTrans cost sheet, which carries two scenarios. The second is
+   * the one that shipped: 195,925 of labour plus 1,218.42 of mileage makes
+   * 197,143.42, which is the not-to-exceed figure quoted in the proposal's own
+   * Price section. So these are rates Caravann actually filed, not a draft.
+   */
   summary: [
-    { name: "Khaled El-Sawaf", title: "Principal Consultant / Project Manager / Co-Facilitator", hours: 326, rate: 275 },
-    { name: "Rahul", title: "Lead Facilitator / Facilitation Designer", hours: 194, rate: 325 },
-    { name: "Trent Wakenight", title: "Graphic Recorder", hours: 30, rate: 125 },
+    { name: "Khaled El-Sawaf", title: "Principal Consultant / Project Manager / Co-Facilitator", rate: 275, hours: 413 },
+    { name: "Rahul", title: "Lead Facilitator / Facilitation Designer", rate: 325, hours: 238 },
+    { name: "Trent Wakenight", title: "Graphic Recorder", rate: 125, hours: 40 },
   ],
-  /** The rate actually charged for each kind of work, which is what a cost
-   *  proposal is built from. */
-  byRole: [
-    { role: "Project Manager", rate: 250 },
-    { role: "Principal Consultant", rate: 275 },
-    { role: "Process Improvement Consultant", rate: 275 },
-    { role: "Co-Facilitator", rate: 300 },
-    { role: "Facilitation Designer", rate: 300 },
-    { role: "Senior Review / Facilitation Advisor", rate: 300 },
-    { role: "Lead Facilitator", rate: 350 },
-    { role: "Graphic Recording", rate: 125 },
-  ],
-  totalHours: 508,
+  mileage: { combinedRate: 135.38, inPersonSessions: 9, total: 1218.42 },
+  labourTotal: 195925,
+  notToExceed: 197143.42,
+
+  /**
+   * Three things a human has to settle. None are guessable, and each would be
+   * wrong in a way that shows up on a filed document.
+   */
   openQuestions: [
-    "Khaled's rate: the cost sheet says $275, the profile says $285. Which is standard?",
-    "Rahul is 38% of the hours on this bid and is not on the team slide. Employee or subcontractor, and what is his surname?",
-    "Are these rates current, or specific to the SamTrans bid?",
+    "Khaled's rate is $275 on this cost sheet and $285 in the profile. One of them is out of date, and the cost side of every future proposal inherits whichever is wrong.",
+    "Rahul bills at $325, above Khaled's $275, and is not on the thirteen-person roster from the capability deck at all. Either the roster is incomplete or Rahul is a subcontractor - which matters, because Clackamas and others require subcontractors to be pre-authorised in writing.",
+    "Ten of thirteen consultants have no rate on record anywhere. Only Khaled, Rahul and Trent appear in any cost document, so the Price section cannot be assembled for a team larger than three.",
   ],
 };
 
-/**
- * A real engagement's phase-level pricing, useful as the reference point for
- * "does the stated budget cover the effort this scope implies?" - the rubric
- * dimension that currently has nothing concrete to anchor against.
- */
 export const SOURCED_ENGAGEMENT_BENCHMARK = {
   client: "UCSF Institute for Global Health Sciences",
   scope: "Needs assessment and 4–5 year strategic plan, four phases, Sept 2024 – May 2025",

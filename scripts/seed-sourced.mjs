@@ -91,10 +91,21 @@ if (delPlaceholder) throw new Error(`language delete (placeholders): ${delPlaceh
 // Prefix, not equality. The citation text has been edited once already, and
 // an exact match against the new string left every row written under the old
 // one in place - so the library quietly doubled.
-const { error: delPrior } = await supabase.from("language_blocks").delete().ilike("source", "UCSF IGHS%");
+const { error: delPrior } = await supabase.from("language_blocks").delete().or("source.ilike.UCSF IGHS%,source.ilike.Internal Version%");
 if (delPrior) throw new Error(`language delete (prior run): ${delPrior.message}`);
 const { error: insErr } = await supabase.from("language_blocks").insert(
-  SOURCED_LANGUAGE_BLOCKS.map((b) => ({ won: false, weight: 0, ...b, source: SOURCES.ucsf }))
+  // Provenance per block. The deck and the SamTrans submission are different
+  // documents with different standing: one is a capability pitch, the other is
+  // a real filed proposal, and a reader deciding whether to trust a paragraph
+  // should be able to see which it came from.
+  SOURCED_LANGUAGE_BLOCKS.map((b) => ({
+    won: false,
+    weight: 0,
+    ...b,
+    source: ["terms", "amendments", "acceptance_period", "background", "price"].includes(b.section_type) || b.title === "Who Caravann is"
+      ? SOURCES.samtrans
+      : SOURCES.ucsf,
+  }))
 );
 if (insErr) throw new Error(`language insert: ${insErr.message}`);
 
