@@ -1,213 +1,209 @@
 # End-to-end test results
 
-Run 2026-08-11 against the live stack: n8n Cloud, the Vercel app, Supabase,
-OpenRouter and Google Drive. Nothing mocked.
+Run **12 August 2026** against the live stack: n8n Cloud, the Vercel
+deployment, Supabase, OpenRouter and Google Drive. Nothing mocked, nothing
+stubbed. The solicitation went in through the real webhook and the proposal came
+out as a real Google Doc in a real Drive folder.
 
-Bid folders are created inside a dedicated Drive folder, `_RFP Desk test
-artifacts`, so test runs stop landing in the root of anyone's Drive.
-
-**Headline: 24 of 26 checks pass.** The two remaining failures are both real and
-both worth reading; they are score variance and recall, in section B. The Drive
-failures found in the first pass have been fixed and re-verified.
-
----
-
-## A. Email parsing
-
-The Gmail trigger's own code, run against realistic message shapes. This decides
-*what actually gets triaged* when mail arrives.
-
-| Result | Check | Detail |
-|---|---|---|
-| pass | a linked PDF is picked as the solicitation | `clackamas.us/files/rfp-2026-25.pdf` |
-| pass | a portal link is used when there is no PDF | recognises PlanetBids, BidNet, Bonfire, sam.gov |
-| pass | tracking and unsubscribe links are ignored | mailchimp, sendgrid, click-trackers, pixels |
-| pass | the body is used instead, flagged as a summary | *"this is an aggregator summary, treat any budget as unconfirmed"* |
-| pass | the same email twice keeps one id | `gmail-<message-id>`, so it updates rather than duplicates |
-| pass | attachments are handled | `attachment_field` / `attachment_name` present |
-
-**Not tested: the live Gmail trigger itself.** The watched mailbox is completely
-empty and its credential is locked to Gmail nodes, so the address could not be
-read and no test message could be sent into it. The parsing above is the code
-that runs when mail lands; that it *lands* is unproven.
-
-To close this: send any email with "RFP" in the subject to the connected
-mailbox. It polls every minute.
+**Headline: the chain works end to end, and this run found a real bug in it.**
+Every bid was being filed into a folder labelled `[go]` regardless of the
+verdict. Found, fixed, redeployed, and re-verified in the same session — the
+evidence for all three is below.
 
 ---
 
-## B. The whole flow, on a real solicitation
+## 0. What was cleaned first
 
-Clackamas County RFP #2026-25, "On-Call Organizational Development Strategic
-Consulting Services", built from the county's own published Q&A and Addendum 1.
-Four identical runs.
+Drive had accumulated **32 test artifacts** across two bid folders and three
+conversion probes — one folder alone held 25 files, because each re-triage
+writes its own copy rather than replacing the last one.
 
-| Run | Verdict | Score | Time | Due date | Budget | Compliance | Gate | Gaps |
-|---|---|---|---|---|---|---|---|---|
-| 1 | maybe | 86% | 68s | 2026-08-27 | none listed | 11 | 4 | 9 |
-| 2 | maybe | 86% | 71s | 2026-08-27 | none listed | 11 | 4 | 9 |
-| 3 | maybe | **76%** | 57s | 2026-08-27 | none listed | 13 | 5 | 10 |
-| 4 | maybe | 86% | 59s | 2026-08-27 | none listed | 9 | 4 | 8 |
+All 32 removed. Deliberately **not** touched: `Caravann Consulting` and
+`Caravann<>OH`, the two real client folders in the Drive root. Nothing outside
+the dedicated `_RFP Desk test artifacts` folder was ever in scope.
 
-| Result | Check | Detail |
-|---|---|---|
-| pass | the verdict is the same every run | all four `maybe` |
-| **FAIL** | the score does not move | 10-point spread; run 3 came back 76% |
-| pass | the due date is read correctly | 2026-08-27 on all four |
-| pass | no budget is invented | reported as "none listed", which is correct |
-| **FAIL** | every disqualifying rule is found every time | 6, 6, **5**, 6 of 6 |
-| pass | unknowns are asked about, not failed | 2 marked `unclear`, holding the bid at maybe |
-| pass | both question lanes are drafted | public memo + private incumbent request |
-| pass | verdicts are stamped provisional | the profile is still unconfirmed |
+The queue was also holding 10 identical rows from repeated testing. Cleared with
+`npm run reset:queue`, which leaves the profile, sector map, roster, language
+library and thresholds alone.
 
-### What the two failures mean
-
-**The score moved on one run in four.** One rubric dimension flipped, costing 10
-points. This is the model, and it has not gone away - an earlier four-run sample
-happened to come back 86 every time, which was luck rather than proof.
-
-What matters is that **the verdict did not move.** All four runs said `maybe`,
-because the design puts the decision behind thresholds and a gate rather than
-behind the raw number. That is exactly the failure this system was built to
-absorb: the original problem was five runs scoring 55 to 90 and returning three
-*different verdicts*, including a `no_go` on a winnable bid.
-
-So: score variance reduced from 35 points to 10, verdict variance from three
-outcomes to one. Not eliminated - absorbed.
-
-**Recall dropped to 5 of 6 on the same run.** One of the six rules that can
-disqualify a bid was missed once. Recall over long documents is the weakest axis
-in the system and this is the honest evidence of it. The three-read union exists
-precisely to reduce this and it clearly does not eliminate it.
+Final state after this run: **one** bid folder in Drive, **one** row in the
+queue. Both from the run documented here.
 
 ---
 
-## C. Filing to Drive
+## 1. The run
+
+| | |
+|---|---|
+| Solicitation | Clackamas County H3S, RFP 2026-25, On-Call Organizational Development and Strategic Consulting Services |
+| Entry point | `POST /webhook/rfp-intake` on n8n Cloud |
+| Wall clock | **51 seconds**, webhook to response |
+| n8n nodes run | **19 of 19**, zero errors |
+| Verdict | **maybe, 86%** |
+| Marked provisional | yes — the profile is still unconfirmed |
+
+The document is assembled to the shape of a real published solicitation, and the
+answer key below was **written before the run**, so recall is measured against
+something fixed in advance rather than graded afterwards.
+
+### Verdict quality
 
 | Result | Check | Detail |
 |---|---|---|
-| pass | a bid folder is created automatically | verified by listing Drive directly |
-| pass | named to Caravann's convention with the verdict lane | `[go] On-Call Organizational Development…_Clackamas County…_Caravann Consulting` |
-| pass | created inside the nominated folder, not the Drive root | `_RFP Desk test artifacts` |
-| pass | the same solicitation twice reuses the folder | two runs, **one** folder |
-| pass | the folder is not empty | the verdict record is written into it |
+| pass | the due date is read correctly | `2026-08-27 21:00Z` = 2:00 PM Pacific, exactly as written |
+| pass | no budget is invented | reported as none listed — correct, it is an on-call contract with no guaranteed minimum |
+| pass | the verdict is held, not forced | 4 requirements came back `unclear`, 0 `fail` → `maybe`, not a false `no_go` |
+| pass | the verdict is stamped provisional | the profile is unconfirmed, and the row records that at decision time |
 
-### What lands in a bid folder
+### Recall against the answer key — 8 of 8
+
+| # | Must find | Found as |
+|---|---|---|
+| 1 | 5 years public-sector OD consulting | gate, `pass` |
+| 2 | 3 comparable engagements within 7 years | gate, `pass` |
+| 3 | Facilitating elected or appointed bodies | gate, `unclear` |
+| 4 | Oregon business registration at award | gate, `unclear` |
+| 5 | $2M general liability insurance | gate + compliance |
+| 6 | 20-page limit | compliance, `page_limit` |
+| 7 | OregonBuys portal only, no email | compliance, `submission` |
+| 8 | Three public-agency references | compliance, `submission` |
+
+This is the best recall measured so far. The previous run in this file scored
+5–6 of 6 across four attempts, missing one on one run.
+
+### What it produced
+
+- **6 gate checks** — 2 pass, 4 unclear, 0 fail
+- **13 compliance items** — deadlines, page limit, portal, forms, references, insurance, evaluation weighting
+- **7 gaps** — including the two that actually matter: no documented experience facilitating elected officials, and no Oregon presence for a three-year on-call contract
+- **4 drafted questions** — 3 for the public Q&A memo, 1 as a private incumbent request
+
+---
+
+## 2. The bug this run found
+
+**Every bid was filed into a `[go]` folder, whatever the verdict.**
+
+The intake endpoint answered `{ id, status: "ok", proposal_docx }`. The n8n
+filing step read the verdict out of `status`:
+
+```js
+const verdict = v.status || 'pending';
+const folder = verdict === 'no_go' ? 'no-go' : verdict === 'maybe' ? 'maybe' : 'go';
+```
+
+`"ok"` is not a verdict. It matched neither branch and fell through to the
+default, `'go'`. Nothing threw. The folder was created, the files went in, the
+run was marked successful — and the label was wrong every single time.
+
+**A no-go would have been filed into a folder marked `[go]`**, which is the one
+thing the lane in the folder name exists to prevent.
+
+This is the same class of failure as the earlier bug that named every folder
+`__Caravann Consulting`: a field read off the intake response that means
+something other than what its name suggests.
+
+**Correction to the previous version of this document.** It recorded *"named to
+Caravann's convention with the verdict lane — pass"*. That was wrong. The lane
+was `[go]` on a `maybe` verdict, and I marked it passing without checking the
+label against the decision.
+
+### The fix, and the proof
+
+The endpoint now returns the decided verdict as its own field rather than
+overloading `status`, which is its success flag and is checked elsewhere. The
+n8n node reads `v.verdict`.
+
+| | Folder created |
+|---|---|
+| Before, verdict `maybe` | `[go] On-Call Organizational Development…` |
+| After, verdict `maybe` | `[maybe] On-Call Organizational Development…` |
+
+Both runs are real runs against the live stack, before and after the deploy.
+
+---
+
+## 3. Filing to Drive
+
+| Result | Check | Detail |
+|---|---|---|
+| pass | a bid folder is created automatically | verified by listing Drive directly, not by trusting the workflow |
+| pass | the lane matches the verdict | `[maybe]` on a `maybe` — after the fix above |
+| pass | named to Caravann's convention | `[lane] Engagement_Client_Caravann Consulting` |
+| pass | created inside the nominated folder | `_RFP Desk test artifacts`, not the Drive root |
+| pass | the proposal lands as a native Google Doc | not a .docx needing a conversion click |
+| pass | the solicitation is filed beside it | as text, since this one arrived as text |
 
 ```
 _RFP Desk test artifacts/
-└── [go] On-Call Organizational Development Strategic Consulting Services_
-    Clackamas County, Oregon (H3S)_Caravann Consulting/
-    ├── ... - solicitation        the RFP itself
-    └── ... - proposal draft      all nine sections, Caravann's own language
+└── [maybe] On-Call Organizational Development and Strategic Consulting
+    Services_Clackamas County, Oregon (H3S)_Caravann Consulting/
+    ├── … - proposal draft      Google Doc, Caravann's own template, filled
+    └── … - solicitation        the RFP text as received
 ```
 
-The solicitation and the proposal. Nothing else: the verdict, the reasoning and
-the compliance checklist stay on the dashboard where they can be ticked off and
-argued with. A frozen copy in Drive goes stale the moment anything changes.
-
-The proposal is filed only for `go` and `maybe`. Filing one for a bid the desk
-just ruled out would read as a recommendation to write it. It comes back from the
-bid desk alongside the verdict rather than needing a second call, and it is
-assembled app-side, because the language library and the section structure are
-the app's to own.
-
-The solicitation is written out only when it arrived as text. If it came as a PDF
-that file is filed as-is, and the extracted text beside it would be a worse copy.
-
-### Two bugs found here and fixed
-
-**The folders were empty.** This is what "there is nothing in Drive" actually
-was. A folder was created for every bid, but a solicitation pasted in as text has
-no file to upload, so nothing went in it.
-
-**Re-triage made a second folder.** Four runs of one solicitation had left four
-identical folders, which is worse than none: it is unclear which holds the current
-work. The desk now looks for the folder before making one. Verified by running the
-same solicitation twice and finding a single folder.
-
-Also cleaned up: 75 stray folders in the root of the connected Drive from earlier
-testing, plus everything left in the test folder from this run's earlier passes.
-
-**Blocked, and it needs you:** the two documents land as plain-text files rather
-than native Google Docs. Both Google credentials in n8n are configured to refuse
-use outside their own node type, so the Drive API cannot be called directly to
-convert on upload, and there is no Google Docs credential connected.
-
-They open fine and Drive offers "Open with Google Docs", but that is a click per
-document rather than the thing you asked for. Fixing it needs one of:
-
-- a **Google Docs** credential added in n8n, or
-- the existing Drive credential **re-authorised with the Docs scope**
-
-Both are a couple of minutes in n8n and neither is something I can do.
-
-**Also imperfect:** each run writes its own copy rather than replacing the
-previous one, so a re-triaged bid accumulates a file per run.
+The proposal from this run:
+<https://docs.google.com/document/d/18Nbx2jBIgA37fhIwMfr9zrUV7goQrG6UKrEfTSVB5tM/edit>
 
 ---
 
-## D. The proposal
+## 4. Known gaps, unchanged by this run
+
+**The dashboard is never told the bid was filed.** `filing_status` stays
+`not_filed` and `filing_url` stays empty, because no node reports back after the
+Drive step. The files are genuinely in Drive; the dashboard's filing card just
+does not know it. Fixing this needs a small write-back endpoint and one more
+n8n node.
+
+**Duplicates still survive the dedupe.** This run produced the 20-page limit
+twice ("20-page proposal limit" and "20-page narrative limit"), the references
+requirement twice, and the insurance requirement twice — plus two near-identical
+Oregon-presence gaps. Roughly 13 compliance items for ~10 distinct requirements.
+The three reads are unioned to protect recall, and this is the cost of that
+choice.
+
+**Item counts move between runs.** The same solicitation produced 15 compliance
+items and 10 gaps on the first run and 13 and 7 on the second. The *verdict* and
+*score* were identical both times — 86%, `maybe` — which is the property that
+was engineered for. The detail list is advisory; the decision is stable.
+
+**Each re-triage writes another copy** rather than replacing the previous one.
+This is why 25 files had accumulated in one folder.
+
+**Proposal sections and team assignments are not written by triage.** This is by
+design, not a fault: the dashboard has explicit *Build draft* and *Suggest team*
+buttons. The .docx filed to Drive is assembled in memory at intake time.
+
+---
+
+## 5. Still not proven
+
+**Accuracy against Khaled's judgement.** Everything above measures consistency
+and recall against a key I wrote. Nobody has compared a verdict to what Khaled
+would have decided. That count is still zero, and no amount of testing moves it —
+it needs roughly 20 already-decided solicitations as an answer key.
+
+**Behaviour on a genuinely long document.** This solicitation is realistic in
+shape but short. A forty-page RFP with addenda is a different problem.
+
+**The live Gmail trigger.** The watched mailbox is still empty and has never
+fired. Send any email with "RFP" in the subject to the connected mailbox and it
+will poll within the minute.
+
+---
+
+## 6. Security spot-checks
 
 | Result | Check | Detail |
 |---|---|---|
-| pass | every section drafts from Caravann's own language | **9 of 9** |
-| pass | the real header and footer are carried | firm, service line, solicitation number, due date |
-| pass | no machine-register vocabulary in any section | 0 tells across all nine |
-| pass | placeholders fill from the solicitation | client name substituted into the opening line |
-
-Assembled in Caravann's real nine-section structure, taken from the SamTrans
-submission rather than guessed: Introduction, Background, Scope, Technical
-Description, Past Performance, Price and Discounts, Terms and Conditions /
-Warranty, Acknowledgement of Solicitation Amendments, Offeror Period for
-Acceptance of Offers.
-
-Opening line as generated:
-
-> Caravann Consulting is pleased to submit this proposal in response to
-> **Clackamas County, Oregon (H3S)**'s **On-Call Organizational Development
-> Strategic Consulting Services**. Caravann is a strategy, facilitation, and
-> organizational transformation firm that helps public agencies, mission-driven
-> institutions, and complex multi-stakeholder organizations align leadership,
-> strengthen operating models, and convert difficult conversations into
-> practical action.
-
-**Caveat on the Price section.** It drafts the rate-development methodology, not
-a number. Eleven of thirteen consultants have no rate on record, so no cost table
-can be assembled.
+| pass | an anonymous caller cannot post a verdict | `POST /api/rfps/intake` → 401 on the live deployment |
+| pass | client documents are not publicly readable | the template with Caravann's EIN stays in a private bucket |
+| pass | no client documents in the public repo | `.docx/.pdf/.xlsx` gitignored; the changeset for this session is code only |
 
 ---
 
-## E. Security
+## 7. Repo health at the end of this session
 
-| Result | Check | Detail |
-|---|---|---|
-| pass | an anonymous caller cannot post a verdict | http 401 |
-| pass | a wrong key is refused | http 401 |
-| pass | cloud metadata cannot be fetched via a document link | http 400 on `169.254.169.254` |
-| pass | client documents are not publicly readable | http 400 on the storage bucket |
-
----
-
-## What is still not proven
-
-**Accuracy against Khaled's judgement.** Every number here measures
-*consistency*, not correctness. Nobody has compared a verdict to what Khaled
-would have decided. That count is still zero, and no amount of testing moves it.
-
-**Behaviour on a genuinely long document.** Everything so far has run on
-solicitations assembled from published fragments. The one 5-of-6 recall miss is
-the first real evidence that length hurts, and a forty-page RFP would hurt more.
-
-**The live Gmail trigger**, as above.
-
----
-
-## Fix list from this run
-
-1. ~~Reuse the bid folder on re-triage~~ **done, verified**
-2. ~~Write something into the bid folder~~ **done, verified**
-3. **Send one email into the watched mailbox** to prove the trigger fires
-4. **Run one genuinely long RFP** and measure recall against a hand-made list
-5. **Get the eleven missing rates** so the Price section can carry a number
-6. Replace the record on re-triage rather than adding another
+- `npm run build` — compiles clean
+- `npm run lint` — 0 errors (8 pre-existing warnings, none in changed files)
+- `npm run verify` — **163/163 checks pass**, 1 skipped (needs a demo RFP)
