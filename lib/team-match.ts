@@ -39,21 +39,54 @@ export function recommendTeam(
     terms: significantTerms(c.requirement_text),
   }));
 
-  const scored = active.map((m) => {
-    const quals = m.qualifications.map((q) => q.toLowerCase());
-    const roleText = (m.role ?? "").toLowerCase();
-    const haystack = [...quals, roleText].join(" ");
+  // Score only against requirements a PERSON could satisfy.
+  //
+  // The gate checks every stated requirement, and most of them are about the
+  // document rather than the team: a twenty-page limit, a W-9, a certificate of
+  // insurance, registration in Oregon. Dividing by all nine meant the best
+  // consultant on the roster could reach 11% - "matches 1 of 9" - which reads
+  // as "nobody here is suitable" when the truth is that eight of those nine
+  // were never about suitability.
+  //
+  // Rather than a keyword list of what counts as a people requirement, which
+  // would need maintaining for every agency's phrasing, the denominator is the
+  // set of requirements at least one active member matches. A page limit
+  // matches nobody and drops out on its own; a facilitation requirement matches
+  // several and stays. Falls back to the full set when nothing matches at all,
+  // so a roster with no overlap still scores 0 rather than dividing by zero.
+  const relevant = requirementTerms.filter(({ terms }) =>
+    active.some((m) => {
+      const hay = [...m.qualifications, m.role ?? ""]
+        .join(" ")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, " ")
+        .split(/\s+/)
+        .map(fold)
+        .join(" ");
+      return terms.some((t) => hay.includes(t));
+    })
+  );
+  const denominator = relevant.length ? relevant : requirementTerms;
 
-    const matched = requirementTerms.filter(({ terms }) =>
-      terms.some((t) => haystack.includes(t))
-    );
+  const scored = active.map((m) => {
+    // Folded with the same function as the requirement terms - normalising one
+    // side only would leave the mismatch exactly where it was.
+    const haystack = [...m.qualifications, m.role ?? ""]
+      .join(" ")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, " ")
+      .split(/\s+/)
+      .map(fold)
+      .join(" ");
+
+    const matched = denominator.filter(({ terms }) => terms.some((t) => haystack.includes(t)));
 
     // Normalised so a solicitation with many requirements doesn't inflate
     // everyone's score relative to one with few.
-    const coverage = requirementTerms.length ? matched.length / requirementTerms.length : 0;
+    const coverage = denominator.length ? matched.length / denominator.length : 0;
     const score = Math.round(coverage * 100 * BANDWIDTH_WEIGHT[m.bandwidth]);
 
-    const reason = buildReason(matched.length, requirementTerms.length, m);
+    const reason = buildReason(matched.length, denominator.length, m);
     return { team_member_id: m.id, name: m.name, match_score: score, match_reason: reason };
   });
 
@@ -89,6 +122,25 @@ const STOPWORDS = new Set([
   "three", "five", "one", "two", "four", "prior", "work", "related", "able",
 ]);
 
+/**
+ * Folds the spelling and inflection differences that stopped this matcher
+ * working at all.
+ *
+ * The roster is written in British English - Khaled's own phrasing,
+ * "Organisational development" - and American agencies write "organizational".
+ * A substring test never fires across that one letter, so the single most
+ * common word in this domain matched nothing. Likewise "facilitating" in a
+ * solicitation against "facilitation" on the roster.
+ *
+ * Both are folded to a common form before comparison: -ise/-isation become
+ * -ize/-ization, then a crude suffix strip collapses the inflections. Cheap,
+ * and it only has to be right about this vocabulary.
+ */
+function fold(word: string): string {
+  const z = word.replace(/isation/g, "ization").replace(/ise\b/g, "ize").replace(/ised\b/g, "ized").replace(/ising\b/g, "izing");
+  return z.length > 5 ? z.replace(/(ations|ation|ings|ing|ors|or|ers|er|es|s)$/, "") : z;
+}
+
 function significantTerms(text: string): string[] {
   return Array.from(
     new Set(
@@ -97,6 +149,7 @@ function significantTerms(text: string): string[] {
         .replace(/[^a-z0-9\s-]/g, " ")
         .split(/\s+/)
         .filter((w) => w.length > 3 && !STOPWORDS.has(w))
+        .map(fold)
     )
   );
 }
