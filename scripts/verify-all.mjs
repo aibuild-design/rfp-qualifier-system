@@ -760,7 +760,80 @@ heading("13 · The document template");
   })(), "[Insert sol#] / [Insert due date]");
 }
 
-heading("14 · Voice check on drafts");
+heading("14 · Filling Caravann's own template");
+{
+  // The stronger of the two paths. Rather than rebuilding a lookalike from
+  // measurements, this opens their blank template and substitutes the red
+  // fields - so everything nobody thought to measure stays correct by not
+  // being touched.
+  const { fillTemplate } = await import(join(ROOT, "lib/docx-fill.ts"));
+  const { caravannTemplate } = await import(join(ROOT, "lib/template-store.ts"));
+  const { execSync } = await import("node:child_process");
+  const { writeFileSync } = await import("node:fs");
+
+  const template = await caravannTemplate();
+  if (!template) skip("template checks", "caravann-rfp-template.docx not in the client-documents bucket");
+  else {
+    ok("the template is in private storage", template.length > 100_000, `${Math.round(template.length / 1024)}KB`);
+
+    const filled = await fillTemplate(template, {
+      title: "On-Call Organizational Development Strategic Consulting Services",
+      solicitationNumber: "RFP 2026-25",
+      dueDate: "August 27, 2026",
+      agencyName: "Clackamas County, Oregon (H3S)",
+    });
+    ok("every placeholder it knows how to fill is filled", filled.unreplaced.length === 0, filled.unreplaced.join(", ") || `${filled.replacements} substitutions`);
+
+    writeFileSync("/tmp/verify-filled.docx", filled.buffer);
+    writeFileSync("/tmp/verify-template.orig.docx", template);
+    // Real parts only - names with an extension. JSZip writes a `word/`
+    // directory record the template lacks; directory entries are valid in a zip,
+    // most .docx files in the wild carry them, and Word, Google Docs and
+    // LibreOffice all read either shape. That difference is noise. Every actual
+    // part must survive.
+    const parts = (f) =>
+      execSync(`unzip -l ${f}`)
+        .toString()
+        .split("\n")
+        // Drop the three header lines. The first is `Archive:  /tmp/x.docx`,
+        // and that path ends in .docx, so without this each list contains its
+        // own filename and the two can never match.
+        .slice(3)
+        .map((l) => l.trim().split(/\s+/).pop())
+        .filter((x) => x && x.includes("/") && /\.\w+$/.test(x))
+        .sort();
+    const before = parts("/tmp/verify-template.orig.docx");
+    const after = parts("/tmp/verify-filled.docx");
+    ok(
+      "every part of the template survives, none added or lost",
+      before.length === after.length && before.every((x) => after.includes(x)),
+      `${after.length} parts carried through`
+    );
+
+    const xml = execSync("unzip -p /tmp/verify-filled.docx word/document.xml").toString();
+    ok("the logo survives untouched", after.some((p) => p.includes("media/image1.png")), "copied through, not re-encoded");
+    ok("the page stays US Letter", /w:w="12240"/.test(xml), "the template's own setting, not re-derived");
+    ok("the contents field survives", /TOC/.test(xml), "page numbers still update on open");
+    ok("the real values reach the cover", /RFP 2026-25/.test(xml) && /Clackamas County/.test(xml), "title, number, date, agency");
+    ok("no company placeholder is left anywhere", !xml.includes("[Insert Company Name]"), "11 occurrences replaced");
+
+    // An unknown agency contact must stay visibly unfilled rather than blank.
+    const partial = await fillTemplate(template, { title: "T", solicitationNumber: "S", dueDate: "D", agencyName: "A" });
+    const partialXml = await (async () => {
+      writeFileSync("/tmp/verify-partial.docx", partial.buffer);
+      return execSync("unzip -p /tmp/verify-partial.docx word/document.xml").toString();
+    })();
+    ok("unknown agency fields stay visible as red placeholders", partialXml.includes("[Insert Agency POC]"), "a blank reads as an oversight nobody caught");
+
+    // Ampersands are common in solicitation titles and would break the XML.
+    const amp = await fillTemplate(template, { title: "Leadership & Culture", solicitationNumber: "S", dueDate: "D", agencyName: "A & B" });
+    writeFileSync("/tmp/verify-amp.docx", amp.buffer);
+    const ampXml = execSync("unzip -p /tmp/verify-amp.docx word/document.xml").toString();
+    ok("an ampersand in the title does not corrupt the document", ampXml.includes("Leadership &amp; Culture"), "escaped, so Word still opens it");
+  }
+}
+
+heading("15 · Voice check on drafts");
 {
   const { checkVoice, voiceSummary } = await import(join(ROOT, "lib/voice.ts"));
 
@@ -793,7 +866,7 @@ heading("14 · Voice check on drafts");
   );
 }
 
-heading("15 · Nothing orphaned, nothing phantom");
+heading("16 · Nothing orphaned, nothing phantom");
 {
   // The bug this exists to catch: a "Weekly review 2" badge sitting over a
   // queue with nothing in it. Edge cases carry an rfp_id, the seeded ones leave
@@ -831,7 +904,7 @@ heading("15 · Nothing orphaned, nothing phantom");
   ok("the desk reports a coherent count on any queue size", Number.isInteger(rfpCount ?? 0), `${rfpCount ?? 0} solicitations`);
 }
 
-heading("16 · Cleanup");
+heading("17 · Cleanup");
 {
   const { data: removed } = await admin.from("rfps").delete().like("external_id", `${PREFIX}%`).select("id");
   ok("test rows removed", true, `${removed?.length ?? 0} deleted`);

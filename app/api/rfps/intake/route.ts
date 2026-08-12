@@ -7,6 +7,8 @@ import { decideVerdict, thresholdsFromSettings } from "@/lib/verdict";
 import { assembleDraft, DEFAULT_SECTIONS, proposalFileName } from "@/lib/proposal";
 import { buildProposalDocx } from "@/lib/docx-export";
 import { caravannLogo } from "@/lib/brand-logo";
+import { caravannTemplate } from "@/lib/template-store";
+import { fillTemplate } from "@/lib/docx-fill";
 import { Packer } from "docx";
 import { scoreFromRubric, type RubricBreakdown, type RubricWeights } from "@/lib/rubric";
 import type { Database, TableInsert } from "@/lib/supabase/types";
@@ -302,8 +304,30 @@ export async function POST(req: NextRequest) {
         source_block_ids: s.source_block_ids, notes: s.notes,
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       }));
-      const buffer = await Packer.toBuffer(buildProposalDocx(full, sections as never, (await caravannLogo()) ?? undefined));
-      proposal_docx = Buffer.from(buffer).toString("base64");
+      // Caravann's own file, filled - not a lookalike rebuilt from
+      // measurements. Everything the template already gets right stays right:
+      // the logo, the contents field, the page size, the spacing. Falls back to
+      // building the document from scratch if storage is unreachable, because a
+      // worse proposal beats losing the verdict with it.
+      const template = await caravannTemplate();
+      let buffer: Buffer;
+      if (template) {
+        const filled = await fillTemplate(template, {
+          title: full.title,
+          solicitationNumber: full.external_id?.trim() || "[Insert sol#]",
+          dueDate: full.due_at
+            ? new Date(full.due_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" })
+            : "[Insert due date]",
+          agencyName: full.client_agency,
+        });
+        if (filled.unreplaced.length) {
+          console.warn(`[intake ${body.external_id}] template placeholders left unfilled: ${filled.unreplaced.join(", ")}`);
+        }
+        buffer = filled.buffer;
+      } else {
+        buffer = Buffer.from(await Packer.toBuffer(buildProposalDocx(full, sections as never, (await caravannLogo()) ?? undefined)));
+      }
+      proposal_docx = buffer.toString("base64");
       proposal_name = `${proposalFileName(full)}.docx`;
     }
   }
