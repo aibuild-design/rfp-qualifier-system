@@ -150,6 +150,9 @@ export interface Database {
         Row: {
           id: string;
           external_id: string | null;
+          /** The agency's own number for the solicitation. Never external_id,
+           *  which is a dedupe key. */
+          solicitation_number: string | null;
           title: string;
           client_agency: string;
           project_type: string | null;

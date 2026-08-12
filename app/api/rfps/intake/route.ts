@@ -27,6 +27,7 @@ import type { Database, TableInsert } from "@/lib/supabase/types";
 // for column meaning:
 // {
 //   "external_id": "string, required - n8n's dedupe key",
+//   "solicitation_number": "string|null - the agency's own number, for the cover",
 //   "title": "string, required",
 //   "client_agency": "string, required",
 //   "project_type": "string?",
@@ -54,6 +55,7 @@ type Child<T extends keyof Database["public"]["Tables"]> = Omit<TableInsert<T>, 
 
 type IntakeBody = Partial<TableInsert<"rfps">> & {
   external_id: string;
+  solicitation_number?: string | null;
   /** The issuing agency's own contact block, read off the solicitation. Used on
    *  the proposal cover and nowhere else, so these are deliberately not columns
    *  on `rfps` - storing them would imply the desk tracks them. */
@@ -78,6 +80,7 @@ type IntakeBody = Partial<TableInsert<"rfps">> & {
 const RFP_FIELDS = [
   "is_provisional",
   "external_id",
+  "solicitation_number",
   "title",
   "client_agency",
   "project_type",
@@ -321,7 +324,11 @@ export async function POST(req: NextRequest) {
       if (template) {
         const filled = await fillTemplate(template, {
           title: full.title,
-          solicitationNumber: full.external_id?.trim() || "[Insert sol#]",
+          // Never external_id. That is n8n's dedupe key, and for an emailed
+          // solicitation it reads "gmail-19ff705ed2230acc" - an internal message
+          // id printed where the evaluator expects their own reference. Blank
+          // is honest when the document names no number; wrong is not.
+          solicitationNumber: full.solicitation_number?.trim() || "",
           dueDate: full.due_at
             ? new Date(full.due_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" })
             : "[Insert due date]",

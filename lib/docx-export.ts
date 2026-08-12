@@ -38,7 +38,7 @@ import { formatDeadline, DISPLAY_TIME_ZONE } from "./rfp.ts";
  * where that requirement is recorded.
  */
 export function buildProposalDocx(
-  rfp: Pick<RfpRow, "title" | "client_agency" | "due_at" | "budget_amount" | "budget_source" | "external_id">,
+  rfp: Pick<RfpRow, "title" | "client_agency" | "due_at" | "budget_amount" | "budget_source" | "solicitation_number">,
   sections: ProposalSectionRow[],
   /** Caravann's cover logo, extracted from their own template. Optional so a
    *  caller without filesystem access still gets a valid document, just without
@@ -148,7 +148,10 @@ export function buildProposalDocx(
   // solicitation's own id when there is one, and Caravann's own placeholder is
   // used when there is not, so an unfilled field is visibly unfilled rather
   // than quietly blank.
-  const solicitationNumber = rfp.external_id?.trim() || TEMPLATE.unknownSolicitationNumber;
+  // See the note in app/api/rfps/intake/route.ts: external_id is a dedupe key,
+  // not the agency's solicitation number, and printing it put a Gmail message
+  // id on the cover page.
+  const solicitationNumber = rfp.solicitation_number?.trim() || "";
   const dueDate = rfp.due_at
     ? new Date(rfp.due_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: DISPLAY_TIME_ZONE })
     : TEMPLATE.unknownDueDate;
