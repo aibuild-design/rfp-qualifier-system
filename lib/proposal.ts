@@ -24,8 +24,13 @@ export const DEFAULT_SECTIONS = [
   { section_type: "past_performance", heading: "Past Performance", sort_order: 50 },
   { section_type: "price", heading: "Price and Discounts", sort_order: 60 },
   { section_type: "terms", heading: "Terms and Conditions / Warranty", sort_order: 70 },
-  { section_type: "amendments", heading: "Acknowledgement of Solicitation Amendments", sort_order: 80 },
-  { section_type: "acceptance_period", heading: "Offeror Period for Acceptance of Offers", sort_order: 90 },
+  { section_type: "representations", heading: "Representations & Certifications", sort_order: 80 },
+  { section_type: "amendments", heading: "Acknowledgement of Solicitation Amendments", sort_order: 90 },
+  { section_type: "acceptance_period", heading: "Offeror Period for Acceptance of Offers", sort_order: 100 },
+  { section_type: "product_samples", heading: "Product Samples", sort_order: 110 },
+  { section_type: "appendix_a", heading: "Appendix A - Completed RFP", sort_order: 120 },
+  { section_type: "appendix_b", heading: "Appendix B - FAR/DFAR Report", sort_order: 130 },
+  { section_type: "appendix_c", heading: "Appendix C - Reserved", sort_order: 140 },
 ] as const;
 
 /**

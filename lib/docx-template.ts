@@ -43,6 +43,7 @@ import {
   PageNumber,
   Paragraph,
   Tab,
+  TableOfContents,
   TabStopType,
   TextRun,
 } from "docx";
@@ -52,6 +53,8 @@ export const TEMPLATE = {
   navy: "002060",
   /** The rule beneath the header is black, unlike the text above it. */
   ruleColour: "000000",
+  /** The template's own red for unfilled fields. */
+  redField: "C00000",
 
   /** docx sizes are half-points: 20 = 10pt. */
   headerTextSize: 20,
@@ -78,6 +81,32 @@ export const TEMPLATE = {
   dueLabel: "Solicitation Due Date:",
   footerText: "Caravann Consulting / www.caravann.co",
 
+  /**
+   * Caravann's own identity block, transcribed from the cover page of
+   * `Copy of Template for RFPs.docx`.
+   *
+   * The CAGE code and UEI are federal contracting identifiers - a proposal to a
+   * federal or federally-funded agency is not complete without them, and they
+   * are not the sort of thing to retype from memory. Note the address is
+   * Berkeley; the placeholder profile had Oakland, which was invented.
+   */
+  offeror: {
+    name: "Caravann Consulting",
+    street: "2008 Ninth St",
+    cityStateZip: "Berkeley, CA 94701",
+    contactName: "Khaled El-Sawaf",
+    phone: "510-224-0070",
+    email: "khaled@caravann.co",
+    url: "https://www.caravann.co",
+    cageCode: "9NV03",
+    uei: "HSV8KJY684V5",
+    taxEin: "92-1867651",
+  },
+
+  /** The cover page's own wording, verbatim. */
+  coverHeading: "Response to Request for Proposal",
+  unknownTitle: "[Insert Title]",
+
   /** Caravann's own placeholder, from the template variant of the header. The
    *  SOW calls these the red fields; filling them turns a draft into a
    *  submission, and leaving one visible is better than leaving it blank. */
@@ -95,7 +124,7 @@ export const TEMPLATE = {
  * its own `w:pBdr`, and dropping it from the first two changes the spacing
  * between the lines.
  */
-export function caravannHeader(solicitationNumber: string, dueDate: string): Header {
+export function caravannHeader(solicitationNumber: string, dueDate: string, title?: string): Header {
   const line = (children: TextRun[]) =>
     new Paragraph({
       tabStops: [{ type: TabStopType.RIGHT, position: TEMPLATE.rightTab }],
@@ -116,7 +145,9 @@ export function caravannHeader(solicitationNumber: string, dueDate: string): Hea
   return new Header({
     children: [
       line([navy(TEMPLATE.firm)]),
-      line([navy(TEMPLATE.serviceLine)]),
+      // The running header carries the proposal's own title, not a fixed
+      // service line - the template shows [Insert Title] here.
+      line([navy(title || TEMPLATE.serviceLine)]),
       line([
         navy(`${TEMPLATE.numberLabel} ${solicitationNumber}`),
         // `new Tab()`, not "\t" in the string. A literal tab character inside
@@ -175,9 +206,103 @@ export function caravannFooter(): Footer {
   });
 }
 
-/** Page setup: one inch on every side, the public-agency standard. */
+/**
+ * The cover page, as the template has it: a centred stack running heading,
+ * title, solicitation number, due date, then the two "prepared by" and
+ * "prepared for" blocks.
+ *
+ * It is a page of its own - the template puts a page break after it and starts
+ * the numbering at the table of contents, so the cover carries no header,
+ * footer or page number.
+ *
+ * The red fields stay visible when unknown rather than being blanked. An
+ * evaluator seeing `[Insert Agency Name]` knows a step was skipped; a blank
+ * space reads as an oversight nobody noticed.
+ */
+export function coverPage(title: string, solicitationNumber: string, dueDate: string): Paragraph[] {
+  const o = TEMPLATE.offeror;
+
+  const centred = (text: string, opts: { bold?: boolean; size?: number; colour?: string; after?: number } = {}) =>
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: opts.after ?? 120 },
+      children: [
+        new TextRun({
+          text,
+          bold: opts.bold ?? false,
+          size: opts.size ?? TEMPLATE.bodyTextSize,
+          color: opts.colour ?? TEMPLATE.navy,
+          font: TEMPLATE.bodyFont,
+        }),
+      ],
+    });
+
+  // Anything still unfilled is shown in the template's own red so it cannot be
+  // mistaken for finished text.
+  const red = (text: string) => (/^\[.*\]$/.test(text) ? TEMPLATE.redField : TEMPLATE.navy);
+
+  return [
+    new Paragraph({ text: "", spacing: { after: 2400 } }),
+    centred(TEMPLATE.coverHeading, { bold: true, size: 28, after: 360 }),
+    centred(title, { size: 26, colour: red(title), after: 360 }),
+    centred(`${TEMPLATE.numberLabel} ${solicitationNumber}`, { bold: true, size: 26, colour: red(solicitationNumber), after: 360 }),
+    centred(`${TEMPLATE.dueLabel} ${dueDate}`, { bold: true, size: 26, colour: red(dueDate), after: 480 }),
+
+    centred("Prepared by Offeror:", { bold: true, size: 26, after: 60 }),
+    centred(o.name, { after: 0 }),
+    centred(o.street, { after: 0 }),
+    centred(o.cityStateZip, { after: 0 }),
+    centred(`Point of Contact: ${o.contactName}`, { bold: true, after: 0 }),
+    centred(`${o.phone} | ${o.email}`, { after: 0 }),
+    centred(`URL: ${o.url}`, { after: 0 }),
+    centred(`CAGE Code: ${o.cageCode} | UEI: ${o.uei}`, { bold: true, after: 0 }),
+    centred(`Tax EIN: ${o.taxEin}`, { after: 480 }),
+
+    centred("Prepared For:", { bold: true, size: 26, after: 60 }),
+    centred("[Insert Agency Name]", { colour: TEMPLATE.redField, after: 0 }),
+    centred("[Insert Agency Address]", { colour: TEMPLATE.redField, after: 0 }),
+    centred("Point of Contact: [Insert Agency POC]", { colour: TEMPLATE.redField, after: 0 }),
+    centred("[Insert Agency POC Telephone]", { colour: TEMPLATE.redField, after: 0 }),
+    centred("[Insert Agency POC Email]", { colour: TEMPLATE.redField, after: 0 }),
+  ];
+}
+
+/**
+ * The table of contents, which the template puts on page 1.
+ *
+ * A real field code rather than a typed-out list, so page numbers are right
+ * after editing. Word asks to update it on open; Google Docs renders it from
+ * the headings. A hand-typed contents page is wrong the moment a section grows
+ * by a paragraph, and on a submission with a page limit that is not cosmetic.
+ */
+export function tableOfContents(): [Paragraph, TableOfContents] {
+  return [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 240 },
+      children: [
+        new TextRun({ text: "TABLE OF CONTENTS", bold: true, size: 26, color: TEMPLATE.navy, font: TEMPLATE.bodyFont, underline: {} }),
+      ],
+    }),
+    new TableOfContents("Table of Contents", { hyperlink: true, headingStyleRange: "1-2" }),
+  ];
+}
+
+/**
+ * Page setup: US Letter, one inch on every side.
+ *
+ * The size has to be stated. Left unset the docx library defaults to A4, which
+ * is 210mm wide against Letter's 216mm and 297mm tall against 279mm - so every
+ * page comes out narrower and longer than the agency expects. On a submission
+ * with a hard page limit that is not cosmetic: the same text reflows onto a
+ * different number of pages, and a proposal that runs to 21 pages against a
+ * 20-page limit is disqualified without being read.
+ *
+ * Both of Caravann's real documents are Letter: w:w="12240" w:h="15840".
+ */
 export const PAGE_PROPERTIES = {
   page: {
+    size: { width: 12240, height: 15840 },
     margin: {
       top: TEMPLATE.margin,
       right: TEMPLATE.margin,

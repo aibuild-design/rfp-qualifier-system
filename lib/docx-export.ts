@@ -10,7 +10,7 @@ import {
   TabStopType,
   TextRun,
 } from "docx";
-import { caravannHeader, caravannFooter, PAGE_PROPERTIES, DOCUMENT_STYLES, TEMPLATE } from "./docx-template.ts";
+import { caravannHeader, caravannFooter, coverPage, tableOfContents, PAGE_PROPERTIES, DOCUMENT_STYLES, TEMPLATE } from "./docx-template.ts";
 import { DOCUMENT_FURNITURE } from "./proposal.ts";
 import type { ProposalSectionRow, RfpRow } from "@/lib/supabase/types";
 import { formatDeadline, DISPLAY_TIME_ZONE } from "./rfp.ts";
@@ -154,14 +154,20 @@ export function buildProposalDocx(
     title: rfp.title,
     description: `Proposal draft for ${rfp.client_agency}`,
     styles: DOCUMENT_STYLES,
+    // Two sections, because the cover page is numbered differently from the
+    // rest. The template puts a cover on its own sheet with no furniture, then
+    // starts page 1 at the table of contents - so the cover cannot simply be
+    // the first page of the same section.
     sections: [
       {
         properties: PAGE_PROPERTIES,
-        // Both measured from Caravann's real submission - see lib/docx-template.ts
-        // for every value and where it was read from.
-        headers: { default: caravannHeader(solicitationNumber, dueDate) },
+        children: coverPage(rfp.title, solicitationNumber, dueDate),
+      },
+      {
+        properties: { ...PAGE_PROPERTIES, page: { ...PAGE_PROPERTIES.page, pageNumbers: { start: 1 } } },
+        headers: { default: caravannHeader(solicitationNumber, dueDate, rfp.title) },
         footers: { default: caravannFooter() },
-        children: body,
+        children: [...tableOfContents(), new Paragraph({ pageBreakBefore: true }), ...body],
       },
     ],
   });

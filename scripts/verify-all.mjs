@@ -486,6 +486,7 @@ heading("11 · Exports");
     // and the check that exists to prove the exporter works should not be the
     // thing that falls over when there is nothing to export.
     const { buildProposalDocx } = await import(join(ROOT, "lib/docx-export.ts"));
+  const { DEFAULT_SECTIONS } = await import(join(ROOT, "lib/proposal.ts"));
     const { data: rfp } = await admin.from("rfps").select("*").limit(1).maybeSingle();
     if (!rfp) {
       skip("the Word export", "queue is empty - add a solicitation or run npm run seed:demo");
@@ -683,14 +684,20 @@ heading("13 · The document template");
   // assembled by someone else - so it is worth a test rather than a memory.
   const { Packer } = await import("docx");
   const { buildProposalDocx } = await import(join(ROOT, "lib/docx-export.ts"));
+  const { DEFAULT_SECTIONS } = await import(join(ROOT, "lib/proposal.ts"));
   const { execSync } = await import("node:child_process");
   const { writeFileSync } = await import("node:fs");
 
   const doc = buildProposalDocx(
     { title: "Template check", client_agency: "Test Agency", due_at: "2026-08-27T21:00:00Z",
       budget_amount: null, budget_source: "none_listed", external_id: "RFP 2026-25" },
-    [{ id: "1", rfp_id: "r", section_type: "introduction", heading: "Introduction", body: "Body text.",
-       status: "draft", sort_order: 10, source_block_ids: [], notes: "", created_at: "", updated_at: "" }]
+    // Built from the real section list, so the appendix checks below are
+    // testing the template rather than a one-section fixture.
+    DEFAULT_SECTIONS.map((sec, i) => ({
+      id: String(i), rfp_id: "r", section_type: sec.section_type, heading: sec.heading,
+      body: "Body text.", status: "draft", sort_order: sec.sort_order,
+      source_block_ids: [], notes: "", created_at: "", updated_at: "",
+    }))
   );
   const tmp = "/tmp/verify-template.docx";
   writeFileSync(tmp, Buffer.from(await Packer.toBuffer(doc)));
@@ -717,6 +724,17 @@ heading("13 · The document template");
   ok("it has both a centre and a right tab stop", /w:val="center"[^>]*w:pos="4680"/.test(footer) && /w:val="right"[^>]*w:pos="9360"/.test(footer), "centre at 3.25in, right at 6.5in");
   ok("the page number is thrown to the right margin", /PAGE/.test(footer) && (footer.match(/<w:tab\/>/g) || []).length === 2, "two <w:tab/> before the number");
   ok("the page number matches the text size", !/<w:sz w:val="8"/.test(footer), "the source used 4pt, which was unreadable");
+  const docXml = execSync(`unzip -p ${tmp} word/document.xml`).toString();
+  // Unset, the library defaults to A4. Narrower and longer than Letter, so the
+  // same text reflows onto a different number of pages - and a proposal that
+  // runs to 21 against a 20-page limit is disqualified without being read.
+  ok("the page is US Letter, not A4", /w:w="12240"/.test(docXml) && /w:h="15840"/.test(docXml), "12240 x 15840 twips, as both real documents are");
+  ok("the cover is its own section with no furniture", (docXml.match(/<w:sectPr/g) || []).length === 2, "cover, then the numbered body");
+  ok("page numbering starts at the contents", /<w:pgNumType w:start="1"\/>/.test(docXml), "the cover carries no number");
+  ok("a real contents field, not a typed list", /Table of Contents/.test(docXml) || /TOC/.test(docXml), "page numbers stay right after editing");
+  ok("the cover carries the federal identifiers", /9NV03/.test(docXml) && /HSV8KJY684V5/.test(docXml), "CAGE and UEI");
+  ok("all fourteen sections are present", ["Introduction","Background","Scope","Technical Description","Past Performance","Price and Discounts","Representations","Acknowledgement","Offeror Period","Product Samples","Appendix A","Appendix B","Appendix C"].every((h) => docXml.includes(h)), "including the three appendices");
+
   ok("both red fields appear when unknown", (() => {
     const d2 = buildProposalDocx({ title: "x", client_agency: "y", due_at: null, budget_amount: null, budget_source: "none_listed", external_id: null },
       [{ id: "1", rfp_id: "r", section_type: "introduction", heading: "Introduction", body: "b", status: "draft", sort_order: 10, source_block_ids: [], notes: "", created_at: "", updated_at: "" }]);
