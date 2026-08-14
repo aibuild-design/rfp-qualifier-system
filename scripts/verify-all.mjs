@@ -486,7 +486,6 @@ heading("11 · Exports");
     // and the check that exists to prove the exporter works should not be the
     // thing that falls over when there is nothing to export.
     const { buildProposalDocx } = await import(join(ROOT, "lib/docx-export.ts"));
-  const { DEFAULT_SECTIONS } = await import(join(ROOT, "lib/proposal.ts"));
     const { data: rfp } = await admin.from("rfps").select("*").limit(1).maybeSingle();
     if (!rfp) {
       skip("the Word export", "queue is empty - add a solicitation or run npm run seed:demo");

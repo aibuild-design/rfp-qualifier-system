@@ -1,17 +1,5 @@
-import {
-  AlignmentType,
-  BorderStyle,
-  Document,
-  Footer,
-  Header,
-  HeadingLevel,
-  PageNumber,
-  Paragraph,
-  TabStopType,
-  TextRun,
-} from "docx";
+import { Document, HeadingLevel, Paragraph, TextRun } from "docx";
 import { caravannHeader, caravannFooter, coverPage, tableOfContents, PAGE_PROPERTIES, DOCUMENT_STYLES, TEMPLATE } from "./docx-template.ts";
-import { DOCUMENT_FURNITURE } from "./proposal.ts";
 import type { ProposalSectionRow, RfpRow } from "@/lib/supabase/types";
 import { formatDeadline, DISPLAY_TIME_ZONE } from "./rfp.ts";
 
