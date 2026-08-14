@@ -56,6 +56,8 @@ type Child<T extends keyof Database["public"]["Tables"]> = Omit<TableInsert<T>, 
 type IntakeBody = Partial<TableInsert<"rfps">> & {
   external_id: string;
   solicitation_number?: string | null;
+  /** One rubric per triage read, for measuring how far they disagreed. */
+  score_rubrics?: RubricBreakdown[] | null;
   source_mailbox?: string | null;
   /** The issuing agency's own contact block, read off the solicitation. Used on
    *  the proposal cover and nowhere else, so these are deliberately not columns
@@ -206,6 +208,24 @@ export async function POST(req: NextRequest) {
       }
       body.score_percent = rubric.score;
     }
+
+    // Score every read with the same weights, so the spread is a real measure of
+    // disagreement rather than of rounding. This used to arrive pre-computed as
+    // `score_samples`, built from a `score_percent` the model returned - and it
+    // silently became an empty array when scoring moved to the rubric and the
+    // model stopped returning one. The spread rule, and the edge case that
+    // depends on it, had nothing to read.
+    //
+    // Recomputed here rather than in n8n because the weights are Khaled's and
+    // live in Settings; scoring them anywhere else means the day he changes a
+    // weight, the spread starts measuring a different thing from the score.
+    if (Array.isArray(body.score_rubrics) && body.score_rubrics.length > 0) {
+      const perRead = body.score_rubrics
+        .map((r) => scoreFromRubric(r, (settings?.rubric_weights as RubricWeights | null) ?? undefined)?.score)
+        .filter((n): n is number => typeof n === "number");
+      if (perRead.length > 0) body.score_samples = perRead;
+    }
+    delete body.score_rubrics;
     decision = decideVerdict(
       body.score_percent,
       disqualifier_checks ?? [],
