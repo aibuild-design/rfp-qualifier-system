@@ -30,18 +30,26 @@ type Line = {
   hint: string;
   /** Set when the thing cannot work at all yet, whatever the evidence says. */
   blocked?: string;
+  /** Which account this ran as. Taken from the work itself - the address a
+   *  message arrived at, the folder a bid was filed into - so it cannot name an
+   *  account the desk is not really using. */
+  account?: { text: string; href?: string } | null;
 };
 
 export function ConnectionsPanel({
   lastEmailAt,
+  lastMailbox,
   lastFiledAt,
+  lastFolderUrl,
   lastVerdictAt,
   triageConfigured,
   profileConfirmed,
   n8nUrl,
 }: {
   lastEmailAt: string | null;
+  lastMailbox: string | null;
   lastFiledAt: string | null;
+  lastFolderUrl: string | null;
   lastVerdictAt: string | null;
   triageConfigured: boolean;
   profileConfirmed: boolean;
@@ -53,6 +61,7 @@ export function ConnectionsPanel({
       label: "Gmail — solicitations arriving",
       at: lastEmailAt,
       hint: "Send anything with “RFP” in the subject to the watched mailbox. The trigger polls every minute.",
+      account: lastMailbox ? { text: lastMailbox } : null,
     },
     {
       label: "Triage — verdicts coming back",
@@ -66,6 +75,7 @@ export function ConnectionsPanel({
       label: "Drive — bids being filed",
       at: lastFiledAt,
       hint: "A folder per bid, the proposal filed into it as a Google Doc.",
+      account: lastFolderUrl ? { text: "open the last folder filed", href: lastFolderUrl } : null,
     },
   ];
 
@@ -100,6 +110,23 @@ export function ConnectionsPanel({
                 <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
                   {line.blocked ?? (line.at ? `Last worked ${ago(line.at)}.` : `No evidence yet. ${line.hint}`)}
                 </p>
+                {line.account && (
+                  <p className="mt-1 text-xs text-rfp-ink-secondary">
+                    Connected as{" "}
+                    {line.account.href ? (
+                      <a
+                        href={line.account.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="press font-medium text-rfp-gold hover:underline"
+                      >
+                        {line.account.text} →
+                      </a>
+                    ) : (
+                      <span className="font-medium text-rfp-ink">{line.account.text}</span>
+                    )}
+                  </p>
+                )}
               </div>
               <span className="text-xs font-medium" style={{ color: line.blocked ? "var(--rfp-critical)" : live ? "var(--rfp-good)" : "var(--rfp-ink-muted)" }}>
                 {line.blocked ? "Not set up" : live ? "Working" : "Unproven"}

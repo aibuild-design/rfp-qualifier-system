@@ -56,6 +56,7 @@ type Child<T extends keyof Database["public"]["Tables"]> = Omit<TableInsert<T>, 
 type IntakeBody = Partial<TableInsert<"rfps">> & {
   external_id: string;
   solicitation_number?: string | null;
+  source_mailbox?: string | null;
   /** The issuing agency's own contact block, read off the solicitation. Used on
    *  the proposal cover and nowhere else, so these are deliberately not columns
    *  on `rfps` - storing them would imply the desk tracks them. */
@@ -81,6 +82,7 @@ const RFP_FIELDS = [
   "is_provisional",
   "external_id",
   "solicitation_number",
+  "source_mailbox",
   "title",
   "client_agency",
   "project_type",

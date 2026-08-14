@@ -153,6 +153,8 @@ export interface Database {
           /** The agency's own number for the solicitation. Never external_id,
            *  which is a dedupe key. */
           solicitation_number: string | null;
+          /** The address this arrived at - which Google account the desk reads. */
+          source_mailbox: string | null;
           title: string;
           client_agency: string;
           project_type: string | null;

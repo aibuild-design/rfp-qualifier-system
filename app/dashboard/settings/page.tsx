@@ -37,8 +37,8 @@ export default async function SettingsPage() {
     // Evidence for the connections panel: the last time each outside connection
     // demonstrably did something. Ordered nullsFirst:false so a row that never
     // reached that stage cannot masquerade as the most recent one.
-    supabase.from("rfps").select("created_at").eq("source", "email").order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    supabase.from("rfps").select("filed_at").eq("filing_status", "filed").order("filed_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle(),
+    supabase.from("rfps").select("created_at,source_mailbox").eq("source", "email").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("rfps").select("filed_at,drive_folder_url").eq("filing_status", "filed").order("filed_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle(),
     supabase.from("rfps").select("verdict_set_at").not("verdict_set_at", "is", null).order("verdict_set_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
@@ -161,7 +161,9 @@ export default async function SettingsPage() {
 
       <ConnectionsPanel
         lastEmailAt={lastEmail?.created_at ?? null}
+        lastMailbox={lastEmail?.source_mailbox ?? null}
         lastFiledAt={lastFiled?.filed_at ?? null}
+        lastFolderUrl={lastFiled?.drive_folder_url ?? null}
         lastVerdictAt={lastVerdict?.verdict_set_at ?? null}
         triageConfigured={Boolean(process.env.N8N_BASE_URL && process.env.RFP_INTAKE_API_KEY)}
         profileConfirmed={orgProfile?.profile_confirmed === true}
