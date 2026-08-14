@@ -33,7 +33,7 @@ type Line = {
   /** Which account this ran as. Taken from the work itself - the address a
    *  message arrived at, the folder a bid was filed into - so it cannot name an
    *  account the desk is not really using. */
-  account?: { text: string; href?: string } | null;
+  account?: { prefix: string; text: string; href?: string } | null;
 };
 
 export function ConnectionsPanel({
@@ -61,7 +61,7 @@ export function ConnectionsPanel({
       label: "Gmail — solicitations arriving",
       at: lastEmailAt,
       hint: "Send anything with “RFP” in the subject to the watched mailbox. The trigger polls every minute.",
-      account: lastMailbox ? { text: lastMailbox } : null,
+      account: lastMailbox ? { prefix: "Connected as", text: lastMailbox } : null,
     },
     {
       label: "Triage — verdicts coming back",
@@ -75,7 +75,10 @@ export function ConnectionsPanel({
       label: "Drive — bids being filed",
       at: lastFiledAt,
       hint: "A folder per bid, the proposal filed into it as a Google Doc.",
-      account: lastFolderUrl ? { text: "open the last folder filed", href: lastFolderUrl } : null,
+      // Drive cannot name the account without an extra API call, so it answers
+      // the same question with the folder a bid genuinely landed in - opening it
+      // shows whose Drive it is.
+      account: lastFolderUrl ? { prefix: "Last filed into", text: "this Drive folder", href: lastFolderUrl } : null,
     },
   ];
 
@@ -112,13 +115,13 @@ export function ConnectionsPanel({
                 </p>
                 {line.account && (
                   <p className="mt-1 text-xs text-rfp-ink-secondary">
-                    Connected as{" "}
+                    {line.account.prefix}{" "}
                     {line.account.href ? (
                       <a
                         href={line.account.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="press font-medium text-rfp-gold hover:underline"
+                        className="press inline-flex min-h-11 items-center font-medium text-rfp-gold hover:underline"
                       >
                         {line.account.text} →
                       </a>
@@ -152,7 +155,7 @@ export function ConnectionsPanel({
             href={`${n8nUrl}/home/credentials`}
             target="_blank"
             rel="noopener noreferrer"
-            className="press font-medium text-rfp-gold hover:underline"
+            className="press inline-flex min-h-11 items-center font-medium text-rfp-gold hover:underline"
           >
             Manage Google access in n8n →
           </a>
