@@ -4,6 +4,7 @@ import { SectorExperienceEditor } from "@/components/settings/SectorExperienceEd
 import { TeamRosterEditor } from "@/components/settings/TeamRosterEditor";
 import { ScoringSettingsForm } from "@/components/settings/ScoringSettingsForm";
 import { ProfileConfirmation } from "@/components/settings/ProfileConfirmation";
+import { ConnectionsPanel } from "@/components/settings/ConnectionsPanel";
 
 // Everything on this page is Khaled's own occasional editing - the
 // eligibility profile and sector map "confirmed once" (module 3) and the
@@ -21,6 +22,9 @@ export default async function SettingsPage() {
     { data: team },
     { data: scoring },
     { data: scored },
+    { data: lastEmail },
+    { data: lastFiled },
+    { data: lastVerdict },
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from("org_profile").select("*").eq("id", true).maybeSingle(),
@@ -30,6 +34,12 @@ export default async function SettingsPage() {
     // Real scores from the live queue, so the threshold preview shows the
     // effect on actual work rather than on a hypothetical.
     supabase.from("rfps").select("score_percent").not("score_percent", "is", null),
+    // Evidence for the connections panel: the last time each outside connection
+    // demonstrably did something. Ordered nullsFirst:false so a row that never
+    // reached that stage cannot masquerade as the most recent one.
+    supabase.from("rfps").select("created_at").eq("source", "email").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("rfps").select("filed_at").eq("filing_status", "filed").order("filed_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle(),
+    supabase.from("rfps").select("verdict_set_at").not("verdict_set_at", "is", null).order("verdict_set_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
   const scoreSample = (scored ?? [])
@@ -149,6 +159,14 @@ export default async function SettingsPage() {
         </div>
       </section>
 
+      <ConnectionsPanel
+        lastEmailAt={lastEmail?.created_at ?? null}
+        lastFiledAt={lastFiled?.filed_at ?? null}
+        lastVerdictAt={lastVerdict?.verdict_set_at ?? null}
+        triageConfigured={Boolean(process.env.N8N_BASE_URL && process.env.RFP_INTAKE_API_KEY)}
+        profileConfirmed={orgProfile?.profile_confirmed === true}
+        n8nUrl={process.env.N8N_BASE_URL?.replace(/\/+$/, "") ?? null}
+      />
     </div>
   );
 }
