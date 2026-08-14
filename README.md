@@ -16,9 +16,7 @@ and migrations-first pattern.
 
 | | |
 |---|---|
-| **[HOW-IT-WORKS.md](HOW-IT-WORKS.md)** | What this is and how it runs, in plain language. Start here. |
-| **[TESTING.md](TESTING.md)** | How to test it - a session to run with Khaled, and the commands to run alone |
-| **[STATUS.md](STATUS.md)** | What works, what was fixed and measured, and what is still needed |
+| **`guide/`** | Plain-language explanation, test results, and a sample RFP to run it yourself. Not committed - this repository is public and the guide carries client detail. |
 | **[SECURITY.md](SECURITY.md)** | Security review findings, how credentials are split, what to rotate at handover |
 | **[n8n/README.md](n8n/README.md)** | The intake and triage workflow |
 

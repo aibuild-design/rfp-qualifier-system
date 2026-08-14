@@ -154,7 +154,8 @@
         260,
         200
       ],
-      "notes": "Publicly posted solicitations only. Portal-gated ones are dropped in by hand as document_text — no portal logins in Phase 1."
+      "notes": "Publicly posted solicitations only. Portal-gated ones are dropped in by hand as document_text — no portal logins in Phase 1.",
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -315,7 +316,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Turns a Gmail message into the same payload shape the webhook accepts, so\n// everything downstream of Config is identical for both entry points.\n//\n// Preference order for what actually gets triaged:\n//   1. A linked PDF  — the solicitation itself, the only authoritative source.\n//   2. A portal/bid link — likely to resolve to the solicitation.\n//   3. The email body — a fallback. Aggregator summaries paraphrase, and their\n//      dollar estimates are often well off the real not-to-exceed figure, so a\n//      verdict built from one is weaker. Flagged so it is visible downstream.\n\nconst LINK_NOISE = /unsubscribe|list-manage|mailchimp|sendgrid|sparkpost|hubspot|googleusercontent|\\.gif|\\.png|\\.jpg|mailto:|utm_|\\/track\\/|click\\.|email\\./i;\nconst PORTALish = /bid|solicit|procure|rfp|rfq|opportunit|contract|planetbids|bidnet|bonfire|periscope|demandstar|sam\\.gov/i;\n\nfunction urlsIn(text) {\n  const found = text.match(/https?:\\/\\/[^\\s\"'<>)\\]]+/g) || [];\n  return found\n    .map((u) => u.replace(/[.,;:]+$/, \"\"))\n    .filter((u) => !LINK_NOISE.test(u));\n}\n\nconst out = [];\n\nfor (const item of $input.all()) {\n  const m = item.json;\n\n  const subject = (m.subject || \"(no subject)\").trim();\n  const bodyText = m.text || m.textPlain || m.snippet || \"\";\n  const bodyHtml = m.html || m.textHtml || \"\";\n  const haystack = `${bodyText}\\n${bodyHtml}`;\n\n  // Gmail hands attachments over as binary on the item. Pick the first one\n  // that looks like a solicitation rather than the first one full stop -\n  // inline logos and signature images arrive as attachments too.\n  const DOCUMENT_FILE = /\\.(pdf|docx?|rtf)$/i;\n  const binaries = Object.entries(item.binary || {});\n  const attached = binaries.find(([, b]) =>\n    DOCUMENT_FILE.test(b.fileName || '') ||\n    /pdf|wordprocessingml|msword/i.test(b.mimeType || '')\n  );\n\n  const links = urlsIn(haystack);\n  const pdf = links.find((u) => /\\.pdf(\\?|$)/i.test(u));\n  const portal = links.find((u) => PORTALish.test(u));\n  const chosen = pdf || portal || null;\n\n  // Gmail's message id is stable and unique, so re-processing the same email\n  // upserts the same RFP row rather than creating a duplicate.\n  const externalId = `gmail-${m.id || m.messageId || Date.now()}`;\n\n  const payload = {\n    // Set when the solicitation came attached rather than linked. The branch\n    // after Config reads this to send the bytes for extraction.\n    attachment_field: attached ? attached[0] : null,\n    attachment_name: attached ? attached[1].fileName || null : null,\n    external_id: externalId,\n    source: \"email\",\n    source_url: chosen || undefined,\n    email_subject: subject,\n    email_from: m.from?.value?.[0]?.address || m.From || null,\n    // Which mailbox this landed in - the evidence of which Google account the\n    // desk is reading as. Off the message, never configured: a credential\n    // re-authorised against the wrong account looks identical from outside.\n    source_mailbox: m.to?.value?.[0]?.address || m.To || null,\n  };\n\n  if (chosen) {\n    payload.document_url = chosen;\n  } else {\n    payload.document_text = [\n      `Subject: ${subject}`,\n      \"\",\n      bodyText || \"(no plain-text body)\",\n      \"\",\n      \"[NOTE FOR TRIAGE: no solicitation link was found in this email, so the\",\n      \"text above is an aggregator summary rather than the solicitation itself.\",\n      \"Treat any budget figure as unconfirmed unless the RFP is attached, and\",\n      \"prefer 'maybe' over a confident verdict where the summary is thin.]\",\n    ].join(\"\\n\");\n  }\n\n  out.push({ json: { body: payload } });\n}\n\nreturn out;"
+        "jsCode": "// Turns a Gmail message into the same payload shape the webhook accepts, so\n// everything downstream of Config is identical for both entry points.\n//\n// Preference order for what actually gets triaged:\n//   1. A linked PDF  — the solicitation itself, the only authoritative source.\n//   2. A portal/bid link — likely to resolve to the solicitation.\n//   3. The email body — a fallback. Aggregator summaries paraphrase, and their\n//      dollar estimates are often well off the real not-to-exceed figure, so a\n//      verdict built from one is weaker. Flagged so it is visible downstream.\n\nconst LINK_NOISE = /unsubscribe|list-manage|mailchimp|sendgrid|sparkpost|hubspot|googleusercontent|\\.gif|\\.png|\\.jpg|mailto:|utm_|\\/track\\/|click\\.|email\\./i;\nconst PORTALish = /bid|solicit|procure|rfp|rfq|opportunit|contract|planetbids|bidnet|bonfire|periscope|demandstar|sam\\.gov/i;\n\nfunction urlsIn(text) {\n  const found = text.match(/https?:\\/\\/[^\\s\"'<>)\\]]+/g) || [];\n  return found\n    .map((u) => u.replace(/[.,;:]+$/, \"\"))\n    .filter((u) => !LINK_NOISE.test(u));\n}\n\nconst out = [];\n\nconst allItems = $input.all();\nfor (let i = 0; i < allItems.length; i++) {\n  const item = allItems[i];\n  const m = item.json;\n\n  const subject = (m.subject || \"(no subject)\").trim();\n  const bodyText = m.text || m.textPlain || m.snippet || \"\";\n  const bodyHtml = m.html || m.textHtml || \"\";\n  const haystack = `${bodyText}\\n${bodyHtml}`;\n\n  // Gmail hands attachments over as binary on the item. Pick the first one\n  // that looks like a solicitation rather than the first one full stop -\n  // inline logos and signature images arrive as attachments too.\n  const DOCUMENT_FILE = /\\.(pdf|docx?|rtf)$/i;\n  const binaries = Object.entries(item.binary || {});\n  const attached = binaries.find(([, b]) =>\n    DOCUMENT_FILE.test(b.fileName || '') ||\n    /pdf|wordprocessingml|msword/i.test(b.mimeType || '')\n  );\n\n  const links = urlsIn(haystack);\n  const pdf = links.find((u) => /\\.pdf(\\?|$)/i.test(u));\n  const portal = links.find((u) => PORTALish.test(u));\n  const chosen = pdf || portal || null;\n\n  // Gmail's message id is stable and unique, so re-processing the same email\n  // upserts the same RFP row rather than creating a duplicate.\n  const externalId = `gmail-${m.id || m.messageId || Date.now()}`;\n\n  const payload = {\n    // Set when the solicitation came attached rather than linked. The branch\n    // after Config reads this to send the bytes for extraction.\n    attachment_field: attached ? attached[0] : null,\n    attachment_name: attached ? attached[1].fileName || null : null,\n    external_id: externalId,\n    source: \"email\",\n    source_url: chosen || undefined,\n    email_subject: subject,\n    email_from: m.from?.value?.[0]?.address || m.From || null,\n    // Which mailbox this landed in - the evidence of which Google account the\n    // desk is reading as. Off the message, never configured: a credential\n    // re-authorised against the wrong account looks identical from outside.\n    source_mailbox: m.to?.value?.[0]?.address || m.To || null,\n  };\n\n  if (chosen) {\n    payload.document_url = chosen;\n  }\n  // Kept whether or not a link was found. If the link is fetchable this is\n  // ignored; if it turns out to be a login wall or a bot check - which is what\n  // an aggregator link usually is - this is what the desk reads instead of the\n  // solicitation vanishing.\n  {\n    payload.document_text = [\n      `Subject: ${subject}`,\n      \"\",\n      bodyText || \"(no plain-text body)\",\n      \"\",\n      \"[NOTE FOR TRIAGE: no solicitation link was found in this email, so the\",\n      \"text above is an aggregator summary rather than the solicitation itself.\",\n      \"Treat any budget figure as unconfirmed unless the RFP is attached, and\",\n      \"prefer 'maybe' over a confident verdict where the summary is thin.]\",\n    ].join(\"\\n\");\n  }\n\n  // Carry the attachment through, read back off the trigger by name rather than\n  // from the loop variable: `item.binary` comes back undefined in this sandbox,\n  // so building the item from it silently dropped the file the Gmail node had\n  // already downloaded, and the extraction two steps later failed looking for a\n  // binary that had been discarded on the way.\n  const attachments = $('Gmail — new solicitation').all()[i]?.binary\n    || $('Gmail — new solicitation').first()?.binary\n    || undefined;\n  out.push({ json: { body: payload }, binary: attachments });\n}\n\nreturn out;"
       },
       "id": "gmail-normalise",
       "name": "Email → intake payload",
@@ -504,7 +505,7 @@
           "conditions": [
             {
               "id": "has-attachment",
-              "leftValue": "={{ $json.payload.attachment_field }}",
+              "leftValue": "={{ $json.body.attachment_field }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -535,7 +536,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "contentType": "binaryData",
-        "inputDataFieldName": "={{ $json.payload.attachment_field }}",
+        "inputDataFieldName": "={{ $json.body.attachment_field }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -545,11 +546,17 @@
         680
       ],
       "id": "extract-attachment-0001",
-      "name": "Extract attachment via bid desk"
+      "name": "Extract attachment via bid desk",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "jAfC3YD24hYAVk6j",
+          "name": "Bid Desk API key"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "// The attachment is now plain text. Put it back on the payload as\n// document_text and hand it on, so an attached solicitation and a pasted one\n// travel the same path from here.\nconst original = $('Email → intake payload').first().json;\nconst extracted = $input.first().json;\n\nconst text = (extracted.text || '').trim();\nif (!text) {\n  throw new Error(`Attachment ${original.payload.attachment_name || ''} produced no readable text.`);\n}\n\nreturn [{\n  json: {\n    ...original,\n    payload: {\n      ...original.payload,\n      document_text: text,\n      // The link, if there was one, is no longer what gets read - but it is\n      // still the best thing to show as the source on the card.\n      document_url: undefined,\n    },\n  },\n}];"
+        "jsCode": "// The attachment is now plain text. Put it back on the payload as\n// document_text and hand it on, so an attached solicitation and a pasted one\n// travel the same path from here.\n//\n// The key is 'body', not 'payload' - that mismatch is what made this whole\n// branch dead code: the IF guarding it tested $json.payload.attachment_field on\n// an item that only ever had .body, so it was undefined on every email and the\n// extraction never ran.\nconst original = $('Email → intake payload').first().json;\nconst extracted = $input.first().json;\n\nconst text = (extracted.text || '').trim();\nif (!text) {\n  throw new Error(`Attachment ${original.body.attachment_name || ''} produced no readable text.`);\n}\n\nreturn [{\n  json: {\n    ...original,\n    body: {\n      ...original.body,\n      document_text: text,\n      // The link, if there was one, is no longer what gets read - but it is\n      // still the best thing to show as the source on the card.\n      document_url: undefined,\n    },\n  },\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -824,6 +831,13 @@
         [
           {
             "node": "Is it a PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build triage prompt",
             "type": "main",
             "index": 0
           }

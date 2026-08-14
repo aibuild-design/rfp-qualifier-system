@@ -4,6 +4,7 @@ import { isAuthorized } from "@/lib/api-auth";
 import { isServiceRoleConfigured } from "@/lib/supabase/config";
 import { toTimestamp } from "@/lib/rfp";
 import { decideVerdict, thresholdsFromSettings, type Decision } from "@/lib/verdict";
+import { recommendTeam } from "@/lib/team-match";
 import { assembleDraft, DEFAULT_SECTIONS, proposalFileName } from "@/lib/proposal";
 import { buildProposalDocx } from "@/lib/docx-export";
 import { caravannLogo } from "@/lib/brand-logo";
@@ -302,7 +303,70 @@ export async function POST(req: NextRequest) {
     replaceChildren("rfp_questions", questions),
     recordEdgeCases(),
     recordConnectionHealth(),
+    recommendTeamFor(),
   ]);
+
+  /**
+   * Module 9, on arrival rather than on a button.
+   *
+   * The matcher was only ever run by clicking "Suggest team", so a solicitation
+   * sat in the queue with an empty team panel until someone thought to press it
+   * - on the one screen where the question "who would even do this work" is
+   * part of deciding whether to bid at all.
+   *
+   * Safe to do automatically because suggesting is not assigning. Every row is
+   * written `recommended`, which is inert; confirming one stays a person's
+   * click. And the matcher is deterministic - token overlap against the stated
+   * requirements, no model call - so this costs nothing and cannot drift
+   * between runs the way a generated answer would.
+   *
+   * Confirmed assignments are never touched. Re-triage replaces suggestions
+   * only, so an addendum arriving cannot quietly undo a decision.
+   */
+  async function recommendTeamFor() {
+    if (!triaged || !disqualifier_checks?.length) return;
+
+    const [{ data: members }, { data: existing }] = await Promise.all([
+      supabase.from("team_members").select("*"),
+      supabase.from("rfp_team_assignments").select("team_member_id,status").eq("rfp_id", rfpId),
+    ]);
+
+    // The gate rows here are inserts, where is_required is optional; the matcher
+    // wants it decided. Absent means "not marked mandatory", which is false.
+    const checks = disqualifier_checks.map((c) => ({
+      requirement_text: c.requirement_text ?? "",
+      is_required: c.is_required === true,
+    }));
+    const picks = recommendTeam(members ?? [], checks);
+    if (!picks.length) return;
+
+    const { error: deleteError } = await supabase
+      .from("rfp_team_assignments")
+      .delete()
+      .eq("rfp_id", rfpId)
+      .eq("status", "recommended");
+    if (deleteError) {
+      failures.push(`rfp_team_assignments: ${deleteError.message}`);
+      return;
+    }
+
+    // Someone already confirmed for this bid keeps their place rather than
+    // reappearing as a suggestion underneath their own confirmation.
+    const confirmed = new Set((existing ?? []).filter((e) => e.status !== "recommended").map((e) => e.team_member_id));
+    const rows = picks
+      .filter((p) => !confirmed.has(p.team_member_id))
+      .map((p) => ({
+        rfp_id: rfpId,
+        team_member_id: p.team_member_id,
+        status: "recommended" as const,
+        match_reason: p.match_reason,
+        match_score: p.match_score,
+      }));
+    if (rows.length === 0) return;
+
+    const { error } = await supabase.from("rfp_team_assignments").insert(rows);
+    if (error) failures.push(`rfp_team_assignments (${rows.length} row(s)): ${error.message}`);
+  }
 
   /**
    * Stamp what just demonstrably worked.

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthorized } from "@/lib/api-auth";
+import { createClient } from "@/lib/supabase/server";
 import { extractText } from "@/lib/extract";
 import { checkDocumentUrl, isBlockedHost } from "@/lib/url-guard";
 import { lookup } from "node:dns/promises";
@@ -19,7 +20,12 @@ const MAX_BYTES = 25 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 30_000;
 
 export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  // Two callers, both trusted, neither able to present the other's credential:
+  // n8n holds the shared key, and Khaled uploading a file in the dashboard has
+  // a session cookie instead. Reading a document he already has on his own
+  // machine is no wider a permission than the queue he is already signed in to,
+  // so a signed-in user is admitted rather than being told to paste the text.
+  if (!isAuthorized(req) && !(await hasSession())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -176,4 +182,17 @@ export async function POST(req: NextRequest) {
     // triaging, as long as the caller knows it was thin.
     ...(extraction.warning ? { warning: extraction.warning } : {}),
   });
+}
+
+/** Whether the caller is a signed-in dashboard user. Errors count as "no". */
+async function hasSession(): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return Boolean(user);
+  } catch {
+    return false;
+  }
 }

@@ -294,6 +294,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                   <th scope="col" className="px-5 py-3">Score</th>
                   <th scope="col" className="px-5 py-3">Budget</th>
                   <th scope="col" className="hidden px-5 py-3 lg:table-cell">Folder</th>
+                  <th scope="col" className="hidden px-5 py-3 sm:table-cell">Arrived</th>
                   <th scope="col" className="px-5 py-3">Due</th>
                 </tr>
               </thead>
@@ -332,6 +333,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                       <td className="tabular px-5 py-3.5 text-rfp-ink-secondary">{formatBudget(rfp)}</td>
                       <td className="hidden px-5 py-3.5 lg:table-cell">
                         <MoveToFolder rfpId={rfp.id} folders={folders ?? []} current={rfp.folder_id} />
+                      </td>
+                      <td className="hidden px-5 py-3.5 text-rfp-ink-muted sm:table-cell">
+                        {formatDate(rfp.received_at ?? rfp.created_at)}
                       </td>
                       <td className="px-5 py-3.5" style={{ color: deadlineColor(days, windows) }}>
                         {formatDate(rfp.due_at)}

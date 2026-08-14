@@ -51,3 +51,6 @@ next-env.d.ts
 *.xlsx
 *.pptx
 !public/**
+
+# Client-facing guide - kept local, not in the public repo
+guide/

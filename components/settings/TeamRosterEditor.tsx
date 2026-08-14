@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { TeamMemberRow } from "@/lib/supabase/types";
 
 // The private roster module 9's team match recommends against - Khaled
@@ -9,6 +10,12 @@ import type { TeamMemberRow } from "@/lib/supabase/types";
 export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
   const [rows, setRows] = useState(initial);
   const [newName, setNewName] = useState("");
+  // Removal used to happen on the click. Every other field here saves as you
+  // type, which is right for an edit you can see and undo by typing again - but
+  // a deleted consultant leaves nothing on screen to correct, and the row is
+  // gone from every future team match. Asking first is the difference between
+  // an edit and an accident.
+  const [pendingRemove, setPendingRemove] = useState<TeamMemberRow | null>(null);
 
   async function addMember() {
     if (!newName.trim()) return;
@@ -26,13 +33,29 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
     await supabase.from("team_members").update(patch).eq("id", id);
   }
 
-  async function remove(id: string) {
-    setRows(rows.filter((r) => r.id !== id));
+  async function remove(member: TeamMemberRow) {
+    setPendingRemove(null);
+    setRows(rows.filter((r) => r.id !== member.id));
     const supabase = createClient();
-    await supabase.from("team_members").delete().eq("id", id);
+    await supabase.from("team_members").delete().eq("id", member.id);
   }
 
   return (
+    <>
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        title="Remove from the roster?"
+        body={
+          <>
+            <strong>{pendingRemove?.name}</strong> will no longer be suggested for any
+            solicitation. Assignments already confirmed on a bid are not affected.
+          </>
+        }
+        confirmLabel="Remove"
+        cancelLabel="Keep"
+        onConfirm={() => pendingRemove && remove(pendingRemove)}
+        onCancel={() => setPendingRemove(null)}
+      />
     <div className="overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
       <div className="overflow-x-auto">
       <table className="w-full min-w-[34rem] text-left text-base sm:text-sm">
@@ -71,7 +94,7 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
                 </select>
               </td>
               <td className="px-4 py-2 text-right">
-                <button onClick={() => remove(row.id)} className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-medium text-rfp-ink-muted press hover:bg-rfp-critical/10 hover:text-rfp-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-critical">
+                <button onClick={() => setPendingRemove(row)} className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-medium text-rfp-ink-muted press hover:bg-rfp-critical/10 hover:text-rfp-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-critical">
                   Remove
                 </button>
               </td>
@@ -99,6 +122,7 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
         </button>
       </div>
     </div>
+    </>
   );
 }
 

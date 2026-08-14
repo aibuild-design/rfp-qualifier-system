@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { SectorExperienceRow } from "@/lib/supabase/types";
 
 // "It knows your depth, sector by sector" (module 3) - the disqualifier gate
@@ -9,6 +10,11 @@ import type { SectorExperienceRow } from "@/lib/supabase/types";
 export function SectorExperienceEditor({ initial }: { initial: SectorExperienceRow[] }) {
   const [rows, setRows] = useState(initial);
   const [newSector, setNewSector] = useState("");
+  // Worse than it looks. The gate and the score both read this table, and a
+  // sector that is absent is not the same as a sector recorded at zero: one is
+  // "no experience", the other is "never asked". Removing a row silently
+  // changes what future verdicts are computed against, so it asks first.
+  const [pendingRemove, setPendingRemove] = useState<SectorExperienceRow | null>(null);
 
   async function addSector() {
     if (!newSector.trim()) return;
@@ -30,13 +36,30 @@ export function SectorExperienceEditor({ initial }: { initial: SectorExperienceR
     await supabase.from("sector_experience").update(patch).eq("id", id);
   }
 
-  async function remove(id: string) {
-    setRows(rows.filter((r) => r.id !== id));
+  async function remove(row: SectorExperienceRow) {
+    setPendingRemove(null);
+    setRows(rows.filter((r) => r.id !== row.id));
     const supabase = createClient();
-    await supabase.from("sector_experience").delete().eq("id", id);
+    await supabase.from("sector_experience").delete().eq("id", row.id);
   }
 
   return (
+    <>
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        title="Remove this sector?"
+        body={
+          <>
+            <strong>{pendingRemove?.sector}</strong> will stop being considered when a
+            solicitation is scored. If the intent is &ldquo;no experience here&rdquo;, set the years
+            and engagements to zero instead — an absent sector reads as never asked.
+          </>
+        }
+        confirmLabel="Remove"
+        cancelLabel="Keep"
+        onConfirm={() => pendingRemove && remove(pendingRemove)}
+        onCancel={() => setPendingRemove(null)}
+      />
     <div className="overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
       <div className="overflow-x-auto">
       <table className="w-full min-w-[34rem] text-left text-base sm:text-sm">
@@ -71,7 +94,7 @@ export function SectorExperienceEditor({ initial }: { initial: SectorExperienceR
                 <Cell value={row.notes ?? ""} onChange={(v) => update(row.id, { notes: v || null })} />
               </td>
               <td className="px-4 py-2 text-right">
-                <button onClick={() => remove(row.id)} className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-medium text-rfp-ink-muted press hover:bg-rfp-critical/10 hover:text-rfp-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-critical">
+                <button onClick={() => setPendingRemove(row)} className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-medium text-rfp-ink-muted press hover:bg-rfp-critical/10 hover:text-rfp-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-critical">
                   Remove
                 </button>
               </td>
@@ -99,6 +122,7 @@ export function SectorExperienceEditor({ initial }: { initial: SectorExperienceR
         </button>
       </div>
     </div>
+    </>
   );
 }
 

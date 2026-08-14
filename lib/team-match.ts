@@ -90,7 +90,22 @@ export function recommendTeam(
     return { team_member_id: m.id, name: m.name, match_score: score, match_reason: reason };
   });
 
-  return scored.sort((a, b) => b.match_score - a.match_score).slice(0, limit);
+  // A zero means no stated requirement touched anything this person does. Three
+  // zeroes side by side still read as "here is your team" - and that is exactly
+  // what happened on a solicitation whose only extracted requirements were the
+  // gate reporting it could not read the document ("Full solicitation must be
+  // available to assess requirements"). Nobody matches that, everyone tied at
+  // zero, and the first three names alphabetically were presented as the
+  // recommendation: a coach and a happiness researcher for an organizational
+  // development job.
+  //
+  // Recommending nobody is the honest output there. The panel says it has
+  // nothing to go on, which is true and actionable - get the real document -
+  // where three arbitrary names are neither.
+  return scored
+    .filter((p) => p.match_score > 0)
+    .sort((a, b) => b.match_score - a.match_score)
+    .slice(0, limit);
 }
 
 function buildReason(matched: number, total: number, m: TeamMemberRow): string {
