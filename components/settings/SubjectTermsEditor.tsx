@@ -45,14 +45,14 @@ export function SubjectTermsEditor({ initial }: { initial: string[] }) {
         {terms.map((t) => (
           <span
             key={t}
-            className="inline-flex min-h-11 items-center gap-1 rounded-full bg-rfp-surface-sunken py-1 pl-4 pr-1 text-sm text-rfp-ink"
+            className="inline-flex min-h-11 items-center gap-0.5 rounded-full bg-rfp-surface-sunken py-0 pl-4 pr-0.5 text-sm text-rfp-ink"
           >
             {t}
             <button
               type="button"
               onClick={() => void persist(terms.filter((x) => x !== t))}
               aria-label={`Remove ${t}`}
-              className="press inline-flex h-9 w-9 items-center justify-center rounded-full text-base leading-none text-rfp-ink-muted hover:bg-rfp-surface hover:text-rfp-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-critical"
+              className="press inline-flex h-11 w-11 items-center justify-center rounded-full text-base leading-none text-rfp-ink-muted hover:bg-rfp-surface hover:text-rfp-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-critical"
             >
               ×
             </button>
