@@ -522,6 +522,39 @@ export async function POST(req: NextRequest) {
         source_block_ids: s.source_block_ids, notes: s.notes,
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       }));
+
+      // Persist them. These were already being assembled for the filed
+      // document and then thrown away, so the dashboard showed an empty
+      // proposal panel next to a Drive folder that already contained the
+      // finished draft - and "Build draft" existed to recompute, from the same
+      // inputs, what had just been computed and discarded.
+      //
+      // Suggestions, not decisions: sections land as `draft` or `needs_input`
+      // and approving one stays a person's click. Replaced on re-triage so an
+      // addendum rewrites the draft rather than appending a second copy.
+      const { error: wipeError } = await supabase
+        .from("rfp_proposal_sections")
+        .delete()
+        .eq("rfp_id", rfpId)
+        .neq("status", "approved");
+      if (wipeError) {
+        failures.push(`rfp_proposal_sections: ${wipeError.message}`);
+      } else {
+        // An approved section is Khaled's, and regenerating it would silently
+        // undo a review. Only the ones he has not signed off are rewritten.
+        const { data: kept } = await supabase
+          .from("rfp_proposal_sections")
+          .select("section_type")
+          .eq("rfp_id", rfpId);
+        const approved = new Set((kept ?? []).map((k) => k.section_type));
+        const rows = sections
+          .filter((sec) => !approved.has(sec.section_type))
+          .map(({ id: _id, created_at: _c, updated_at: _u, ...rest }) => rest);
+        if (rows.length > 0) {
+          const { error } = await supabase.from("rfp_proposal_sections").insert(rows);
+          if (error) failures.push(`rfp_proposal_sections (${rows.length} row(s)): ${error.message}`);
+        }
+      }
       // Caravann's own file, filled - not a lookalike rebuilt from
       // measurements. Everything the template already gets right stays right:
       // the logo, the contents field, the page size, the spacing. Falls back to

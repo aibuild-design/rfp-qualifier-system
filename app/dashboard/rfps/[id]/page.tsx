@@ -363,6 +363,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
       {/* Team match (module 9) */}
       <TeamMatch
         rfpId={rfp.id}
+        roster={(roster ?? []).filter((m) => m.active).map((m) => ({ id: m.id, name: m.name }))}
         assignments={(assignmentRows ?? []).map((a) => {
           const m = (roster ?? []).find((r) => r.id === a.team_member_id);
           return {

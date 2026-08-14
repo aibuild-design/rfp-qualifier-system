@@ -60,15 +60,26 @@ function LoginForm() {
       <div className="relative flex items-center justify-center bg-rfp-surface px-8 py-12">
         <div className="w-full max-w-[360px]">
           <div className="mb-10">
-            {/* Black wordmark on the white form panel; the yellow variant is
-                reserved for the dark half, where it actually has contrast. */}
+            {/* Two variants, swapped by theme. The form panel sits on
+                --rfp-surface, which inverts with the theme, so the black artwork
+                was rendering as a near-invisible smudge on a near-black panel -
+                on the first screen anyone sees. */}
             <Image
               src="/brand/caravann-black.png"
               alt="Caravann"
               width={1494}
               height={205}
               priority
-              className="h-[26px] w-auto object-contain object-left"
+              className="brand-any-light h-[26px] w-auto object-contain object-left"
+            />
+            <Image
+              src="/brand/caravann-yellow.png"
+              alt=""
+              aria-hidden
+              width={1500}
+              height={277}
+              priority
+              className="brand-any-dark h-[26px] w-auto object-contain object-left"
             />
             <p className="mt-1.5 text-[10px] font-medium uppercase tracking-widest text-rfp-ink-muted">
               RFP Bid Desk
@@ -128,7 +139,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-rfp-black px-4 text-sm font-semibold text-white press hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-rfp-ink px-4 text-sm font-semibold text-rfp-surface press hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>

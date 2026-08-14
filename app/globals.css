@@ -205,6 +205,33 @@ body {
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
+/* The same swap, unscoped by width. The login page shows the wordmark at every
+   size, so it cannot reuse the top bar's mobile-only variants - on a desktop in
+   dark mode those keep the black artwork, which is the near-invisible mark on a
+   near-black panel this exists to prevent. */
+.brand-any-light {
+  display: block;
+}
+.brand-any-dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-any-light {
+    display: none;
+  }
+  :root:not([data-theme="light"]) .brand-any-dark {
+    display: block;
+  }
+}
+
+:root[data-theme="dark"] .brand-any-light {
+  display: none;
+}
+:root[data-theme="dark"] .brand-any-dark {
+  display: block;
+}
+
 /* The wordmark ships as two PNGs - black artwork for light surfaces, gold for
    dark. The top bar sits on --rfp-surface, which inverts with the theme, so the
    black one was rendering near-invisible on a dark phone.

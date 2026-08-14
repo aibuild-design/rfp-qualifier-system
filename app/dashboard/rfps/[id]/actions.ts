@@ -152,6 +152,55 @@ export async function matchTeam(rfpId: string): Promise<ActionResult<{ recommend
   return { ok: true, recommended: rows.length };
 }
 
+/**
+ * Put someone on a bid the matcher did not suggest.
+ *
+ * The matcher returns three names from a roster of thirteen, ranked on word
+ * overlap with the stated requirements - which is a useful prompt and a poor
+ * substitute for knowing that a particular client asked for a particular
+ * person. Without this the panel was read-only in the one direction that
+ * matters: Khaled could accept a suggestion or re-run it, never disagree with
+ * it.
+ *
+ * Recorded `confirmed` rather than `recommended`, because a person choosing
+ * someone is not a suggestion awaiting approval - it is the approval. It also
+ * means re-running the match cannot quietly remove them, since that only clears
+ * recommendations.
+ */
+export async function assignMember(rfpId: string, memberId: string): Promise<ActionResult> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
+
+  const { data: existing } = await supabase
+    .from("rfp_team_assignments")
+    .select("id")
+    .eq("rfp_id", rfpId)
+    .eq("team_member_id", memberId)
+    .maybeSingle();
+
+  // Already suggested: promote that row rather than adding a second one for the
+  // same person, which would show them twice.
+  if (existing) {
+    const { error } = await supabase
+      .from("rfp_team_assignments")
+      .update({ status: "confirmed" })
+      .eq("id", existing.id);
+    if (error) return safeError("add them to the team", error);
+  } else {
+    const { error } = await supabase.from("rfp_team_assignments").insert({
+      rfp_id: rfpId,
+      team_member_id: memberId,
+      status: "confirmed",
+      match_reason: "Added by hand",
+      match_score: null,
+    });
+    if (error) return safeError("add them to the team", error);
+  }
+
+  revalidatePath(`/dashboard/rfps/${rfpId}`);
+  return { ok: true };
+}
+
 export async function confirmAssignment(rfpId: string, assignmentId: string): Promise<ActionResult> {
   const { supabase, denied } = await requireUser();
   if (denied) return denied;

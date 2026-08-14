@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { confirmAssignment, matchTeam } from "@/app/dashboard/rfps/[id]/actions";
+import { assignMember, confirmAssignment, matchTeam } from "@/app/dashboard/rfps/[id]/actions";
 
 export type AssignmentView = {
   id: string;
@@ -13,9 +13,20 @@ export type AssignmentView = {
   member_rate: number | null;
 };
 
-export function TeamMatch({ rfpId, assignments }: { rfpId: string; assignments: AssignmentView[] }) {
+export function TeamMatch({
+  rfpId,
+  assignments,
+  roster,
+}: {
+  rfpId: string;
+  assignments: AssignmentView[];
+  /** The whole active roster, so someone the matcher missed can still be put on
+   *  the bid. Ranking by word overlap is a prompt, not a verdict. */
+  roster: { id: string; name: string }[];
+}) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const [pick, setPick] = useState("");
 
   return (
     <div className="mt-6">
@@ -90,6 +101,36 @@ export function TeamMatch({ rfpId, assignments }: { rfpId: string; assignments: 
           </ul>
         )}
       </div>
+      {roster.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <select
+            value={pick}
+            onChange={(e) => setPick(e.target.value)}
+            className="min-h-11 flex-1 rounded-lg border border-rfp-border bg-rfp-surface px-3 text-sm text-rfp-ink focus:border-rfp-gold focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
+          >
+            <option value="">Add someone else…</option>
+            {roster.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            disabled={!pick || pending}
+            onClick={() =>
+              start(async () => {
+                const r = await assignMember(rfpId, pick);
+                setMessage(r.error ?? "Added");
+                setPick("");
+              })
+            }
+            className="press inline-flex min-h-11 items-center rounded-lg border border-rfp-border px-4 text-sm font-medium text-rfp-ink hover:bg-rfp-surface-sunken disabled:opacity-40"
+          >
+            Add
+          </button>
+        </div>
+      )}
     </div>
   );
 }
