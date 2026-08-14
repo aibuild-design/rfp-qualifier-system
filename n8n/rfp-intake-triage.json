@@ -291,9 +291,7 @@
           ]
         },
         "simple": false,
-        "filters": {
-          "q": "subject:(RFP OR RFQ OR solicitation OR \"request for proposal\" OR \"request for qualifications\")"
-        },
+        "filters": {},
         "options": {
           "downloadAttachments": true
         }
@@ -772,6 +770,43 @@
         "jsonBody": "={{ JSON.stringify({ id: $('POST to bid desk').first().json.id, filing_status: 'filed', drive_folder_url: 'https://drive.google.com/drive/folders/' + $('Folder to file into').first().json.folder_id }) }}",
         "options": {}
       }
+    },
+    {
+      "id": "terms",
+      "name": "Which subjects count?",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -660,
+        700
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "jAfC3YD24hYAVk6j",
+          "name": "Bid Desk API key"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "GET",
+        "url": "https://rfp-qualifier-system.vercel.app/api/rfps/intake-filter",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      }
+    },
+    {
+      "id": "subjgate",
+      "name": "Looks like a solicitation?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        700
+      ],
+      "parameters": {
+        "jsCode": "// Keep only the emails whose subject Khaled has said counts.\n//\n// Substring, case-insensitive, deliberately not word-boundary matching: an\n// agency writing \"RFPs\" or \"Re: RFP/RFQ\" should not be dropped by a boundary\n// nobody thought about.\n//\n// An empty term list means everything qualifies. That is a real setting - \"show\n// me it all\" - and reading it as \"match nothing\" would turn a deliberate choice\n// into a silent outage.\nconst DEFAULTS = ['RFP', 'RFQ', 'solicitation', 'request for proposal', 'request for qualifications'];\n\nlet terms = DEFAULTS;\ntry {\n  const cfg = $('Which subjects count?').first().json;\n  if (Array.isArray(cfg.subject_terms)) terms = cfg.subject_terms;\n} catch (e) {\n  // Settings unreachable - fall through to the defaults rather than dropping mail.\n}\n\nconst kept = [];\nfor (const item of $('Gmail — new solicitation').all()) {\n  const subject = String(item.json.subject || '');\n  const hay = subject.toLowerCase();\n  const match = terms.length === 0 || terms.some((t) => {\n    const needle = String(t || '').trim().toLowerCase();\n    return needle && hay.includes(needle);\n  });\n  if (match) kept.push(item);\n}\nreturn kept;"
+      }
     }
   ],
   "connections": {
@@ -904,7 +939,7 @@
       "main": [
         [
           {
-            "node": "Email → intake payload",
+            "node": "Which subjects count?",
             "type": "main",
             "index": 0
           }
@@ -1131,6 +1166,28 @@
         [
           {
             "node": "Tell the desk it is filed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Which subjects count?": {
+      "main": [
+        [
+          {
+            "node": "Looks like a solicitation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Looks like a solicitation?": {
+      "main": [
+        [
+          {
+            "node": "Email → intake payload",
             "type": "main",
             "index": 0
           }

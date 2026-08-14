@@ -91,6 +91,9 @@ export interface Database {
           preferred_misses_are_fatal: boolean;
           max_score_spread: number;
           rubric_weights: Record<string, number> | null;
+          /** Subject substrings that mark an email as a solicitation. Empty means
+           *  every email qualifies. */
+          email_subject_terms: string[];
           notes: string | null;
           updated_at: string;
         };

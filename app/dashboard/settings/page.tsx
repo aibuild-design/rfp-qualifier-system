@@ -5,6 +5,7 @@ import { TeamRosterEditor } from "@/components/settings/TeamRosterEditor";
 import { ScoringSettingsForm } from "@/components/settings/ScoringSettingsForm";
 import { ProfileConfirmation } from "@/components/settings/ProfileConfirmation";
 import { ConnectionsPanel } from "@/components/settings/ConnectionsPanel";
+import { SubjectTermsEditor } from "@/components/settings/SubjectTermsEditor";
 
 // Everything on this page is Khaled's own occasional editing - the
 // eligibility profile and sector map "confirmed once" (module 3) and the
@@ -158,6 +159,16 @@ export default async function SettingsPage() {
               </p>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-display text-sm font-semibold text-rfp-ink">Which emails get triaged</h2>
+        <p className="mt-0.5 text-xs text-rfp-ink-muted">
+          An email whose subject contains none of these is never read.
+        </p>
+        <div className="mt-3">
+          <SubjectTermsEditor initial={scoring?.email_subject_terms ?? []} />
         </div>
       </section>
 
