@@ -3,7 +3,7 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { isAuthorized } from "@/lib/api-auth";
 import { isServiceRoleConfigured } from "@/lib/supabase/config";
 import { toTimestamp } from "@/lib/rfp";
-import { decideVerdict, thresholdsFromSettings } from "@/lib/verdict";
+import { decideVerdict, thresholdsFromSettings, type Decision } from "@/lib/verdict";
 import { assembleDraft, DEFAULT_SECTIONS, proposalFileName } from "@/lib/proposal";
 import { buildProposalDocx } from "@/lib/docx-export";
 import { caravannLogo } from "@/lib/brand-logo";
@@ -156,11 +156,18 @@ export async function POST(req: NextRequest) {
   // first, set second.
   delete body.is_provisional;
 
-  let decision = null;
+  let decision: Decision | null = null;
+  // The thresholds half is whatever thresholdsFromSettings accepts; the rubric
+  // weights are read here too, so the select list covers both.
+  let settings:
+    | (NonNullable<Parameters<typeof thresholdsFromSettings>[0]> & {
+        rubric_weights?: RubricWeights | null;
+      })
+    | null = null;
   if (triaged) {
     // Thresholds are Khaled's, read fresh per verdict so a change in Settings
     // applies to the next solicitation without a deploy.
-    const [{ data: settings }, { data: orgProfile }] = await Promise.all([
+    const [{ data: settingsRow }, { data: orgProfile }] = await Promise.all([
       supabase
         .from("scoring_settings")
         .select("go_threshold,maybe_threshold,preferred_misses_are_fatal,max_score_spread,rubric_weights")
@@ -168,6 +175,7 @@ export async function POST(req: NextRequest) {
         .maybeSingle(),
       supabase.from("org_profile").select("profile_confirmed").eq("id", true).maybeSingle(),
     ]);
+    settings = settingsRow;
 
     // Stamped per row, not read at display time. A verdict reached against an
     // unconfirmed profile does not become correct later because someone ticked
@@ -270,7 +278,86 @@ export async function POST(req: NextRequest) {
     replaceChildren("rfp_compliance_items", compliance_items),
     replaceChildren("rfp_disqualifier_checks", disqualifier_checks),
     replaceChildren("rfp_questions", questions),
+    recordEdgeCases(),
   ]);
+
+  /**
+   * Module 11's producer.
+   *
+   * The weekly review page reads `rfp_edge_cases` and nothing ever wrote to it,
+   * so the module was a consumer with no producer: it rendered, it could clear
+   * items, and it had none to clear. Every signal it needs was already being
+   * computed here and then discarded.
+   *
+   * An edge case is not "the desk got it wrong" - nobody knows that yet. It is
+   * "the desk was not sure", which is a different and knowable thing, and the
+   * three ways that happens are all visible at decision time:
+   *
+   *   · the reads disagreed enough that the spread rule fired
+   *   · a mandatory requirement came back `unclear` - the document was silent,
+   *     which is the case the gate deliberately refuses to treat as a failure
+   *   · the score landed within two points of a threshold, where a different
+   *     run of the same document would have produced a different label
+   *
+   * No rule change is proposed. The SOW's standard is that the desk never
+   * retunes itself, so this records what to look at and leaves the judgement to
+   * the weekly pass.
+   */
+  async function recordEdgeCases() {
+    if (!decision || decision.status === "pending") return;
+
+    const reasons: string[] = [];
+
+    // The verdict layer already phrases this one, and its wording is the
+    // account shown everywhere else - repeating it in different words here
+    // would put two descriptions of one event in front of the same reader.
+    if (/disagree|spread/i.test(decision.reason)) {
+      reasons.push(decision.reason);
+    }
+
+    const unclear = (disqualifier_checks ?? []).filter(
+      (c) => c.result === "unclear" && (c.is_required === true || c.is_hard_knockout === true)
+    );
+    if (unclear.length > 0) {
+      reasons.push(
+        `${unclear.length} mandatory requirement${unclear.length > 1 ? "s" : ""} could not be confirmed from the document: ` +
+          unclear.map((c) => c.requirement_text).join("; ")
+      );
+    }
+
+    const score = body.score_percent;
+    if (typeof score === "number") {
+      const t = thresholdsFromSettings(settings);
+      const near = [t.go, t.maybe].find((edge) => Math.abs(score - edge) <= 2);
+      if (near !== undefined) {
+        reasons.push(
+          `Scored ${score}%, within two points of the ${near}% line - the same document could land either side of it on another run.`
+        );
+      }
+    }
+
+    // Idempotent for the same reason the other children are: a re-triage
+    // replaces its own rows rather than stacking a second copy. Resolved ones
+    // are left alone, because clearing an item is a decision and re-triaging a
+    // solicitation should not undo it.
+    const { error: deleteError } = await supabase
+      .from("rfp_edge_cases")
+      .delete()
+      .eq("rfp_id", rfpId)
+      .eq("status", "pending");
+    if (deleteError) {
+      failures.push(`rfp_edge_cases: ${deleteError.message}`);
+      return;
+    }
+    if (reasons.length === 0) return;
+
+    const { error: insertError } = await supabase.from("rfp_edge_cases").insert(
+      reasons.map((description) => ({ rfp_id: rfpId, description, status: "pending" as const }))
+    );
+    if (insertError) {
+      failures.push(`rfp_edge_cases (${reasons.length} row(s)): ${insertError.message}`);
+    }
+  }
 
   if (failures.length > 0) {
     // The rfp row itself is already saved and correct, so the id is returned -
