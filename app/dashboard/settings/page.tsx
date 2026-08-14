@@ -22,9 +22,7 @@ export default async function SettingsPage() {
     { data: team },
     { data: scoring },
     { data: scored },
-    { data: lastEmail },
-    { data: lastFiled },
-    { data: lastVerdict },
+    { data: health },
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from("org_profile").select("*").eq("id", true).maybeSingle(),
@@ -34,13 +32,17 @@ export default async function SettingsPage() {
     // Real scores from the live queue, so the threshold preview shows the
     // effect on actual work rather than on a hypothetical.
     supabase.from("rfps").select("score_percent").not("score_percent", "is", null),
-    // Evidence for the connections panel: the last time each outside connection
-    // demonstrably did something. Ordered nullsFirst:false so a row that never
-    // reached that stage cannot masquerade as the most recent one.
-    supabase.from("rfps").select("created_at,source_mailbox").eq("source", "email").order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    supabase.from("rfps").select("filed_at,drive_folder_url").eq("filing_status", "filed").order("filed_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle(),
-    supabase.from("rfps").select("verdict_set_at").not("verdict_set_at", "is", null).order("verdict_set_at", { ascending: false }).limit(1).maybeSingle(),
+    // Evidence for the connections panel. Read from connection_events rather
+    // than from the queue: clearing solicitations is not evidence that Google
+    // stopped working, and deriving it from rfps meant an empty queue reported
+    // three healthy connections as unproven.
+    supabase.from("connection_events").select("kind,last_ok_at,detail"),
   ]);
+
+  const byKind = new Map((health ?? []).map((h) => [h.kind, h]));
+  const gmail = byKind.get("gmail");
+  const triage = byKind.get("triage");
+  const drive = byKind.get("drive");
 
   const scoreSample = (scored ?? [])
     .map((r) => r.score_percent)
@@ -160,11 +162,11 @@ export default async function SettingsPage() {
       </section>
 
       <ConnectionsPanel
-        lastEmailAt={lastEmail?.created_at ?? null}
-        lastMailbox={lastEmail?.source_mailbox ?? null}
-        lastFiledAt={lastFiled?.filed_at ?? null}
-        lastFolderUrl={lastFiled?.drive_folder_url ?? null}
-        lastVerdictAt={lastVerdict?.verdict_set_at ?? null}
+        lastEmailAt={gmail?.last_ok_at ?? null}
+        lastMailbox={gmail?.detail ?? null}
+        lastFiledAt={drive?.last_ok_at ?? null}
+        lastFolderUrl={drive?.detail ?? null}
+        lastVerdictAt={triage?.last_ok_at ?? null}
         triageConfigured={Boolean(process.env.N8N_BASE_URL && process.env.RFP_INTAKE_API_KEY)}
         profileConfirmed={orgProfile?.profile_confirmed === true}
         n8nUrl={process.env.N8N_BASE_URL?.replace(/\/+$/, "") ?? null}

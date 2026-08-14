@@ -90,5 +90,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No solicitation matched" }, { status: 404 });
   }
 
+  // Drive demonstrably worked, so record that independently of the queue. The
+  // Connections panel reads this rather than counting filed rows, so clearing
+  // the queue no longer erases the proof that filing works. Best effort: a
+  // health stamp must never turn a successful filing into an error.
+  if (status === "filed") {
+    const { error: healthError } = await supabase.from("connection_events").upsert(
+      { kind: "drive", last_ok_at: new Date().toISOString(), detail: data.drive_folder_url ?? null },
+      { onConflict: "kind" }
+    );
+    if (healthError) {
+      console.warn(`[filing] could not stamp connection health: ${healthError.message}`);
+    }
+  }
+
   return NextResponse.json({ ok: true, ...data });
 }

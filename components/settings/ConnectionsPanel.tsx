@@ -88,8 +88,8 @@ export function ConnectionsPanel({
       <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
         Each line is the last time that connection actually did something, not whether a setting
         exists. A credential can be present and revoked, and a tick that reads the setting would
-        call that healthy. The evidence is the queue itself, so an empty queue reads as unproven
-        rather than broken — one solicitation through the desk settles all three.
+        call that healthy. Recorded when the work happens and kept separately from the queue, so
+        clearing solicitations does not erase it.
       </p>
 
       <ul className="mt-3 divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">

@@ -281,7 +281,42 @@ export async function POST(req: NextRequest) {
     replaceChildren("rfp_disqualifier_checks", disqualifier_checks),
     replaceChildren("rfp_questions", questions),
     recordEdgeCases(),
+    recordConnectionHealth(),
   ]);
+
+  /**
+   * Stamp what just demonstrably worked.
+   *
+   * The Connections panel used to read this off the queue, which tied the health
+   * of a Google credential to whether any solicitations happened to be sitting
+   * in the database. Clearing the queue - an ordinary thing to do before a demo
+   * - turned three working connections into three amber "Unproven" lines.
+   *
+   * Health and workload are different facts. This records the first at the
+   * moment it is proven, so deleting the second cannot unprove it.
+   *
+   * Written per kind rather than appended: the only question being asked is
+   * "when did this last work", and a growing history would be noise. Failures
+   * are swallowed - a health stamp that cannot be written must never be the
+   * reason a verdict fails to save.
+   */
+  async function recordConnectionHealth() {
+    const now = new Date().toISOString();
+    const rows: Array<{ kind: string; last_ok_at: string; detail: string | null }> = [];
+
+    if (body.source === "email") {
+      rows.push({ kind: "gmail", last_ok_at: now, detail: body.source_mailbox ?? null });
+    }
+    // A verdict coming back is the proof that n8n reached OpenRouter and
+    // returned something the desk could score.
+    if (triaged) {
+      rows.push({ kind: "triage", last_ok_at: now, detail: null });
+    }
+    if (rows.length === 0) return;
+
+    const { error } = await supabase.from("connection_events").upsert(rows, { onConflict: "kind" });
+    if (error) console.warn(`[intake ${body.external_id}] could not stamp connection health: ${error.message}`);
+  }
 
   /**
    * Module 11's producer.

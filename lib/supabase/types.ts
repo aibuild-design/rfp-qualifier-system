@@ -314,6 +314,16 @@ export interface Database {
         Relationships: [];
       };
 
+      connection_events: {
+        Row: {
+          kind: string;
+          last_ok_at: string;
+          detail: string | null;
+        };
+        Insert: { kind: string; last_ok_at: string; detail?: string | null };
+        Update: Partial<{ kind: string; last_ok_at: string; detail: string | null }>;
+        Relationships: [];
+      };
       rfp_edge_cases: {
         Row: {
           id: string;
