@@ -201,6 +201,37 @@ export async function assignMember(rfpId: string, memberId: string): Promise<Act
   return { ok: true };
 }
 
+/**
+ * Tick a compliance item off, or untick it.
+ *
+ * The checklist rendered its tick as a styled span, so it showed state and
+ * accepted nothing: the one module promising a list that "ticks off live as
+ * each required piece is attached" was a picture of a checklist. Every other
+ * human step on this page writes something; this one had no action behind it at
+ * all.
+ *
+ * Takes the value rather than flipping what it reads, so two clicks in quick
+ * succession cannot race into the wrong state.
+ */
+export async function setComplianceComplete(
+  rfpId: string,
+  itemId: string,
+  complete: boolean
+): Promise<ActionResult> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
+
+  const { error } = await supabase
+    .from("rfp_compliance_items")
+    .update({ is_complete: complete })
+    .eq("id", itemId)
+    .eq("rfp_id", rfpId);
+  if (error) return safeError("update that item", error);
+
+  revalidatePath(`/dashboard/rfps/${rfpId}`);
+  return { ok: true };
+}
+
 export async function confirmAssignment(rfpId: string, assignmentId: string): Promise<ActionResult> {
   const { supabase, denied } = await requireUser();
   if (denied) return denied;

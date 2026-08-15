@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ComplianceTick } from "@/components/ComplianceTick";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { DemoTag } from "@/components/DemoBanner";
 import { ProvisionalTag } from "@/components/ProfileIncompleteBanner";
@@ -275,10 +276,11 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
               return (
                 <li key={item.id} className="flex items-start justify-between gap-3 px-5 py-3">
                   <div className="flex items-start gap-3">
-                    <span
-                      className={`mt-0.5 h-4 w-4 shrink-0 rounded border ${
-                        item.is_complete ? "border-rfp-good bg-rfp-good" : "border-rfp-border-strong"
-                      }`}
+                    <ComplianceTick
+                      rfpId={rfp.id}
+                      itemId={item.id}
+                      label={item.label}
+                      complete={item.is_complete}
                     />
                     <div>
                       <p className="text-sm text-rfp-ink">{item.label}</p>
