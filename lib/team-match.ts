@@ -71,7 +71,7 @@ export function recommendTeam(
   const scored = active.map((m) => {
     // Folded with the same function as the requirement terms - normalising one
     // side only would leave the mismatch exactly where it was.
-    const haystack = [...m.qualifications, m.role ?? ""]
+    const haystack = [...m.qualifications, ...(m.interests ?? []), m.role ?? ""]
       .join(" ")
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, " ")
@@ -84,7 +84,15 @@ export function recommendTeam(
     // Normalised so a solicitation with many requirements doesn't inflate
     // everyone's score relative to one with few.
     const coverage = denominator.length ? matched.length / denominator.length : 0;
-    const score = Math.round(coverage * 100 * BANDWIDTH_WEIGHT[m.bandwidth]);
+    // Interest is a tiebreak, not a qualification. Someone who wants this work
+    // and can do it should come first between two equal candidates, but wanting
+    // it can never lift someone above a person who is actually qualified - so it
+    // moves the score by a few points rather than by a multiple.
+    const wants = (m.interests ?? []).some((i) => {
+      const terms = significantTerms(i);
+      return terms.some((t) => haystack.includes(t)) || denominator.some((d) => d.terms.some((t) => i.toLowerCase().includes(t)));
+    });
+    const score = Math.round(coverage * 100 * BANDWIDTH_WEIGHT[m.bandwidth]) + (wants && matched.length > 0 ? 3 : 0);
 
     const reason = buildReason(matched.length, denominator.length, m);
     return { team_member_id: m.id, name: m.name, match_score: score, match_reason: reason };
@@ -116,6 +124,7 @@ function buildReason(matched: number, total: number, m: TeamMemberRow): string {
       : `Matches ${matched} of ${total} stated requirement${total === 1 ? "" : "s"}`
   );
   if (m.qualifications.length) parts.push(`qualifications: ${m.qualifications.join(", ")}`);
+  if (m.interests?.length) parts.push(`wants: ${m.interests.join(", ")}`);
   parts.push(
     m.bandwidth === "open"
       ? "bandwidth open"

@@ -64,6 +64,7 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
             <th className="px-4 py-2.5">Name</th>
             <th className="px-4 py-2.5">Role</th>
             <th className="px-4 py-2.5">Rate</th>
+            <th className="px-4 py-2.5">Wants</th>
             <th className="px-4 py-2.5">Bandwidth</th>
             <th className="px-4 py-2.5" />
           </tr>
@@ -80,6 +81,16 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
                   value={row.rate ?? ""}
                   type="number"
                   onChange={(v) => update(row.id, { rate: v === "" ? null : Number(v) })}
+                />
+              </td>
+              <td className="px-4 py-2">
+                {/* Comma separated, because the useful answer is "board
+                    facilitation, not K-12" and no dropdown survives that. */}
+                <Cell
+                  value={(row.interests ?? []).join(", ")}
+                  onChange={(v) =>
+                    update(row.id, { interests: v.split(",").map((x) => x.trim()).filter(Boolean) })
+                  }
                 />
               </td>
               <td className="px-4 py-2">

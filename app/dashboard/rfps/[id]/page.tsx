@@ -30,6 +30,10 @@ const COMPLIANCE_CATEGORY_LABEL: Record<string, string> = {
   submission: "Submission",
   insurance: "Insurance",
   rubric: "Rubric",
+  // Documents the desk cannot fill: cost schedules, signature and certification
+  // pages, locked PDFs. Labelled as a job rather than a category, because a
+  // missing signature page is the most common way a compliant bid is rejected.
+  manual_form: "Fill in by hand",
   other: "Other",
 };
 

@@ -125,6 +125,9 @@ export interface Database {
           role: string | null;
           rate: number | null;
           qualifications: string[];
+          /** Work this person wants. Breaks ties between equally qualified,
+           *  equally available people. */
+          interests: string[];
           bandwidth: Bandwidth;
           active: boolean;
           created_at: string;
