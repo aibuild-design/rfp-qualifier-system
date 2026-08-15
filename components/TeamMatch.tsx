@@ -57,7 +57,7 @@ export function TeamMatch({
         {assignments.length === 0 ? (
           <p className="px-5 py-4 text-sm leading-relaxed text-rfp-ink-muted">
             No recommendations. Either the match has not been run, or nothing the solicitation
-            states as a requirement matches what anyone on the roster does — which usually means the
+            states as a requirement matches what anyone on the roster does. That usually means the
             document itself could not be read, so there is nothing to match against yet.
           </p>
         ) : (

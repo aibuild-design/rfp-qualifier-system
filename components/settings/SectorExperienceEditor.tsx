@@ -52,7 +52,7 @@ export function SectorExperienceEditor({ initial }: { initial: SectorExperienceR
           <>
             <strong>{pendingRemove?.sector}</strong> will stop being considered when a
             solicitation is scored. If the intent is &ldquo;no experience here&rdquo;, set the years
-            and engagements to zero instead — an absent sector reads as never asked.
+            and engagements to zero instead. An absent sector reads as never asked.
           </>
         }
         confirmLabel="Remove"

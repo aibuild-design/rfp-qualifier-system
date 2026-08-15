@@ -28,7 +28,7 @@ export function SubjectTermsEditor({ initial }: { initial: string[] }) {
       .from("scoring_settings")
       .update({ email_subject_terms: next })
       .eq("id", true);
-    setSaved(error ? `Not saved — ${error.message}` : "Saved");
+    setSaved(error ? `Not saved. ${error.message}` : "Saved");
     setTimeout(() => setSaved(null), 2500);
   }
 
@@ -59,7 +59,7 @@ export function SubjectTermsEditor({ initial }: { initial: string[] }) {
           </span>
         ))}
         {terms.length === 0 && (
-          <span className="text-sm text-rfp-warning">Empty — every email will be triaged.</span>
+          <span className="text-sm text-rfp-warning">Empty. Every email will be triaged.</span>
         )}
       </div>
 

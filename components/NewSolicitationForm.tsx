@@ -151,7 +151,7 @@ export function NewSolicitationForm() {
           {reading && <p className="mt-2 text-xs text-rfp-ink-muted">Reading {fileName}…</p>}
           {!reading && fileName && form.document_text && (
             <p className="mt-2 text-xs text-rfp-good">
-              Read {fileName} — {form.document_text.length.toLocaleString()} characters. Submit to triage it.
+              Read {fileName}. {form.document_text.length.toLocaleString()} characters. Submit to triage it.
             </p>
           )}
         </Field>

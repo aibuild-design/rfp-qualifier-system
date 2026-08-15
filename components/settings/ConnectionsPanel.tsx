@@ -58,13 +58,13 @@ export function ConnectionsPanel({
 }) {
   const lines: Line[] = [
     {
-      label: "Gmail — solicitations arriving",
+      label: "Gmail: solicitations arriving",
       at: lastEmailAt,
       hint: "Send anything with “RFP” in the subject to the watched mailbox. The trigger polls every minute.",
       account: lastMailbox ? { prefix: "Connected as", text: lastMailbox } : null,
     },
     {
-      label: "Triage — verdicts coming back",
+      label: "Triage: verdicts coming back",
       at: lastVerdictAt,
       hint: "Runs in n8n against OpenRouter.",
       blocked: triageConfigured
@@ -72,7 +72,7 @@ export function ConnectionsPanel({
         : "N8N_BASE_URL or RFP_INTAKE_API_KEY is not set, so nothing can be submitted for triage.",
     },
     {
-      label: "Drive — bids being filed",
+      label: "Drive: bids being filed",
       at: lastFiledAt,
       hint: "A folder per bid, the proposal filed into it as a Google Doc.",
       // Drive cannot name the account without an extra API call, so it answers
@@ -148,7 +148,7 @@ export function ConnectionsPanel({
       )}
 
       <p className="mt-3 text-xs leading-relaxed text-rfp-ink-muted">
-        Google is authorised in n8n rather than here — n8n keeps its own credentials and cannot use
+        Google is authorised in n8n rather than here. n8n keeps its own credentials and cannot use
         a token this dashboard obtains, and the mail trigger runs there.{" "}
         {n8nUrl ? (
           <a
