@@ -811,8 +811,50 @@
         700
       ],
       "parameters": {
-        "jsCode": "// Keep only the emails whose subject Khaled has said counts.\n//\n// Substring, case-insensitive, deliberately not word-boundary matching: an\n// agency writing \"RFPs\" or \"Re: RFP/RFQ\" should not be dropped by a boundary\n// nobody thought about.\n//\n// An empty term list means everything qualifies. That is a real setting - \"show\n// me it all\" - and reading it as \"match nothing\" would turn a deliberate choice\n// into a silent outage.\nconst DEFAULTS = ['RFP', 'RFQ', 'solicitation', 'request for proposal', 'request for qualifications'];\n\nlet terms = DEFAULTS;\ntry {\n  const cfg = $('Which subjects count?').first().json;\n  if (Array.isArray(cfg.subject_terms)) terms = cfg.subject_terms;\n} catch (e) {\n  // Settings unreachable - fall through to the defaults rather than dropping mail.\n}\n\nconst kept = [];\nfor (const item of $('Gmail — new solicitation').all()) {\n  const subject = String(item.json.subject || '');\n  const hay = subject.toLowerCase();\n  const match = terms.length === 0 || terms.some((t) => {\n    const needle = String(t || '').trim().toLowerCase();\n    return needle && hay.includes(needle);\n  });\n  if (match) kept.push(item);\n}\nreturn kept;"
+        "jsCode": "// Keep only the emails whose subject Khaled has said counts.\n//\n// Substring, case-insensitive, deliberately not word-boundary matching: an\n// agency writing \"RFPs\" or \"Re: RFP/RFQ\" should not be dropped by a boundary\n// nobody thought about.\n//\n// An empty term list means everything qualifies. That is a real setting - \"show\n// me it all\" - and reading it as \"match nothing\" would turn a deliberate choice\n// into a silent outage.\nconst DEFAULTS = ['RFP', 'RFQ', 'solicitation', 'request for proposal', 'request for qualifications'];\n\nlet terms = DEFAULTS;\ntry {\n  const cfg = $('Which subjects count?').first().json;\n  if (Array.isArray(cfg.subject_terms)) terms = cfg.subject_terms;\n} catch (e) {\n  // Settings unreachable - fall through to the defaults rather than dropping mail.\n}\n\n// Mail the desk sent itself. Matched on the marker in the subject rather\n// than the sender, because the notification is sent from the same account it\n// is delivered to, so the sender cannot tell them apart.\nconst SELF_SENT = /^Caravann RFP Desk/i;\n\nconst kept = [];\nfor (const item of $('Gmail — new solicitation').all()) {\n  const subject = String(item.json.subject || '');\n  if (SELF_SENT.test(subject.trim())) continue;\n  const hay = subject.toLowerCase();\n  const match = terms.length === 0 || terms.some((t) => {\n    const needle = String(t || '').trim().toLowerCase();\n    return needle && hay.includes(needle);\n  });\n  if (match) kept.push(item);\n}\nreturn kept;"
       }
+    },
+    {
+      "id": "notifybody",
+      "name": "Verdict email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        520
+      ],
+      "parameters": {
+        "jsCode": "// HTML, because a verdict is a card and plain text can only ever be a list of\n// lines pretending to be one. Tables and inline styles rather than a stylesheet:\n// Gmail strips <style> blocks, so anything not inline does not survive.\nconst v = $('Reconcile triage runs').first().json.body;\nconst desk = $('POST to bid desk').first().json;\nconst id = desk.id || desk.rfp_id;\nconst verdict = String(desk.verdict || v.status || 'maybe').toUpperCase().replace('_', '-');\nconst score = desk.score_percent ?? v.score_percent;\n\nconst TONE = { 'GO': ['#1f7a3d', '#e8f5ea'], 'MAYBE': ['#8a6300', '#fff6e0'], 'NO-GO': ['#a12a2a', '#fbeaea'] };\nconst [ink, wash] = TONE[verdict] || TONE['MAYBE'];\n\nconst day = (iso) => iso ? new Date(iso).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', month: 'long', day: 'numeric', year: 'numeric' }) : 'Not stated';\nconst esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst row = (label, value) =>\n  '<tr><td style=\"padding:9px 0;color:#6b6b6b;font-size:13px;width:150px;vertical-align:top\">' + label +\n  '</td><td style=\"padding:9px 0;color:#1b1a18;font-size:14px;font-weight:600\">' + esc(value) + '</td></tr>';\n\nconst para = (title, text) => !text ? '' :\n  '<tr><td colspan=\"2\" style=\"padding:18px 0 0\"><div style=\"color:#6b6b6b;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700\">' + title +\n  '</div><div style=\"margin-top:6px;color:#33312e;font-size:14px;line-height:1.55\">' + esc(text) + '</div></td></tr>';\n\nconst html =\n'<div style=\"background:#f4f3f0;padding:28px 16px;font-family:-apple-system,BlinkMacSystemFont,\\'Segoe UI\\',Helvetica,Arial,sans-serif\">' +\n  '<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e4e2dd\">' +\n    '<tr><td style=\"background:#0a0a0a;padding:16px 24px\">' +\n      '<div style=\"color:#f5c518;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700\">Caravann RFP Bid Desk</div>' +\n    '</td></tr>' +\n    '<tr><td style=\"background:' + wash + ';padding:22px 24px;border-bottom:1px solid #e4e2dd\">' +\n      '<div style=\"color:' + ink + ';font-size:30px;font-weight:800;letter-spacing:-.02em\">' + verdict +\n        (score != null ? '<span style=\"font-size:20px;font-weight:600\"> &nbsp;' + score + '%</span>' : '') + '</div>' +\n      '<div style=\"margin-top:8px;color:#1b1a18;font-size:16px;font-weight:600;line-height:1.35\">' + esc(v.title) + '</div>' +\n      '<div style=\"margin-top:3px;color:#6b6b6b;font-size:13px\">' + esc(v.client_agency) +\n        (v.solicitation_number ? ' &nbsp;·&nbsp; ' + esc(v.solicitation_number) : '') + '</div>' +\n    '</td></tr>' +\n    '<tr><td style=\"padding:8px 24px 20px\">' +\n      '<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">' +\n        row('Proposals due', day(v.due_at)) +\n        (v.question_deadline_at ? row('Questions due', day(v.question_deadline_at)) : '') +\n        row('Budget', v.budget_amount ? '$' + Number(v.budget_amount).toLocaleString() : 'None listed') +\n        para('Why', v.verdict_why) +\n        para('Why not', v.verdict_why_not) +\n      '</table>' +\n      '<a href=\"https://rfp-qualifier-system.vercel.app/dashboard/rfps/' + id + '\" ' +\n        'style=\"display:block;margin-top:22px;background:#0a0a0a;color:#ffffff;text-decoration:none;text-align:center;padding:14px;border-radius:9px;font-size:14px;font-weight:700\">' +\n        'Open the full verdict</a>' +\n      '<div style=\"margin-top:10px;color:#8a8a8a;font-size:12px;text-align:center\">Gate results, compliance checklist, gaps, questions, team and draft</div>' +\n    '</td></tr>' +\n    '<tr><td style=\"padding:14px 24px;background:#faf9f7;border-top:1px solid #e4e2dd;color:#8a8a8a;font-size:11px\">' +\n      'Sent automatically by the RFP bid desk. Do not reply.</td></tr>' +\n  '</table></div>';\n\nreturn [{ json: {\n  to: 'daniel@deeploom.dev',\n  subject: 'Caravann RFP Desk · ' + verdict + (score != null ? ' ' + score + '%' : '') + ' · ' + v.client_agency,\n  html,\n} }];"
+      }
+    },
+    {
+      "id": "notifysend",
+      "name": "Send the verdict",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2800,
+        520
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "pLDw0NigYZASX4EY",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        },
+        "emailType": "html"
+      },
+      "webhookId": "6e5ce46b-c844-407e-89cc-79337151daf4"
     }
   ],
   "connections": {
@@ -1194,6 +1236,28 @@
         [
           {
             "node": "Email → intake payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tell the desk it is filed": {
+      "main": [
+        [
+          {
+            "node": "Verdict email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verdict email": {
+      "main": [
+        [
+          {
+            "node": "Send the verdict",
             "type": "main",
             "index": 0
           }

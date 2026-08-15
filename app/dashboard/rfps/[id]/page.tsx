@@ -127,11 +127,22 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
           </div>
         )}
 
+        {/* The caveat is real: this verdict was computed against a profile nobody
+            has confirmed, and ticking the box later does not retroactively
+            validate it. But it appeared on every solicitation, in three lines,
+            explaining a subtlety before saying what to do about it - so it read
+            as boilerplate and got skipped, which is the one outcome a warning
+            cannot afford.
+
+            One line, and the fix is the link. It disappears the moment the
+            profile is confirmed, which is the point. */}
         {rfp.is_provisional && (
-          <p className="mt-4 rounded-lg border border-rfp-warning/30 bg-rfp-warning/5 px-3 py-2 text-[13px] leading-relaxed text-rfp-ink-secondary">
-            This verdict was computed against an <span className="font-medium text-rfp-ink">unconfirmed
-            eligibility profile</span>. Confirming the profile now will not make it correct - re-run
-            triage on this solicitation before acting on it.
+          <p className="mt-4 rounded-lg border border-rfp-warning/30 bg-rfp-warning/5 px-3 py-2 text-[13px] text-rfp-ink-secondary">
+            Scored against an unconfirmed profile.{" "}
+            <Link href="/dashboard/settings" className="font-medium text-rfp-ink underline">
+              Confirm it in Settings
+            </Link>
+            , then re-run triage here.
           </p>
         )}
 
