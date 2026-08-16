@@ -100,6 +100,7 @@ export function RailContent({
       <div className="px-3 pt-4">
         <Link
           href="/dashboard/new"
+          data-tour="add"
           prefetch
           className="flex items-center justify-center gap-2 rounded-lg bg-rfp-gold-bright px-3 py-2.5 text-sm font-semibold text-rfp-black press hover:opacity-90"
         >
@@ -123,6 +124,9 @@ export function RailContent({
                   <Link
                     key={item.key}
                     href={item.href}
+                    /* What the first-run tour spotlights. Keyed off the nav item
+                       so a renamed or reordered link keeps its highlight. */
+                    data-tour={item.key}
                     aria-current={active ? "page" : undefined}
                     prefetch
                     className={`press press-row relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
