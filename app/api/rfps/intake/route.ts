@@ -427,23 +427,42 @@ export async function POST(req: NextRequest) {
   async function recordEdgeCases() {
     if (!decision || decision.status === "pending") return;
 
-    const reasons: string[] = [];
+    // Each raised case carries the change that would stop it recurring. The
+    // SOW asked for proposed rule changes and the column has been displayed
+    // since the review page was built, but nothing ever wrote to it, so every
+    // case said "here is a problem" and none said what to do about it.
+    //
+    // Drafted in code rather than asked of the model, for the same reason the
+    // verdict is: a rule change names a specific setting and a specific value,
+    // and it has to be the same proposal every time the same situation occurs.
+    // A model asked to suggest one writes a plausible sentence instead.
+    const reasons: { description: string; proposed_rule_change: string | null }[] = [];
 
     // The verdict layer already phrases this one, and its wording is the
     // account shown everywhere else - repeating it in different words here
     // would put two descriptions of one event in front of the same reader.
     if (/disagree|spread/i.test(decision.reason)) {
-      reasons.push(decision.reason);
+      reasons.push({
+        description: decision.reason,
+        // Deliberately not "widen the tolerance". Three reads landing far
+        // apart on one document usually means the document is ambiguous, not
+        // that the limit is wrong, and widening it would convert exactly this
+        // signal into silence.
+        proposed_rule_change:
+          "No setting change proposed. A wide spread means the document itself was read three different ways, and raising the tolerance in Settings would hide that rather than fix it. Worth reading this one yourself.",
+      });
     }
 
     const unclear = (disqualifier_checks ?? []).filter(
       (c) => c.result === "unclear" && (c.is_required === true || c.is_hard_knockout === true)
     );
     if (unclear.length > 0) {
-      reasons.push(
-        `${unclear.length} mandatory requirement${unclear.length > 1 ? "s" : ""} could not be confirmed from the document: ` +
-          unclear.map((c) => c.requirement_text).join("; ")
-      );
+      reasons.push({
+        description:
+          `${unclear.length} mandatory requirement${unclear.length > 1 ? "s" : ""} could not be confirmed from the document: ` +
+          unclear.map((c) => c.requirement_text).join("; "),
+        proposed_rule_change: profileFieldFor(unclear.map((c) => c.requirement_text)),
+      });
     }
 
     const score = body.score_percent;
@@ -451,9 +470,16 @@ export async function POST(req: NextRequest) {
       const t = thresholdsFromSettings(settings);
       const near = [t.go, t.maybe].find((edge) => Math.abs(score - edge) <= 2);
       if (near !== undefined) {
-        reasons.push(
-          `Scored ${score}%, within two points of the ${near}% line - the same document could land either side of it on another run.`
-        );
+        reasons.push({
+          description: `Scored ${score}%, within two points of the ${near}% line - the same document could land either side of it on another run.`,
+          // Conditional on purpose. Whether the line is in the wrong place
+          // depends on what Khaled would have done with this bid, and that is
+          // not known at the moment the verdict is computed.
+          proposed_rule_change:
+            score < near
+              ? `If you would have bid this, lower the ${near === t.go ? "go" : "maybe"} threshold in Settings to ${score}. If not, the line is where it should be.`
+              : `If you would not have bid this, raise the ${near === t.go ? "go" : "maybe"} threshold in Settings above ${score}. If you would, the line is where it should be.`,
+        });
       }
     }
 
@@ -473,7 +499,7 @@ export async function POST(req: NextRequest) {
     if (reasons.length === 0) return;
 
     const { error: insertError } = await supabase.from("rfp_edge_cases").insert(
-      reasons.map((description) => ({ rfp_id: rfpId, description, status: "pending" as const }))
+      reasons.map((r) => ({ rfp_id: rfpId, ...r, status: "pending" as const }))
     );
     if (insertError) {
       failures.push(`rfp_edge_cases (${reasons.length} row(s)): ${insertError.message}`);
@@ -612,4 +638,44 @@ export async function POST(req: NextRequest) {
     proposal_docx,
     proposal_name,
   });
+}
+
+/**
+ * Which Settings field would have answered these requirements.
+ *
+ * A mandatory requirement comes back "unclear" when the eligibility profile is
+ * silent, never because Caravann falls short - so the fix is always the same
+ * shape: record the missing fact once and every future solicitation asking for
+ * it resolves instead of stalling. Naming the actual field is the difference
+ * between a note someone acts on and a note someone reads.
+ *
+ * Matched on the requirement's own words rather than the gate's field names,
+ * because the gate does not report which of its inputs it was missing - it only
+ * reports that it could not tell.
+ */
+function profileFieldFor(requirements: string[]): string {
+  const text = requirements.join(" ").toLowerCase();
+  const fields: [RegExp, string][] = [
+    [/insur|liabilit|workers.? comp|indemnif/, "Insurance carried"],
+    [/set.?aside|dbe|mbe|wbe|sbe|disadvantaged|minority|small business/, "Set-aside status"],
+    [/bilingual|spanish|translat|interpret|multilingual/, "Bilingual staff"],
+    [/video|film|photograph|media production|broadcast/, "Media production capable"],
+    [/public relations|media relations|press|communications strateg/, "PR capable"],
+    // "licen[cs]" catches both spellings, and agencies do write "licence".
+    // "certificat" rather than "certif" on purpose: bare "certif" matches
+    // "certified DBE", which is a set-aside question, not a credential one.
+    [/licen[cs]|certificat|registrat|sam\.gov|cage code|\buei\b/, "Certifications"],
+    [/office|local|locat|headquarter|within .{0,20}(county|miles)/, "Office and consultant locations"],
+    [/council|commission|board of|elected|appointed|governing body/, "Facilitating elected or appointed bodies"],
+  ];
+  const named = fields.filter(([re]) => re.test(text)).map(([, name]) => name);
+
+  if (named.length === 0) {
+    return "Record whatever would settle this in the eligibility profile in Settings, then re-run. Unclear means the profile is silent on it, not that Caravann falls short.";
+  }
+  const list =
+    named.length === 1
+      ? named[0]
+      : `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}`;
+  return `Fill in ${list} in Settings. The profile is silent on this, so the gate cannot answer it, and it will stall every solicitation that asks until it is recorded.`;
 }
