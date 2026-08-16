@@ -17,12 +17,27 @@ import { DISPLAY_TIME_ZONE } from "./rfp.ts";
  * it does not, and it is now a real default rather than an invention.
  */
 /**
- * The fourteen headings in Caravann's real template, plus anything the desk
- * drafts that the template has no home for.
+ * The fourteen sections, matching the fourteen headings in Caravann's real
+ * template exactly.
  *
- * `inTemplate: false` means exactly one thing: the fill step will drop it,
- * because sections are written under the template's own headings and this one
- * has no heading to sit under. Verified against the file rather than assumed.
+ * Not a coincidence and not adjustable in passing: sections are written under
+ * the template's own headings, so a section listed here without a matching
+ * heading in the file is assembled, shown, and then dropped on the way into the
+ * .docx. A Key Personnel section was added here and did precisely that. It was
+ * removed rather than papered over, for two reasons: the scope is fourteen
+ * sections, and confirming a person was scoped as the assignment record rather
+ * than as proposal input.
+ *
+ * If the team should appear in submissions, that is a real conversation and it
+ * starts with adding the heading to Caravann's template. fillTemplate now
+ * reports droppedSections, so the next attempt to add one fails loudly.
+ *
+ * The three appendices carry `attachment: true`. In the template they are bare
+ * headings with no paragraph under them at all, because they are slots where a
+ * document is attached - the completed RFP, the FAR/DFAR report - not sections
+ * anybody writes prose into. The desk reported all three as "needs writing by
+ * hand" on every bid, which is the wrong instruction: no amount of writing
+ * fills them.
  */
 export const DEFAULT_SECTIONS = [
   { section_type: "introduction", heading: "Introduction", sort_order: 10 },
@@ -30,30 +45,15 @@ export const DEFAULT_SECTIONS = [
   { section_type: "scope", heading: "Scope", sort_order: 30 },
   { section_type: "technical_description", heading: "Technical Description", sort_order: 40 },
   { section_type: "past_performance", heading: "Past Performance", sort_order: 50 },
-  // Built from the confirmed team rather than the language library, because the
-  // people on a bid change with every bid. Before this existed, confirming
-  // somebody set a badge and fed nothing: the proposal never named them, so the
-  // one step in module 9 that requires a human had no consequence anywhere.
-  //
-  // inTemplate: false, and checked rather than assumed. Caravann's real
-  // template has fourteen headings and none of them is Key Personnel, and
-  // sections are matched to the template's own headings - so this one assembles
-  // correctly, appears on screen, and is dropped on the way into the .docx.
-  //
-  // Kept rather than removed because most public-agency solicitations ask for
-  // key personnel, the section is genuinely useful on screen, and the day a
-  // "Key Personnel" heading is added to the template it starts shipping with no
-  // code change. What is not acceptable is showing it as though it ships.
-  { section_type: "key_personnel", heading: "Key Personnel", sort_order: 55, inTemplate: false },
-  { section_type: "price", heading: "Price and Discounts", sort_order: 60 },
+{ section_type: "price", heading: "Price and Discounts", sort_order: 60 },
   { section_type: "terms", heading: "Terms and Conditions / Warranty", sort_order: 70 },
   { section_type: "representations", heading: "Representations & Certifications", sort_order: 80 },
   { section_type: "amendments", heading: "Acknowledgement of Solicitation Amendments", sort_order: 90 },
   { section_type: "acceptance_period", heading: "Offeror Period for Acceptance of Offers", sort_order: 100 },
   { section_type: "product_samples", heading: "Product Samples", sort_order: 110 },
-  { section_type: "appendix_a", heading: "Appendix A - Completed RFP", sort_order: 120 },
-  { section_type: "appendix_b", heading: "Appendix B - FAR/DFAR Report", sort_order: 130 },
-  { section_type: "appendix_c", heading: "Appendix C - Reserved", sort_order: 140 },
+  { attachment: true, section_type: "appendix_a", heading: "Appendix A - Completed RFP", sort_order: 120 },
+  { attachment: true, section_type: "appendix_b", heading: "Appendix B - FAR/DFAR Report", sort_order: 130 },
+  { attachment: true, section_type: "appendix_c", heading: "Appendix C - Reserved", sort_order: 140 },
 ] as const;
 
 /**
@@ -122,30 +122,6 @@ export type AssembledSection = {
  * needs the Word template and real winning proposals, which this build does
  * not have.
  */
-/** A person Khaled has confirmed onto this bid, as the draft needs them. */
-export type ConfirmedMember = {
-  name: string;
-  role: string | null;
-  qualifications: string[] | null;
-};
-
-/**
- * The Key Personnel section, written from who is actually on the bid.
- *
- * Deterministic, like everything else here. Names, roles and qualifications are
- * facts about real people, and a model paraphrasing someone's credentials into
- * a document that goes to a public agency is the wrong kind of help.
- */
-function keyPersonnelBody(team: ConfirmedMember[]): string {
-  return team
-    .map((m) => {
-      const quals = (m.qualifications ?? []).filter(Boolean);
-      const line = [m.name, m.role].filter(Boolean).join(" - ");
-      return quals.length ? `${line}. ${quals.join("; ")}.` : `${line}.`;
-    })
-    .join("\n\n");
-}
-
 export function assembleDraft(
   rfp: Pick<RfpRow, "title" | "client_agency" | "project_type" | "due_at">,
   blocks: LanguageBlockRow[],
@@ -153,9 +129,8 @@ export function assembleDraft(
     section_type: string;
     heading: string;
     sort_order: number;
-    inTemplate?: boolean;
-  }[] = DEFAULT_SECTIONS,
-  team: ConfirmedMember[] = []
+    attachment?: boolean;
+  }[] = DEFAULT_SECTIONS
 ): AssembledSection[] {
   const byType = new Map<string, LanguageBlockRow[]>();
   for (const b of blocks) {
@@ -165,25 +140,14 @@ export function assembleDraft(
   }
 
   return sections.map((s) => {
-    if (s.section_type === "key_personnel") {
-      // Says nobody is confirmed rather than inventing a team, and matches the
-      // shape used for a section with no library material: needs_input is how
-      // this draft reports "a person has to do this bit".
-      return team.length === 0
-        ? {
-            ...s,
-            body: null,
-            status: "needs_input" as const,
-            source_block_ids: [],
-            notes: "Nobody confirmed on this bid yet. Confirm the team and rebuild, or write this section by hand.",
-          }
-        : {
-            ...s,
-            body: keyPersonnelBody(team),
-            status: "draft" as const,
-            source_block_ids: [],
-            notes: `${team.length} confirmed ${team.length === 1 ? "person" : "people"}, from the roster.`,
-          };
+    if (s.attachment) {
+      return {
+        ...s,
+        body: null,
+        status: "needs_input" as const,
+        source_block_ids: [],
+        notes: "Attach the document. This is a slot in the template, not a section to write.",
+      };
     }
 
     const available = rankBlocks(byType.get(s.section_type) ?? []);

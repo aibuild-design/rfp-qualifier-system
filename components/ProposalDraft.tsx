@@ -85,23 +85,7 @@ export function ProposalDraft({
                     className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-rfp-surface-sunken/60"
                   >
                     <SectionStatusDot status={s.status} />
-                    <span className="flex-1 text-sm font-medium text-rfp-ink">
-                      {s.heading}
-                      {/* Caravann's template has fourteen headings, and sections
-                          are written under the template's own headings. One
-                          without a heading to sit under assembles here and is
-                          dropped on the way into the .docx, so saying nothing
-                          would show a section the submission does not contain. */}
-                      {s.section_type === "key_personnel" && (
-                        <span
-                          className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest"
-                          style={{ color: "var(--rfp-warning)", background: "var(--rfp-surface-sunken)" }}
-                          title="Caravann's template has no Key Personnel heading, so this section is not written into the Word file. Add the heading to the template and it will be."
-                        >
-                          Not in the template
-                        </span>
-                      )}
-                    </span>
+                    <span className="flex-1 text-sm font-medium text-rfp-ink">{s.heading}</span>
                     <span className="text-xs text-rfp-ink-muted">{s.notes}</span>
                     <span className="text-rfp-ink-muted">{isOpen ? "−" : "+"}</span>
                   </button>

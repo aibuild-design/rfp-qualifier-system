@@ -394,8 +394,17 @@ function injectSections(
   // Headings are matched loosely - the template writes "Representations &amp;
   // Certifications" in the XML and "Representations & Certifications" is what a
   // caller will pass.
+  // Dashes are normalised too. The template writes "Appendix A \u2013 Completed RFP"
+  // with an en dash and the section list uses a hyphen, so all three appendices
+  // matched nothing and were dropped - silently, until droppedSections started
+  // reporting it. Three of fourteen sections had never reached the document.
   const normalise = (t: string) =>
-    t.replace(/&amp;/g, "&").replace(/\s+/g, " ").trim().toLowerCase();
+    t
+      .replace(/&amp;/g, "&")
+      .replace(/[\u2010-\u2015]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
   const wanted = new Map(Object.entries(sections).map(([k, v]) => [normalise(k), v]));
   // Kept so a dropped section can be reported under the heading the caller
   // actually used, rather than the lowercased form matching works on.

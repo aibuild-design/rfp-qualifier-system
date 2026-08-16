@@ -110,12 +110,15 @@ export function BidSteps({ steps }: { steps: BidStep[] }) {
  * judgement Khaled is allowed to skip, and a system that refused to draft until
  * the boxes were ticked would be making his decisions for him.
  *
- * Only one of these changes the draft, and the copy says which. Compliance and
- * questions do not: they are work on the bid, tracked here because there is
- * nowhere better. The team does, now that Key Personnel is written from the
- * confirmed list - which is what earned it the mandatory tag. Before that,
- * confirming somebody set a badge and fed nothing, and asking for work with no
- * consequence is how a checklist teaches people to ignore it.
+ * None of these change the draft, and the copy says so rather than implying
+ * otherwise. They are work on the bid, tracked here because there is nowhere
+ * better to track it. Compliance is the only mandatory one because it is the
+ * only one that loses a bid on its own.
+ *
+ * A Key Personnel section was briefly added so that confirming a person would
+ * change the document. It was reverted: the scope is fourteen sections matching
+ * the fourteen headings in Caravann's template, and a fifteenth is dropped on
+ * the way into the .docx because there is no heading to write it under.
  *
  * Only shown once the bid is accepted. Before that the answer to all of it is
  * "not yet", which is noise.
@@ -154,15 +157,16 @@ export function ReadyToDraft({
     },
     {
       label: "Team confirmed",
-      // Mandatory since the draft started naming them. Before that this was a
-      // badge that fed nothing, and calling it mandatory would have been asking
-      // for work with no consequence.
-      mandatory: true,
+      // Optional, because confirming was scoped as the assignment record rather
+      // than as proposal input, and the draft does not read it. Calling it
+      // mandatory would be asking for work with no consequence, which is how a
+      // checklist teaches people to ignore it.
+      mandatory: false,
       done: unconfirmedTeam === 0,
       detail:
         unconfirmedTeam === 0
-          ? "Named in the Key Personnel section."
-          : `${unconfirmedTeam} still a suggestion. Only confirmed people are named in the draft.`,
+          ? "Nobody is left as a suggestion."
+          : `${unconfirmedTeam} still a suggestion. Confirming records who is on the bid; it does not change the draft.`,
     },
   ];
   const open = rows.filter((r) => !r.done).length;
@@ -173,7 +177,7 @@ export function ReadyToDraft({
       <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
         {open === 0
           ? "Nothing outstanding on this bid."
-          : "Nothing here blocks drafting. Mandatory means it costs you something real: compliance loses bids on a technicality, and only confirmed people are named in the draft."}
+          : "Nothing here blocks drafting, and none of it changes what the draft says. Compliance is mandatory because it is the one that loses bids on a technicality."}
       </p>
       <ul className="mt-3 divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
         {rows.map((row) => (
