@@ -16,6 +16,14 @@ import { DISPLAY_TIME_ZONE } from "./rfp.ts";
  * its own required sections and takes precedence; this is what gets used when
  * it does not, and it is now a real default rather than an invention.
  */
+/**
+ * The fourteen headings in Caravann's real template, plus anything the desk
+ * drafts that the template has no home for.
+ *
+ * `inTemplate: false` means exactly one thing: the fill step will drop it,
+ * because sections are written under the template's own headings and this one
+ * has no heading to sit under. Verified against the file rather than assumed.
+ */
 export const DEFAULT_SECTIONS = [
   { section_type: "introduction", heading: "Introduction", sort_order: 10 },
   { section_type: "background", heading: "Background", sort_order: 20 },
@@ -26,7 +34,17 @@ export const DEFAULT_SECTIONS = [
   // people on a bid change with every bid. Before this existed, confirming
   // somebody set a badge and fed nothing: the proposal never named them, so the
   // one step in module 9 that requires a human had no consequence anywhere.
-  { section_type: "key_personnel", heading: "Key Personnel", sort_order: 55 },
+  //
+  // inTemplate: false, and checked rather than assumed. Caravann's real
+  // template has fourteen headings and none of them is Key Personnel, and
+  // sections are matched to the template's own headings - so this one assembles
+  // correctly, appears on screen, and is dropped on the way into the .docx.
+  //
+  // Kept rather than removed because most public-agency solicitations ask for
+  // key personnel, the section is genuinely useful on screen, and the day a
+  // "Key Personnel" heading is added to the template it starts shipping with no
+  // code change. What is not acceptable is showing it as though it ships.
+  { section_type: "key_personnel", heading: "Key Personnel", sort_order: 55, inTemplate: false },
   { section_type: "price", heading: "Price and Discounts", sort_order: 60 },
   { section_type: "terms", heading: "Terms and Conditions / Warranty", sort_order: 70 },
   { section_type: "representations", heading: "Representations & Certifications", sort_order: 80 },
@@ -131,7 +149,12 @@ function keyPersonnelBody(team: ConfirmedMember[]): string {
 export function assembleDraft(
   rfp: Pick<RfpRow, "title" | "client_agency" | "project_type" | "due_at">,
   blocks: LanguageBlockRow[],
-  sections: readonly { section_type: string; heading: string; sort_order: number }[] = DEFAULT_SECTIONS,
+  sections: readonly {
+    section_type: string;
+    heading: string;
+    sort_order: number;
+    inTemplate?: boolean;
+  }[] = DEFAULT_SECTIONS,
   team: ConfirmedMember[] = []
 ): AssembledSection[] {
   const byType = new Map<string, LanguageBlockRow[]>();

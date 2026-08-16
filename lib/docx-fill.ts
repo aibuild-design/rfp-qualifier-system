@@ -123,6 +123,16 @@ export type FillResult = {
   unreplaced: string[];
   /** How many substitutions were made, for the caller to sanity-check. */
   replacements: number;
+  /**
+   * Drafted sections that matched no heading in the template, and so were
+   * dropped.
+   *
+   * This used to happen silently. A section assembled in the app but absent
+   * from Caravann's real document simply never appeared in the .docx, and
+   * nothing anywhere said so - the dashboard showed a section the submission
+   * did not contain, which is the worst way for the two to disagree.
+   */
+  droppedSections: string[];
 };
 
 /**
@@ -148,6 +158,7 @@ export async function fillTemplate(template: Buffer | Uint8Array, values: Templa
   // was substituted, which is the property that matters.
   const subs = substitutions(values);
   let replacements = 0;
+  let droppedSections: string[] = [];
 
   // Headers and footers carry the title, number and date too, so they need the
   // same pass - this is why the running header on page two shows the real
@@ -171,6 +182,7 @@ export async function fillTemplate(template: Buffer | Uint8Array, values: Templa
     const filled = injectSections(await documentPart.async("string"), values.sections);
     zip.file("word/document.xml", filled.xml);
     replacements += filled.written;
+    droppedSections = filled.dropped;
   }
 
   // Blank pages. The template carries 54 paragraphs with pageBreakBefore, and
@@ -259,7 +271,7 @@ export async function fillTemplate(template: Buffer | Uint8Array, values: Templa
     .filter((placeholder) => !/Agency|customer name/i.test(placeholder));
 
   const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
-  return { buffer, unreplaced, replacements };
+  return { buffer, unreplaced, replacements, droppedSections };
 }
 
 /**
@@ -368,9 +380,12 @@ function replaceAcrossRuns(xml: string, subs: [string, string][]): { xml: string
  * than removed. Word stores formatting per run, so deleting them would drop the
  * paragraph's styling, and an emptied run renders as nothing.
  */
-function injectSections(xml: string, sections: Record<string, string>): { xml: string; written: number } {
+function injectSections(
+  xml: string,
+  sections: Record<string, string>
+): { xml: string; written: number; dropped: string[] } {
   const paragraphs = xml.match(/<w:p[ >][\s\S]*?<\/w:p>/g);
-  if (!paragraphs) return { xml, written: 0 };
+  if (!paragraphs) return { xml, written: 0, dropped: Object.keys(sections) };
 
   const textOf = (p: string) =>
     [...p.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => m[1]).join("").trim();
@@ -382,6 +397,9 @@ function injectSections(xml: string, sections: Record<string, string>): { xml: s
   const normalise = (t: string) =>
     t.replace(/&amp;/g, "&").replace(/\s+/g, " ").trim().toLowerCase();
   const wanted = new Map(Object.entries(sections).map(([k, v]) => [normalise(k), v]));
+  // Kept so a dropped section can be reported under the heading the caller
+  // actually used, rather than the lowercased form matching works on.
+  const originalName = new Map(Object.entries(sections).map(([k]) => [normalise(k), k]));
 
   let written = 0;
   let currentHeading: string | null = null;
@@ -426,7 +444,11 @@ function injectSections(xml: string, sections: Record<string, string>): { xml: s
   });
 
   let i = 0;
-  return { xml: xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, () => out[i++]), written };
+  // Whatever is left in `wanted` never found its heading. That is the whole
+  // signal: the template has fourteen headings and a section keyed to anything
+  // else has nowhere to go.
+  const dropped = [...wanted.keys()].map((k) => originalName.get(k) ?? k);
+  return { xml: xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, () => out[i++]), written, dropped };
 }
 
 
