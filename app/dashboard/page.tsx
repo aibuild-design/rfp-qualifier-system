@@ -131,6 +131,20 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           >
             Export CSV
           </a>
+          {/* The read-only mirror. It lives here rather than in Settings because
+              the person who wants it is looking at the queue and wants to send
+              someone a view of it, which is exactly this row. */}
+          {process.env.QUEUE_SHEET_URL && (
+            <a
+              href={process.env.QUEUE_SHEET_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-rfp-border px-3 text-rfp-ink-secondary press hover:bg-rfp-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
+              title="A read-only view of this queue, safe to share"
+            >
+              Open in Sheets
+            </a>
+          )}
           <Link
             href={`/dashboard${sortByDeadline ? "" : "?sort=deadline"}`}
             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-rfp-border px-3 text-rfp-ink-secondary press hover:bg-rfp-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
