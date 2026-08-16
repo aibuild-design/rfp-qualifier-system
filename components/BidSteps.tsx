@@ -104,12 +104,20 @@ export function BidSteps({ steps }: { steps: BidStep[] }) {
 }
 
 /**
- * What is still open before drafting is sensible.
+ * What is still open on this bid.
  *
- * Not a gate. Every one of these is a judgement Khaled is allowed to skip, and
- * a system that refused to draft until the boxes were ticked would be making
- * his decisions for him. It is a list of what is still undecided, so pressing
- * Draft is a choice rather than a guess.
+ * Not a gate, and deliberately not described as one. Every one of these is a
+ * judgement Khaled is allowed to skip, and a system that refused to draft until
+ * the boxes were ticked would be making his decisions for him.
+ *
+ * It also does not claim to change the draft, because it does not. buildDraft
+ * reads the solicitation row and the language library and nothing else: no
+ * team, no questions, no compliance. An earlier version of this copy said the
+ * draft "will not know about" unticked items, which was simply untrue - it
+ * knows about them either way, which is to say not at all.
+ *
+ * That the confirmed team does not reach the proposal is a real gap rather
+ * than a design choice, and it is named on screen rather than papered over.
  *
  * Only shown once the bid is accepted. Before that the answer to all of it is
  * "not yet", which is noise.
@@ -162,12 +170,12 @@ export function ReadyToDraft({
   return (
     <section className="mt-8">
       <h2 className="font-display text-sm font-semibold text-rfp-ink">Before you draft</h2>
-      <p className="mt-0.5 text-xs text-rfp-ink-muted">
+      <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
         {open === 0
-          ? "Nothing outstanding. Drafting now uses everything you have decided."
+          ? "Nothing outstanding on this bid."
           : openMandatory > 0
-            ? "Nothing here blocks you, but the mandatory line is the one that loses bids on a technicality."
-            : "Only optional items left. These are judgement calls, and plenty of bids go out without them."}
+            ? "None of this blocks drafting, and none of it changes what the draft says. The mandatory line is the one that loses bids on a technicality."
+            : "None of this blocks drafting, and none of it changes what the draft says. These are judgement calls, and plenty of bids go out without them."}
       </p>
       <ul className="mt-3 divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
         {rows.map((row) => (
@@ -193,6 +201,13 @@ export function ReadyToDraft({
           </li>
         ))}
       </ul>
+      {unconfirmedTeam >= 0 && (
+        <p className="mt-2 text-xs leading-relaxed text-rfp-ink-muted">
+          Worth knowing: the draft is built from the solicitation and the approved-language
+          library only. Confirmed people do not yet appear in it, so key personnel still has to be
+          written in by hand.
+        </p>
+      )}
     </section>
   );
 }
