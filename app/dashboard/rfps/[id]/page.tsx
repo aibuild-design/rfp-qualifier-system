@@ -234,7 +234,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
                 href={rfp.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="press inline-flex min-h-11 items-center text-xs font-medium text-rfp-gold hover:underline"
+                className="press inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-rfp-gold underline decoration-rfp-gold/40 underline-offset-4 hover:decoration-rfp-gold"
               >
                 The original document &rarr;
               </a>
@@ -244,13 +244,13 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
                 href={rfp.drive_folder_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="press inline-flex min-h-11 items-center text-xs font-medium text-rfp-gold hover:underline"
+                className="press inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-rfp-gold underline decoration-rfp-gold/40 underline-offset-4 hover:decoration-rfp-gold"
               >
                 The bid folder in Drive &rarr;
               </a>
             )}
             <span className="inline-flex min-h-11 items-center text-xs text-rfp-ink-muted">
-              The folder holds the original file and a readable copy.
+              Both the original file and a readable copy.
             </span>
           </div>
         )}

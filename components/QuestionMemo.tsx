@@ -45,11 +45,11 @@ export function QuestionMemo({
               {items.map((q) => (
                 <li
                   key={q.id}
-                  className="flex items-start justify-between gap-3 px-5 py-3"
+                  className="px-5 py-4"
                   style={{ opacity: q.status === "declined" ? 0.55 : 1 }}
                 >
                   <div className="min-w-0">
-                    <p className="text-sm text-rfp-ink">{q.question_text}</p>
+                    <p className="text-[15px] leading-relaxed text-rfp-ink">{q.question_text}</p>
                     {q.approved_by && q.status !== "declined" && (
                       <p className="mt-0.5 text-[11px] text-rfp-ink-muted">Approved by {q.approved_by}</p>
                     )}
@@ -59,7 +59,7 @@ export function QuestionMemo({
                       </p>
                     )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
                     {q.status === "sent" ? (
                       <span className="rounded-full bg-rfp-good/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-rfp-good">
                         Sent

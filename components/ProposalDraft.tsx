@@ -19,10 +19,13 @@ export function ProposalDraft({
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
-  // Building is not destructive, but it is not nothing either: it replaces
-  // every section that has not been approved. Pressing the same button twice
-  // and watching nothing visibly happen is how someone loses confidence that
-  // the button does anything at all.
+  // Only a rebuild asks. The first build has nothing to overwrite, so
+  // confirming it is friction with no risk behind it - and it cost exactly
+  // what friction with no purpose costs: the button was pressed, a panel
+  // appeared below it, and the draft was reported as not working.
+  //
+  // A rebuild genuinely replaces every unapproved section, so that one still
+  // asks.
   const [confirming, setConfirming] = useState(false);
 
   function rebuild() {
@@ -69,7 +72,7 @@ export function ProposalDraft({
             </>
           ) : (
             <button
-              onClick={() => setConfirming(true)}
+              onClick={rebuild}
               disabled={pending}
               className="press rounded-lg bg-rfp-black px-3.5 py-2 text-sm font-semibold text-white hover:bg-rfp-black-2 disabled:opacity-50"
             >
@@ -81,13 +84,10 @@ export function ProposalDraft({
 
       {confirming && (
         <div className="mt-3 rounded-lg border border-rfp-gold bg-rfp-surface p-4">
-          <p className="text-sm font-medium text-rfp-ink">
-            {sections.length ? "Rebuild this draft?" : "Build the draft now?"}
-          </p>
+          <p className="text-sm font-medium text-rfp-ink">Rebuild this draft?</p>
           <p className="mt-1 max-w-prose text-xs leading-relaxed text-rfp-ink-secondary">
-            {sections.length
-              ? "Every section you have not approved is replaced with a fresh stitch from the library. Approved sections are left exactly as they are."
-              : "Fourteen sections are assembled from Caravann's approved language and filled into the real template. Nothing is sent anywhere."}
+            Every section you have not approved is replaced with a fresh stitch from the library.
+            Approved sections are left exactly as they are.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -95,7 +95,7 @@ export function ProposalDraft({
               disabled={pending}
               className="press inline-flex min-h-11 items-center rounded-lg bg-rfp-ink px-4 text-sm font-semibold text-rfp-surface hover:opacity-90 disabled:opacity-50"
             >
-              {sections.length ? "Yes, rebuild it" : "Yes, build it"}
+              Yes, rebuild it
             </button>
             <button
               onClick={() => setConfirming(false)}
