@@ -88,6 +88,18 @@ export async function deleteFolder(id: string, typed: string): Promise<ActionRes
     return { error: 'Type "delete" to confirm' };
   }
 
+  // Enforced here, not only in the interface. Hiding a button stops the click;
+  // it does not stop the request, and this one unfiles every solicitation in
+  // the folder with no undo.
+  const { data: folder } = await supabase
+    .from("rfp_folders")
+    .select("is_system,name")
+    .eq("id", id)
+    .maybeSingle();
+  if (folder?.is_system) {
+    return { error: `${folder.name} is a stage of the pipeline, so it cannot be deleted. You can rename it.` };
+  }
+
   // Counted before the delete so the confirmation can say what happened to the
   // contents rather than leaving someone to wonder.
   const { count } = await supabase

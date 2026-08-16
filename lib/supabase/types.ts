@@ -144,6 +144,8 @@ export interface Database {
           /** Folders can be grouped. Null means top level. */
           parent_id: string | null;
           sort_order: number;
+          /** A pipeline stage rather than a folder someone made. */
+          is_system: boolean;
           created_at: string;
           updated_at: string;
         };

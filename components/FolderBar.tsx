@@ -142,12 +142,16 @@ export function FolderBar({
           >
             Rename
           </button>
-          <button
-            onClick={() => { setDeleting(folders.find((f) => f.id === active) ?? null); setMenuOpen(false); }}
-            className="press min-h-11 font-medium text-rfp-critical underline underline-offset-2 hover:opacity-80"
-          >
-            Delete folder
-          </button>
+          {/* A stage of the pipeline has no delete. Offering one that always
+              fails is worse than not offering it. */}
+          {!folders.find((f) => f.id === active)?.is_system && (
+            <button
+              onClick={() => { setDeleting(folders.find((f) => f.id === active) ?? null); setMenuOpen(false); }}
+              className="press min-h-11 font-medium text-rfp-critical underline underline-offset-2 hover:opacity-80"
+            >
+              Delete folder
+            </button>
+          )}
         </div>
       )}
 

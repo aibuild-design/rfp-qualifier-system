@@ -46,6 +46,8 @@ export default async function OverviewPage() {
     { count: rosterCount },
     { count: demoCount },
     { count: filedCount },
+    { data: health },
+    { data: orgProfile },
     { data: recent },
   ] = await Promise.all([
     supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "go"),
@@ -62,6 +64,11 @@ export default async function OverviewPage() {
     supabase.from("team_members").select("*", { count: "exact", head: true }).eq("active", true),
     supabase.from("rfps").select("*", { count: "exact", head: true }).eq("is_demo", true),
     supabase.from("rfps").select("*", { count: "exact", head: true }).eq("filing_status", "filed"),
+    // Whether Drive works is a fact about Drive, not about how many bids
+    // happen to be sitting in the queue. Clearing the queue used to make the
+    // overview announce that Google Drive still needed authorising.
+    supabase.from("connection_events").select("kind,last_ok_at,detail"),
+    supabase.from("org_profile").select("insurance_coverage,set_aside_status,profile_confirmed").eq("id", true).maybeSingle(),
     supabase
       .from("rfps")
       .select("id,title,client_agency,status,score_percent,due_at,verdict_set_at,is_demo")
@@ -72,7 +79,10 @@ export default async function OverviewPage() {
   const profileReady = (sectorCount ?? 0) > 0;
   const libraryReady = (libraryCount ?? 0) > 0;
   const rosterReady = (rosterCount ?? 0) > 0;
-  const filingConnected = (filedCount ?? 0) > 0;
+  const worked = new Map((health ?? []).map((h) => [h.kind, h]));
+  const filingConnected = worked.has("drive") || (filedCount ?? 0) > 0;
+  const mailConnected = worked.has("gmail");
+  const triageWorking = worked.has("triage");
 
   const decided = (goCount ?? 0) + (noGoCount ?? 0);
   const goRate = decided > 0 ? Math.round(((goCount ?? 0) / decided) * 100) : null;
@@ -80,12 +90,18 @@ export default async function OverviewPage() {
   // Only what is not done. A checklist of five items where four are ticked is
   // four lines of noise around the one that matters, and once everything is
   // ready the section disappears rather than sitting there permanently green.
+  // What is genuinely unfinished, which is not the same as what has not run
+  // recently. Connections that have demonstrably worked never appear here.
   const setup = [
     { done: profileReady, label: "Fill in the eligibility profile and sector map", href: "/dashboard/settings" },
     { done: rosterReady, label: "Add the team roster", href: "/dashboard/settings" },
     { done: libraryReady, label: "Load the approved-language library", href: "/dashboard/library" },
-    { done: triageConfigured, label: "Connect triage to n8n", href: "/dashboard/settings" },
+    { done: triageConfigured || triageWorking, label: "Connect triage to n8n", href: "/dashboard/settings" },
     { done: filingConnected, label: "Authorise Google Drive for filing", href: "/dashboard/settings" },
+    // The two blank profile fields, which are the reason good bids stall at
+    // maybe. Worth more of Khaled's attention than anything else on this page.
+    { done: Boolean(orgProfile?.insurance_coverage), label: "Record the insurance Caravann carries", href: "/dashboard/settings" },
+    { done: orgProfile?.profile_confirmed === true, label: "Confirm the profile, so verdicts stop being provisional", href: "/dashboard/settings" },
   ];
   const outstanding = setup.filter((s) => !s.done);
 
@@ -139,6 +155,36 @@ export default async function OverviewPage() {
           ))}
         </div>
       )}
+
+      {/* What the desk has actually done. The page had nothing on it until a
+          solicitation arrived, which made a working system look like an empty
+          one, and these are the numbers anyone asking "is this thing earning
+          its keep" wants first. */}
+      <section className="rise mb-10">
+        <h2 className="mb-3 font-display text-sm font-semibold text-rfp-ink">The desk so far</h2>
+        <dl className="rise-stagger grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { label: "Read", value: (goCount ?? 0) + (noGoCount ?? 0) + (pendingCount ?? 0) },
+            { label: "Worth bidding", value: goCount ?? 0 },
+            { label: "Ruled out", value: noGoCount ?? 0 },
+            { label: "Filed to Drive", value: filedCount ?? 0 },
+          ].map((stat, i) => (
+            <div
+              key={stat.label}
+              style={{ "--i": i } as CSSProperties}
+              className="rounded-xl border border-rfp-border bg-rfp-surface p-4"
+            >
+              <dd className="tabular font-display text-2xl font-semibold text-rfp-ink">{stat.value}</dd>
+              <dt className="mt-0.5 text-xs text-rfp-ink-muted">{stat.label}</dt>
+            </div>
+          ))}
+        </dl>
+        {goRate !== null && (
+          <p className="mt-2 text-xs text-rfp-ink-muted">
+            {goRate}% of decided solicitations cleared the gate.
+          </p>
+        )}
+      </section>
 
       {/* The pipeline, as one line. Five numbered cards became five dots: the
           only question a running system raises daily is whether any part of it
