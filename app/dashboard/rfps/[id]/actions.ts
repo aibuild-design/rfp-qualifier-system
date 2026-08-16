@@ -15,14 +15,30 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
   const { supabase, denied } = await requireUser();
   if (denied) return denied;
 
-  const [{ data: rfp }, { data: blocks }] = await Promise.all([
-    supabase.from("rfps").select("*").eq("id", rfpId).maybeSingle(),
-    supabase.from("language_blocks").select("*"),
-  ]);
+  const [{ data: rfp }, { data: blocks }, { data: assignments }, { data: roster }] =
+    await Promise.all([
+      supabase.from("rfps").select("*").eq("id", rfpId).maybeSingle(),
+      supabase.from("language_blocks").select("*"),
+      // Confirmed only. A suggestion is the desk's opinion about who could do
+      // the work; putting one in a submitted proposal would be naming a person
+      // to an agency on the strength of word overlap.
+      supabase
+        .from("rfp_team_assignments")
+        .select("team_member_id")
+        .eq("rfp_id", rfpId)
+        .eq("status", "confirmed"),
+      supabase.from("team_members").select("id,name,role,qualifications"),
+    ]);
 
   if (!rfp) return { error: "RFP not found" };
 
-  const sections = assembleDraft(rfp, blocks ?? [], DEFAULT_SECTIONS);
+  const byId = new Map((roster ?? []).map((m) => [m.id, m]));
+  const team = (assignments ?? [])
+    .map((a) => byId.get(a.team_member_id))
+    .filter((m): m is NonNullable<typeof m> => Boolean(m))
+    .map((m) => ({ name: m.name, role: m.role, qualifications: m.qualifications }));
+
+  const sections = assembleDraft(rfp, blocks ?? [], DEFAULT_SECTIONS, team);
 
   // Replace wholesale so a rebuild after adding library material doesn't
   // leave stale sections behind. Approved sections are preserved - losing a

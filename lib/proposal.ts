@@ -22,6 +22,11 @@ export const DEFAULT_SECTIONS = [
   { section_type: "scope", heading: "Scope", sort_order: 30 },
   { section_type: "technical_description", heading: "Technical Description", sort_order: 40 },
   { section_type: "past_performance", heading: "Past Performance", sort_order: 50 },
+  // Built from the confirmed team rather than the language library, because the
+  // people on a bid change with every bid. Before this existed, confirming
+  // somebody set a badge and fed nothing: the proposal never named them, so the
+  // one step in module 9 that requires a human had no consequence anywhere.
+  { section_type: "key_personnel", heading: "Key Personnel", sort_order: 55 },
   { section_type: "price", heading: "Price and Discounts", sort_order: 60 },
   { section_type: "terms", heading: "Terms and Conditions / Warranty", sort_order: 70 },
   { section_type: "representations", heading: "Representations & Certifications", sort_order: 80 },
@@ -99,10 +104,35 @@ export type AssembledSection = {
  * needs the Word template and real winning proposals, which this build does
  * not have.
  */
+/** A person Khaled has confirmed onto this bid, as the draft needs them. */
+export type ConfirmedMember = {
+  name: string;
+  role: string | null;
+  qualifications: string[] | null;
+};
+
+/**
+ * The Key Personnel section, written from who is actually on the bid.
+ *
+ * Deterministic, like everything else here. Names, roles and qualifications are
+ * facts about real people, and a model paraphrasing someone's credentials into
+ * a document that goes to a public agency is the wrong kind of help.
+ */
+function keyPersonnelBody(team: ConfirmedMember[]): string {
+  return team
+    .map((m) => {
+      const quals = (m.qualifications ?? []).filter(Boolean);
+      const line = [m.name, m.role].filter(Boolean).join(" - ");
+      return quals.length ? `${line}. ${quals.join("; ")}.` : `${line}.`;
+    })
+    .join("\n\n");
+}
+
 export function assembleDraft(
   rfp: Pick<RfpRow, "title" | "client_agency" | "project_type" | "due_at">,
   blocks: LanguageBlockRow[],
-  sections: readonly { section_type: string; heading: string; sort_order: number }[] = DEFAULT_SECTIONS
+  sections: readonly { section_type: string; heading: string; sort_order: number }[] = DEFAULT_SECTIONS,
+  team: ConfirmedMember[] = []
 ): AssembledSection[] {
   const byType = new Map<string, LanguageBlockRow[]>();
   for (const b of blocks) {
@@ -112,6 +142,27 @@ export function assembleDraft(
   }
 
   return sections.map((s) => {
+    if (s.section_type === "key_personnel") {
+      // Says nobody is confirmed rather than inventing a team, and matches the
+      // shape used for a section with no library material: needs_input is how
+      // this draft reports "a person has to do this bit".
+      return team.length === 0
+        ? {
+            ...s,
+            body: null,
+            status: "needs_input" as const,
+            source_block_ids: [],
+            notes: "Nobody confirmed on this bid yet. Confirm the team and rebuild, or write this section by hand.",
+          }
+        : {
+            ...s,
+            body: keyPersonnelBody(team),
+            status: "draft" as const,
+            source_block_ids: [],
+            notes: `${team.length} confirmed ${team.length === 1 ? "person" : "people"}, from the roster.`,
+          };
+    }
+
     const available = rankBlocks(byType.get(s.section_type) ?? []);
 
     if (available.length === 0) {
