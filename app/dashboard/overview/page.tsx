@@ -37,6 +37,7 @@ export default async function OverviewPage() {
   const windows = deadlineWindowsFrom(scoring);
 
   const [
+    { count: totalCount },
     { count: goCount },
     { count: noGoCount },
     { count: pendingCount },
@@ -50,6 +51,11 @@ export default async function OverviewPage() {
     { data: orgProfile },
     { data: recent },
   ] = await Promise.all([
+    // Every solicitation, counted directly. This used to be go + no-go +
+    // pending added together, which silently excluded maybe - the single most
+    // common verdict - so a queue holding one maybe reported that nothing had
+    // been read at all.
+    supabase.from("rfps").select("*", { count: "exact", head: true }),
     supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "go"),
     supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "no_go"),
     supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "pending"),
@@ -163,7 +169,7 @@ export default async function OverviewPage() {
         <h2 className="mb-3 font-display text-sm font-semibold text-rfp-ink">The desk so far</h2>
         <dl className="rise-stagger grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
-            { label: "Read", value: (goCount ?? 0) + (noGoCount ?? 0) + (pendingCount ?? 0) },
+            { label: "Read", value: totalCount ?? 0 },
             { label: "Worth bidding", value: goCount ?? 0 },
             { label: "Ruled out", value: noGoCount ?? 0 },
             { label: "Filed to Drive", value: filedCount ?? 0 },
