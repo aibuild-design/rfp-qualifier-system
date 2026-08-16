@@ -1,8 +1,8 @@
 import {
   COST_PER_SOLICITATION,
   GAUGE_CEILING,
-  LOW_AT_SOLICITATIONS,
   TOP_UP_URL,
+  WARN_BELOW,
   type Credit,
 } from "@/lib/openrouter-credit";
 
@@ -31,10 +31,9 @@ export function CreditMeter({ credit }: { credit: Credit }) {
   // Against a fixed ceiling, so a given height always means the same runway.
   const pct = Math.max(0, Math.min(100, (credit.remaining / GAUGE_CEILING) * 100));
 
-  // Where "getting low" starts, in dollars, so the notch cannot disagree with
-  // the colour beside it.
-  const lowDollars = LOW_AT_SOLICITATIONS * COST_PER_SOLICITATION;
-  const lowAt = (lowDollars / GAUGE_CEILING) * 100;
+  // Where the warning starts, read from the same constant the colour is picked
+  // from, so the notch cannot disagree with the bar beside it.
+  const lowAt = (WARN_BELOW / GAUGE_CEILING) * 100;
 
   const tone =
     credit.level === "ok"
@@ -43,14 +42,13 @@ export function CreditMeter({ credit }: { credit: Credit }) {
         ? "var(--rfp-warning)"
         : "var(--rfp-critical)";
 
+
   const message =
     credit.level === "empty"
       ? "Out of credit. The next solicitation will arrive with no verdict."
-      : credit.level === "critical"
-        ? "Nearly out. When it runs dry, triage stops and solicitations arrive with no verdict."
-        : credit.level === "low"
-          ? "Getting low. Top up before it stops returning verdicts."
-          : null;
+      : credit.level === "low"
+        ? "Running low. Top up before it stops returning verdicts."
+        : null;
 
   return (
     <div
@@ -58,7 +56,7 @@ export function CreditMeter({ credit }: { credit: Credit }) {
       style={{
         borderColor: credit.level === "ok" ? "var(--rfp-border)" : tone,
         background:
-          credit.level === "critical" || credit.level === "empty"
+          credit.level === "empty"
             ? "color-mix(in srgb, var(--rfp-critical) 6%, var(--rfp-surface))"
             : undefined,
       }}
@@ -115,7 +113,7 @@ export function CreditMeter({ credit }: { credit: Credit }) {
             className="absolute top-0 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium tabular-nums text-rfp-ink-muted"
             style={{ left: `${lowAt}%` }}
           >
-            warns below ${lowDollars.toFixed(2)}
+            warns below ${WARN_BELOW.toFixed(2)}
           </span>
         </div>
       )}

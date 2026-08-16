@@ -18,7 +18,7 @@ export type Credit = {
   remaining: number;
   /** Roughly how many more solicitations that buys, at the measured rate. */
   solicitationsLeft: number;
-  level: "ok" | "low" | "critical" | "empty";
+  level: "ok" | "low" | "empty";
 };
 
 /** Measured across real runs: about 18 cents a solicitation, three reads. */
@@ -36,14 +36,25 @@ export const TOP_UP_URL = "https://openrouter.ai/settings/credits";
  * anybody tops up. A fixed ceiling means a given height always describes the
  * same amount of runway.
  *
- * Set a little above the warning line so there is visible distance between
- * comfortable and not.
+ * Held at five times the warning line. Much higher and the entire range worth
+ * watching is squeezed into the left tenth of the bar, where the notch and the
+ * fill sit on top of each other and neither can be read.
  */
-export const GAUGE_CEILING = 20;
+export const GAUGE_CEILING = 10;
 
-/** Where "getting low" starts. Shared so the notch and the message cannot drift. */
-export const LOW_AT_SOLICITATIONS = 40;
-export const CRITICAL_AT_SOLICITATIONS = 10;
+/**
+ * Warn below this much credit. One line, not a ladder.
+ *
+ * This was three tiers starting at $7.20, which is roughly forty solicitations
+ * of notice and reads as nagging: a warning that is usually on is a warning
+ * nobody looks at. $2 is about eleven solicitations, which is a week or two of
+ * arrivals rather than a month.
+ *
+ * The cost of drawing it here rather than higher: if a run of long documents
+ * lands, eleven is optimistic, and there is less room to notice and act. That
+ * is the trade being made deliberately.
+ */
+export const WARN_BELOW = 2;
 
 export async function openRouterCredit(apiKey: string | undefined): Promise<Credit | null> {
   if (!apiKey) return null;
@@ -68,18 +79,11 @@ export async function openRouterCredit(apiKey: string | undefined): Promise<Cred
       total,
       remaining,
       solicitationsLeft,
-      // Thresholds in solicitations rather than dollars, because "eleven more
-      // bids" is a number someone can act on and "$2.03" is not. Under two is
-      // its own level: one long solicitation can cost more than the average, so
-      // at that point the next one through the door may not get a verdict.
+      // Empty means it cannot pay for one more, not that the number reached
+      // zero: at eleven cents the next solicitation still arrives with no
+      // verdict, and that is the thing worth saying.
       level:
-        solicitationsLeft < 2
-          ? "empty"
-          : solicitationsLeft <= CRITICAL_AT_SOLICITATIONS
-            ? "critical"
-            : solicitationsLeft <= LOW_AT_SOLICITATIONS
-              ? "low"
-              : "ok",
+        remaining < COST_PER_SOLICITATION ? "empty" : remaining < WARN_BELOW ? "low" : "ok",
     };
   } catch {
     return null;
