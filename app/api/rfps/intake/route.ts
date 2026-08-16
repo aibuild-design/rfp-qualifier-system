@@ -6,6 +6,7 @@ import { toTimestamp } from "@/lib/rfp";
 import { decideVerdict, thresholdsFromSettings, type Decision } from "@/lib/verdict";
 import { recommendTeam } from "@/lib/team-match";
 import { costLaneFrom } from "@/lib/cost-lane";
+import { stripDashesDeep } from "@/lib/no-dashes";
 import { scoreFromRubric, type RubricBreakdown, type RubricWeights } from "@/lib/rubric";
 import type { Database, TableInsert } from "@/lib/supabase/types";
 
@@ -122,7 +123,12 @@ export async function POST(req: NextRequest) {
 
   let body: IntakeBody;
   try {
-    body = await req.json();
+    // Every string the model wrote, stripped of em and en dashes before it
+    // touches the database. The prompt asks for none, and asking is worth
+    // doing, but a prompt is a request rather than a guarantee - and this text
+    // reaches a verdict card, an email and a Word document, so the rule has to
+    // hold at the boundary rather than at each of the three places it is read.
+    body = stripDashesDeep(await req.json()) as IntakeBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
