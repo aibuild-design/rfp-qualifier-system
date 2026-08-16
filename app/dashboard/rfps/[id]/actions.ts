@@ -42,9 +42,25 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
     .eq("rfp_id", rfpId)
     .neq("status", "approved");
 
+  // Named columns, not a spread. `assembleDraft` returns the section
+  // definition it was given, and those definitions grew a field the table does
+  // not have - `attachment`, marking the three appendix slots - which turned
+  // every build into "Could not build the draft. The detail is in the server
+  // log". Spreading a shape somebody else owns into an insert means any field
+  // added there becomes a runtime failure here, discovered by a person
+  // pressing a button.
   const rows = sections
     .filter((s) => !approved.has(s.section_type))
-    .map((s) => ({ ...s, rfp_id: rfpId }));
+    .map((s) => ({
+      rfp_id: rfpId,
+      section_type: s.section_type,
+      heading: s.heading,
+      body: s.body,
+      status: s.status,
+      sort_order: s.sort_order,
+      source_block_ids: s.source_block_ids,
+      notes: s.notes,
+    }));
 
   if (rows.length) {
     const { error } = await supabase.from("rfp_proposal_sections").insert(rows);
