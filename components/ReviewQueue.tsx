@@ -1,13 +1,26 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { addPortalRule, removePortalRule, resolveEdgeCase } from "@/app/dashboard/review/actions";
 import type { EdgeCaseRow, PortalRuleRow } from "@/lib/supabase/types";
 
 export function EdgeCaseList({ items }: { items: EdgeCaseRow[] }) {
-  const [pending, start] = useTransition();
+  const [, start] = useTransition();
+  // The row leaves on the click, not when the server answers. Clearing this
+  // list is the whole job of the page, and every item was sitting there through
+  // a round trip and a full re-render before it moved, which reads as the
+  // button not having worked. The server still decides; it just is not what the
+  // eye waits for.
+  const [cleared, clear] = useOptimistic<string[], string>([], (list, id) => [...list, id]);
+  const visible = items.filter((c) => !cleared.includes(c.id));
 
-  if (!items.length) {
+  const resolve = (id: string, decision: "approved" | "rejected") =>
+    start(async () => {
+      clear(id);
+      await resolveEdgeCase(id, decision);
+    });
+
+  if (!visible.length) {
     return (
       <p className="rounded-xl border border-rfp-border bg-rfp-surface px-5 py-4 text-sm text-rfp-ink-muted">
         Nothing waiting. Cases land here when triage is unsure about something, or when you
@@ -18,7 +31,7 @@ export function EdgeCaseList({ items }: { items: EdgeCaseRow[] }) {
 
   return (
     <ul className="divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
-      {items.map((c) => (
+      {visible.map((c) => (
         <li key={c.id} className="px-5 py-4">
           <p className="text-sm text-rfp-ink">{c.description}</p>
           {c.proposed_rule_change && (
@@ -29,15 +42,13 @@ export function EdgeCaseList({ items }: { items: EdgeCaseRow[] }) {
           )}
           <div className="mt-3 flex items-center gap-2">
             <button
-              onClick={() => start(async () => void (await resolveEdgeCase(c.id, "approved")))}
-              disabled={pending}
+              onClick={() => resolve(c.id, "approved")}
               className="rounded-lg bg-rfp-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-rfp-black-2 disabled:opacity-50"
             >
               Approve rule
             </button>
             <button
-              onClick={() => start(async () => void (await resolveEdgeCase(c.id, "rejected")))}
-              disabled={pending}
+              onClick={() => resolve(c.id, "rejected")}
               className="rounded-lg border border-rfp-border px-3 py-1.5 text-xs font-semibold text-rfp-ink-secondary hover:bg-rfp-surface-sunken disabled:opacity-50"
             >
               Reject

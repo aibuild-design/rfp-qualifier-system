@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { assignMember, confirmAssignment, matchTeam } from "@/app/dashboard/rfps/[id]/actions";
 
 export type AssignmentView = {
@@ -27,6 +27,10 @@ export function TeamMatch({
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [pick, setPick] = useState("");
+  // Confirming flips the badge on the click. It is the user's own decision
+  // and the server is not being asked whether it is allowed, only to record
+  // it, so there is nothing to wait for before showing it.
+  const [justConfirmed, markConfirmed] = useOptimistic<string[], string>([], (l, id) => [...l, id]);
 
   return (
     <div className="mt-6">
@@ -82,14 +86,18 @@ export function TeamMatch({
                   {a.match_score !== null && (
                     <span className="tabular text-xs font-semibold text-rfp-ink-muted">{a.match_score}</span>
                   )}
-                  {a.status === "confirmed" ? (
+                  {a.status === "confirmed" || justConfirmed.includes(a.id) ? (
                     <span className="rounded-full bg-rfp-good/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-rfp-good">
                       Confirmed
                     </span>
                   ) : (
                     <button
-                      onClick={() => start(async () => void (await confirmAssignment(rfpId, a.id)))}
-                      disabled={pending}
+                      onClick={() =>
+                        start(async () => {
+                          markConfirmed(a.id);
+                          await confirmAssignment(rfpId, a.id);
+                        })
+                      }
                       className="rounded-lg border border-rfp-border px-2.5 py-1 text-xs font-semibold text-rfp-ink-secondary hover:bg-rfp-surface-sunken disabled:opacity-50"
                     >
                       Confirm

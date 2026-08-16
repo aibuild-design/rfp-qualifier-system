@@ -6,6 +6,7 @@ import { ScoringSettingsForm } from "@/components/settings/ScoringSettingsForm";
 import { ProfileConfirmation } from "@/components/settings/ProfileConfirmation";
 import { ConnectionsPanel } from "@/components/settings/ConnectionsPanel";
 import { SubjectTermsEditor } from "@/components/settings/SubjectTermsEditor";
+import { openRouterCredit } from "@/lib/openrouter-credit";
 
 // Everything on this page is Khaled's own occasional editing - the
 // eligibility profile and sector map "confirmed once" (module 3) and the
@@ -39,6 +40,8 @@ export default async function SettingsPage() {
     // three healthy connections as unproven.
     supabase.from("connection_events").select("kind,last_ok_at,detail"),
   ]);
+
+  const credit = await openRouterCredit(process.env.OPENROUTER_API_KEY);
 
   const byKind = new Map((health ?? []).map((h) => [h.kind, h]));
   const gmail = byKind.get("gmail");
@@ -181,6 +184,7 @@ export default async function SettingsPage() {
         triageConfigured={Boolean(process.env.N8N_BASE_URL && process.env.RFP_INTAKE_API_KEY)}
         profileConfirmed={orgProfile?.profile_confirmed === true}
         n8nUrl={process.env.N8N_BASE_URL?.replace(/\/+$/, "") ?? null}
+        credit={credit}
       />
     </div>
   );

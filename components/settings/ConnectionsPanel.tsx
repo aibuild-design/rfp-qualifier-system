@@ -22,6 +22,8 @@
  * state and link to where it is actually managed.
  */
 
+import type { Credit } from "@/lib/openrouter-credit";
+
 type Line = {
   label: string;
   /** When this last demonstrably worked. null = it never has, here. */
@@ -45,6 +47,7 @@ export function ConnectionsPanel({
   triageConfigured,
   profileConfirmed,
   n8nUrl,
+  credit,
 }: {
   lastEmailAt: string | null;
   lastMailbox: string | null;
@@ -55,6 +58,8 @@ export function ConnectionsPanel({
   profileConfirmed: boolean;
   /** Where Google is actually managed. null when n8n's address is unset. */
   n8nUrl: string | null;
+  /** OpenRouter balance, or null when it could not be read. */
+  credit: Credit | null;
 }) {
   const lines: Line[] = [
     {
@@ -138,6 +143,34 @@ export function ConnectionsPanel({
           );
         })}
       </ul>
+
+      {/* Running out of credit does not announce itself: triage starts failing
+          and solicitations keep arriving without verdicts, which looks like a
+          quiet week rather than an outage. Stated in solicitations as well as
+          dollars, because "about 80 more" is a number someone can act on. */}
+      {credit && (
+        <div
+          className="mt-3 rounded-lg border px-4 py-3 text-xs leading-relaxed"
+          style={{
+            borderColor: credit.level === "ok" ? "var(--rfp-border)" : "var(--rfp-warning)",
+            background: credit.level === "critical" ? "color-mix(in srgb, var(--rfp-critical) 8%, transparent)" : "transparent",
+          }}
+        >
+          <span className="font-medium text-rfp-ink">
+            ${credit.remaining.toFixed(2)} left on OpenRouter
+          </span>
+          <span className="text-rfp-ink-secondary">
+            {" "}of ${credit.total.toFixed(2)}, roughly {credit.solicitationsLeft} more solicitations.
+          </span>
+          {credit.level !== "ok" && (
+            <span className="mt-1 block font-medium" style={{ color: "var(--rfp-warning)" }}>
+              {credit.level === "critical"
+                ? "Nearly out. When it runs dry, triage stops and solicitations arrive with no verdict."
+                : "Getting low. Top up before it stops returning verdicts."}
+            </span>
+          )}
+        </div>
+      )}
 
       {!profileConfirmed && (
         <p className="mt-3 rounded-lg border border-dashed border-rfp-border-strong px-4 py-3 text-xs leading-relaxed text-rfp-ink-secondary">
