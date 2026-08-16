@@ -28,17 +28,18 @@ export const COST_PER_SOLICITATION = 0.18;
 export const TOP_UP_URL = "https://openrouter.ai/settings/credits";
 
 /**
- * The gauge reads out of this many solicitations, not out of whatever was last
- * topped up.
+ * The gauge fills at this much credit, and does not move when more is added.
  *
- * Remaining over lifetime total is the obvious scale and the wrong one: it
- * makes $9 look nearly empty against a $50 top-up and comfortable against a
- * $200 one, for exactly the same real capacity. Worse, the colour is decided in
- * solicitations, so the two disagree - a green label above a bar that looks
- * almost empty, which is the kind of thing that teaches someone to stop reading
- * the panel.
+ * Remaining over the lifetime total is the obvious scale and the wrong one.
+ * The total only ever grows, so the same $9 sits at 18% of a $50 account and
+ * 4.5% of a $200 one, and the bar quietly changes what it means every time
+ * anybody tops up. A fixed ceiling means a given height always describes the
+ * same amount of runway.
+ *
+ * Set a little above the warning line so there is visible distance between
+ * comfortable and not.
  */
-export const GAUGE_FULL_SOLICITATIONS = 100;
+export const GAUGE_CEILING = 20;
 
 /** Where "getting low" starts. Shared so the notch and the message cannot drift. */
 export const LOW_AT_SOLICITATIONS = 40;

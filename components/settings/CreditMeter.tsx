@@ -1,6 +1,6 @@
 import {
   COST_PER_SOLICITATION,
-  GAUGE_FULL_SOLICITATIONS,
+  GAUGE_CEILING,
   LOW_AT_SOLICITATIONS,
   TOP_UP_URL,
   type Credit,
@@ -14,15 +14,27 @@ import {
  * here because running dry does not announce itself: triage simply stops
  * returning verdicts and the week looks quiet.
  *
- * The bar carries the low-credit threshold as a visible notch. A warning that
- * appears without saying where the line was drawn reads as arbitrary, and the
- * first question anyone asks a warning is "says who".
+ * The headline is dollars, because dollars are the only exact figure here. The
+ * solicitation count is division by an average and a long RFP costs more than
+ * an average one, so it is written as an estimate and kept in the secondary
+ * line. A number set in 30px is read as a fact whatever the caption says.
+ *
+ * Bar, notch and colour are all keyed off the same dollars for the same reason:
+ * an earlier version measured the bar in one unit and picked the colour in
+ * another, and put a green label above a bar that looked nearly empty.
+ *
+ * The lifetime total is not shown at all. It only ever grows, so "$9.09 of
+ * $50.00" becomes "$9.09 of $200.00" for identical runway, and reading the
+ * second as five times worse than the first is the natural mistake.
  */
 export function CreditMeter({ credit }: { credit: Credit }) {
-  // Measured in solicitations, the same unit the colour is decided in, so the
-  // bar and the label can never tell two different stories.
-  const pct = Math.max(0, Math.min(100, (credit.solicitationsLeft / GAUGE_FULL_SOLICITATIONS) * 100));
-  const lowAt = (LOW_AT_SOLICITATIONS / GAUGE_FULL_SOLICITATIONS) * 100;
+  // Against a fixed ceiling, so a given height always means the same runway.
+  const pct = Math.max(0, Math.min(100, (credit.remaining / GAUGE_CEILING) * 100));
+
+  // Where "getting low" starts, in dollars, so the notch cannot disagree with
+  // the colour beside it.
+  const lowDollars = LOW_AT_SOLICITATIONS * COST_PER_SOLICITATION;
+  const lowAt = (lowDollars / GAUGE_CEILING) * 100;
 
   const tone =
     credit.level === "ok"
@@ -56,67 +68,73 @@ export function CreditMeter({ credit }: { credit: Credit }) {
           OpenRouter credit
         </h3>
         <p className="text-xs text-rfp-ink-muted">
-          {/* Tabular figures: this number changes on every load, and proportional
-              digits make the line jump sideways when it does. */}
-          <span className="tabular-nums">${credit.used.toFixed(2)}</span> spent of{" "}
-          <span className="tabular-nums">${credit.total.toFixed(2)}</span>
+          about <span className="tabular-nums">${COST_PER_SOLICITATION.toFixed(2)}</span> a
+          solicitation
         </p>
       </div>
 
-      {/* The headline is solicitations, not dollars. "About fifty more bids" is
-          a number someone can act on. "$9.09" needs arithmetic first. */}
       <div className="mt-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+        {/* Tabular figures: this changes on every load, and proportional digits
+            make the line jump sideways when it does. */}
         <span className="font-display text-3xl font-semibold tabular-nums leading-none" style={{ color: tone }}>
-          {credit.solicitationsLeft}
+          ${credit.remaining.toFixed(2)}
         </span>
-        <span className="text-sm font-medium text-rfp-ink">
-          {credit.solicitationsLeft === 1 ? "solicitation left" : "solicitations left"}
-        </span>
-        <span className="text-sm text-rfp-ink-muted tabular-nums">
-          &middot; ${credit.remaining.toFixed(2)}
-        </span>
-        <span className="ml-auto text-xs text-rfp-ink-muted">
-          gauge reads out of {GAUGE_FULL_SOLICITATIONS}
-        </span>
+        <span className="text-sm font-medium text-rfp-ink">left</span>
       </div>
 
-      <div
-        className="relative mt-3 h-2.5 overflow-hidden rounded-full bg-rfp-surface-sunken"
-        role="meter"
-        aria-valuenow={Math.round(pct)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={`OpenRouter credit remaining, about ${credit.solicitationsLeft} solicitations`}
-      >
+      <div className="relative mt-3 h-2.5 overflow-hidden rounded-full bg-rfp-surface-sunken">
         <div
           className="h-full rounded-full transition-[width] duration-500"
           style={{ width: `${pct}%`, background: tone }}
+          role="meter"
+          aria-valuenow={Number(credit.remaining.toFixed(2))}
+          aria-valuemin={0}
+          aria-valuemax={GAUGE_CEILING}
+          aria-label="OpenRouter credit remaining"
         />
         {/* A gap punched through the fill rather than a line drawn over it. A
             grey line on a coloured bar disappears at exactly the moment it
-            matters, which is when the fill has reached it. */}
-        <span
-          className="absolute top-0 h-full w-0.5 bg-rfp-page"
-          style={{ left: `${lowAt}%` }}
-          aria-hidden
-        />
+            matters, which is when the fill has reached it. Hidden when it would
+            sit on the very edge and imply the threshold is at the top or bottom
+            of the tank. */}
+        {lowAt > 1.5 && lowAt < 98.5 && (
+          <span
+            className="absolute top-0 h-full w-0.5 bg-rfp-page"
+            style={{ left: `${lowAt}%` }}
+            aria-hidden
+          />
+        )}
       </div>
 
-      {/* The threshold labelled under the track. A warning that appears without
-          saying where the line was drawn reads as arbitrary, and the first
-          question anyone asks a warning is "says who". */}
-      <div className="relative mt-1 h-3.5" aria-hidden>
-        <span
-          className="absolute top-0 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium tabular-nums text-rfp-ink-muted"
-          style={{ left: `${lowAt}%` }}
-        >
-          {LOW_AT_SOLICITATIONS} left
-        </span>
-      </div>
+      {lowAt > 1.5 && lowAt < 98.5 && (
+        // The threshold labelled under the track. A warning that appears without
+        // saying where the line was drawn reads as arbitrary, and the first
+        // question anyone asks a warning is "says who".
+        <div className="relative mt-1 h-3.5" aria-hidden>
+          <span
+            className="absolute top-0 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium tabular-nums text-rfp-ink-muted"
+            style={{ left: `${lowAt}%` }}
+          >
+            warns below ${lowDollars.toFixed(2)}
+          </span>
+        </div>
+      )}
 
-      <p className="mt-0.5 text-xs text-rfp-ink-muted">
-        About ${COST_PER_SOLICITATION.toFixed(2)} a solicitation, measured across real runs. Below
-        that mark it starts warning you.
+      {/* Deliberately an estimate, and deliberately not the headline. It is
+          division by an average, and a long solicitation costs more than an
+          average one. */}
+      <p className="mt-1.5 text-xs leading-relaxed text-rfp-ink-muted">
+        {credit.solicitationsLeft === 0 ? (
+          <>Not enough for another one at that average, which was measured across real runs.</>
+        ) : (
+          <>
+            Roughly {credit.solicitationsLeft} more{" "}
+            {credit.solicitationsLeft === 1 ? "solicitation" : "solicitations"} at that average,
+            which was measured across real runs. Long documents cost more, so treat it as a guide
+            rather than a count.
+          </>
+        )}{" "}
+        The bar fills at ${GAUGE_CEILING.toFixed(2)} and stays on that scale however much you add.
       </p>
 
       {message && (
