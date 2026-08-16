@@ -33,6 +33,7 @@ export function FolderBar({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [creating, setCreating] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [renaming, setRenaming] = useState<FolderRow | null>(null);
   const [deleting, setDeleting] = useState<FolderRow | null>(null);
@@ -43,6 +44,8 @@ export function FolderBar({
     const params = new URLSearchParams(window.location.search);
     if (folderId) params.set("folder", folderId);
     else params.delete("folder");
+    // A menu belongs to the folder that opened it.
+    setMenuOpen(false);
     router.push(`/dashboard${params.toString() ? `?${params}` : ""}`);
   };
 
@@ -92,7 +95,7 @@ export function FolderBar({
     <div className="mt-6">
       {/* Scrolls sideways rather than wrapping: a folder row that grows to three
           lines pushes the queue off the screen, and the queue is the point. */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex flex-wrap gap-2 pb-1">
         <button onClick={() => go(null)} className={chip(active === null)}>
           All
           <span className="tabular text-xs opacity-60">{unfiled + Object.values(counts).reduce((a, b) => a + b, 0)}</span>
@@ -105,6 +108,17 @@ export function FolderBar({
           </button>
         ))}
 
+        {active && (
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-expanded={menuOpen}
+            aria-label="Manage this folder"
+            className="press inline-flex min-h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-rfp-border text-sm text-rfp-ink-muted hover:bg-rfp-surface-sunken hover:text-rfp-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
+          >
+            &#183;&#183;&#183;
+          </button>
+        )}
+
         <button
           onClick={() => setCreating(true)}
           className="press inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-rfp-border-strong px-3 text-sm font-medium text-rfp-ink-muted hover:bg-rfp-surface-sunken hover:text-rfp-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
@@ -114,19 +128,23 @@ export function FolderBar({
         </button>
       </div>
 
-      {/* Rename and delete only appear for the folder you are looking at, so
-          the row stays a row instead of sprouting a menu per chip. */}
-      {active && (
+      {/* Behind a menu, not on the page.
+
+          Rename and Delete sat in their own row the whole time a folder was
+          selected: two permanent links, one of them destructive and red, taking
+          a line of the screen to offer something used once in the life of a
+          folder. Managing a folder is rare; looking at one is constant. */}
+      {active && menuOpen && (
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
           <button
-            onClick={() => setRenaming(folders.find((f) => f.id === active) ?? null)}
-            className="press font-medium text-rfp-ink-muted underline underline-offset-2 hover:text-rfp-ink"
+            onClick={() => { setRenaming(folders.find((f) => f.id === active) ?? null); setMenuOpen(false); }}
+            className="press min-h-11 font-medium text-rfp-ink-muted underline underline-offset-2 hover:text-rfp-ink"
           >
             Rename
           </button>
           <button
-            onClick={() => setDeleting(folders.find((f) => f.id === active) ?? null)}
-            className="press font-medium text-rfp-critical underline underline-offset-2 hover:opacity-80"
+            onClick={() => { setDeleting(folders.find((f) => f.id === active) ?? null); setMenuOpen(false); }}
+            className="press min-h-11 font-medium text-rfp-critical underline underline-offset-2 hover:opacity-80"
           >
             Delete folder
           </button>
