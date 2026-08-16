@@ -152,7 +152,7 @@ function LoginForm() {
       </div>
 
       {/* Right - what the tool does */}
-      <div className="relative hidden items-center justify-center overflow-hidden border-l border-rfp-border bg-rfp-black px-16 lg:flex">
+      <div className="relative hidden items-center justify-center overflow-hidden border-l border-rfp-border bg-rfp-ink px-16 lg:flex">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.05]"
           style={{

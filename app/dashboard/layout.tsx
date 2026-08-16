@@ -33,6 +33,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     { count: reviewCount },
     { count: pendingCount },
     { count: dueSoonCount },
+    { count: acceptedCount },
   ] = await Promise.all([
     supabase.from("rfps").select("*", { count: "exact", head: true }).neq("status", "no_go"),
     supabase
@@ -46,9 +47,20 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       .eq("is_complete", false)
       .not("due_at", "is", null)
       .lte("due_at", isoDaysFromNow(7)),
+    // Bids Khaled has accepted. Not the desk's verdict: a proposal exists
+    // because a person said to write one.
+    supabase
+      .from("rfps")
+      .select("*", { count: "exact", head: true })
+      .not("human_verdict", "is", null)
+      .neq("human_verdict", "no_go"),
   ]);
 
-  const counts: NavCounts = { queue: queueCount ?? 0, review: reviewCount ?? 0 };
+  const counts: NavCounts = {
+    queue: queueCount ?? 0,
+    review: reviewCount ?? 0,
+    proposals: acceptedCount ?? 0,
+  };
   const attention: AttentionCounts = {
     pendingTriage: pendingCount ?? 0,
     dueSoon: dueSoonCount ?? 0,

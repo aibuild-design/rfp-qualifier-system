@@ -25,9 +25,19 @@ export const fieldClass =
   "disabled:cursor-not-allowed disabled:opacity-50";
 
 /** Primary action. 44px tall, real focus ring, honest disabled state. */
+/**
+ * A primary button, visible in both themes.
+ *
+ * It used to be `bg-rfp-ink` with white text, which is a strong button on a
+ * light page and nearly invisible on a dark one: rfp-black is within a few
+ * percent of the dark page colour, so the most important action on a screen
+ * read as a faint rectangle. `bg-rfp-ink` inverts with the theme instead -
+ * dark button on light, light button on dark - so it is the loudest thing in
+ * the room either way.
+ */
 export const buttonClass =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-rfp-black px-4 " +
-  "text-sm font-semibold text-white press hover:bg-rfp-black-2 " +
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-rfp-ink px-5 " +
+  "text-[15px] font-semibold text-rfp-surface press hover:opacity-90 " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold " +
   "focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 

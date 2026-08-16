@@ -42,7 +42,7 @@ export function EdgeCaseList({ items }: { items: EdgeCaseRow[] }) {
           <div className="mt-3 flex items-center gap-2">
             <button
               onClick={() => resolve(c.id, "approved")}
-              className="rounded-lg bg-rfp-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-rfp-black-2 disabled:opacity-50"
+              className="rounded-lg bg-rfp-ink px-3 py-1.5 text-xs font-semibold text-rfp-surface hover:opacity-90 disabled:opacity-50"
             >
               Approve rule
             </button>
@@ -120,7 +120,7 @@ export function PortalRules({ rules }: { rules: PortalRuleRow[] }) {
         <button
           onClick={submit}
           disabled={pending}
-          className="rounded-lg bg-rfp-black px-3.5 py-2 text-sm font-semibold text-white hover:bg-rfp-black-2 disabled:opacity-50"
+          className="rounded-lg bg-rfp-ink px-3.5 py-2 text-sm font-semibold text-rfp-surface hover:opacity-90 disabled:opacity-50"
         >
           Add
         </button>

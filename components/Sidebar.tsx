@@ -24,6 +24,7 @@ import {
 const ICONS = {
   overview: PulseIcon,
   queue: GridIcon,
+  proposals: DocumentIcon,
   new: PlusIcon,
   library: DocumentIcon,
   review: CheckCircleIcon,

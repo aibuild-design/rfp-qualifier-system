@@ -143,7 +143,7 @@ export function StandingDocsManager({ initial }: { initial: Doc[] }) {
           />
         </label>
         <label
-          className={`press inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-rfp-black px-4 text-sm font-semibold text-white hover:bg-rfp-black-2 ${busy ? "pointer-events-none opacity-60" : ""}`}
+          className={`press inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-rfp-ink px-4 text-sm font-semibold text-rfp-surface hover:opacity-90 ${busy ? "pointer-events-none opacity-60" : ""}`}
         >
           {busy ? "Uploading…" : "Choose file"}
           <input

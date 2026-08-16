@@ -237,7 +237,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
 
                 <Link
                   href="/dashboard/new"
-                  className="press lift mt-8 inline-flex min-h-11 items-center rounded-lg bg-rfp-black px-5 text-sm font-semibold text-white hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold focus-visible:ring-offset-2"
+                  className="press lift mt-8 inline-flex min-h-11 items-center rounded-lg bg-rfp-ink px-5 text-sm font-semibold text-rfp-surface hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold focus-visible:ring-offset-2"
                 >
                   Add the first one
                 </Link>

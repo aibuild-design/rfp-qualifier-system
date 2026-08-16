@@ -43,7 +43,7 @@ export function NewSolicitationForm() {
         <div className="mt-4 flex gap-2">
           <button
             onClick={() => router.push(`/dashboard/rfps/${done.id}`)}
-            className="rounded-lg bg-rfp-black px-3.5 py-2 text-sm font-semibold text-white hover:bg-rfp-black-2"
+            className="rounded-lg bg-rfp-ink px-3.5 py-2 text-sm font-semibold text-rfp-surface hover:opacity-90"
           >
             Open it
           </button>
@@ -91,7 +91,7 @@ export function NewSolicitationForm() {
             type="button"
             onClick={() => setMode(m)}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium press ${
-              mode === m ? "bg-rfp-black text-white" : "text-rfp-ink-secondary hover:bg-rfp-surface-sunken"
+              mode === m ? "bg-rfp-ink text-rfp-surface" : "text-rfp-ink-secondary hover:bg-rfp-surface-sunken"
             }`}
           >
             {m === "link" ? "Link to the document" : m === "upload" ? "Upload a file" : "Paste the text"}
@@ -146,7 +146,7 @@ export function NewSolicitationForm() {
                 setReading(false);
               }
             }}
-            className="block w-full text-sm text-rfp-ink-secondary file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-lg file:border-0 file:bg-rfp-black file:px-4 file:text-sm file:font-semibold file:text-white hover:file:bg-rfp-black-2"
+            className="block w-full text-sm text-rfp-ink-secondary file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-lg file:border-0 file:bg-rfp-ink file:px-4 file:text-sm file:font-semibold file:text-rfp-surface hover:file:bg-rfp-black-2"
           />
           {reading && <p className="mt-2 text-xs text-rfp-ink-muted">Reading {fileName}…</p>}
           {!reading && fileName && form.document_text && (
@@ -172,7 +172,7 @@ export function NewSolicitationForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-rfp-black py-2.5 text-sm font-semibold text-white press hover:bg-rfp-black-2 disabled:opacity-50"
+        className="w-full rounded-lg bg-rfp-ink py-2.5 text-sm font-semibold text-rfp-surface press hover:opacity-90 disabled:opacity-50"
       >
         {pending ? "Submitting…" : "Submit for triage"}
       </button>

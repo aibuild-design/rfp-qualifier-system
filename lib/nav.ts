@@ -7,11 +7,11 @@
  * server components without pulling a component tree along with it.
  */
 
-export type NavCountKey = "queue" | "review";
+export type NavCountKey = "queue" | "review" | "proposals";
 
 export type NavItem = {
   /** Stable id - also the icon lookup key. */
-  key: "overview" | "queue" | "library" | "review" | "settings";
+  key: "overview" | "queue" | "proposals" | "library" | "review" | "settings";
   label: string;
   href: string;
   /** Which live count to show as a badge, if any. */
@@ -53,6 +53,16 @@ export const NAV_GROUPS: NavGroup[] = [
         countKey: "queue",
         countTone: "neutral",
         alsoMatches: ["/dashboard/rfps"],
+      },
+      {
+        // Deciding and writing are different jobs, days apart, and were sharing
+        // one page. The queue is where a bid is judged; this is where the ones
+        // already accepted are worked on.
+        key: "proposals",
+        label: "Proposals",
+        href: "/dashboard/proposals",
+        countKey: "proposals",
+        countTone: "neutral",
       },
     ],
   },

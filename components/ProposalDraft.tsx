@@ -58,7 +58,7 @@ export function ProposalDraft({
             <>
               <a
                 href={`/api/rfps/${rfpId}/docx`}
-                className="press rounded-lg bg-rfp-black px-3.5 py-2 text-sm font-semibold text-white hover:bg-rfp-black-2"
+                className="press rounded-lg bg-rfp-ink px-4 py-2.5 text-sm font-semibold text-rfp-surface hover:opacity-90"
               >
                 Download .docx
               </a>
@@ -70,15 +70,7 @@ export function ProposalDraft({
                 {pending ? "Building…" : "Rebuild"}
               </button>
             </>
-          ) : (
-            <button
-              onClick={rebuild}
-              disabled={pending}
-              className="press rounded-lg bg-rfp-black px-3.5 py-2 text-sm font-semibold text-white hover:bg-rfp-black-2 disabled:opacity-50"
-            >
-              {pending ? "Building…" : "Build the draft"}
-            </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -111,6 +103,19 @@ export function ProposalDraft({
         <p className="mt-2 text-xs font-medium" style={{ color: "var(--rfp-good)" }}>
           {message}
         </p>
+      )}
+
+      {/* The only action here when no draft exists, so it is the full width of
+          the panel rather than a small dark rectangle in the top corner. That
+          is where it was, and it was pressed and reported as doing nothing. */}
+      {sections.length === 0 && (
+        <button
+          onClick={rebuild}
+          disabled={pending}
+          className="press mt-4 flex min-h-14 w-full items-center justify-center rounded-xl bg-rfp-ink text-base font-semibold text-rfp-surface hover:opacity-90 disabled:opacity-50"
+        >
+          {pending ? "Building…" : "Build the draft"}
+        </button>
       )}
 
       {libraryCount === 0 && (

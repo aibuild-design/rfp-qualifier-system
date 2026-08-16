@@ -40,7 +40,7 @@ export function LanguageLibrary({ blocks }: { blocks: LanguageBlockRow[] }) {
       <div className="mb-4 flex justify-end">
         <button
           onClick={() => setAdding((v) => !v)}
-          className="rounded-lg bg-rfp-black px-3.5 py-2 text-sm font-semibold text-white hover:bg-rfp-black-2"
+          className="rounded-lg bg-rfp-ink px-3.5 py-2 text-sm font-semibold text-rfp-surface hover:opacity-90"
         >
           {adding ? "Cancel" : "Add language block"}
         </button>
@@ -102,7 +102,7 @@ export function LanguageLibrary({ blocks }: { blocks: LanguageBlockRow[] }) {
             <button
               onClick={submit}
               disabled={pending}
-              className="rounded-lg bg-rfp-black px-3.5 py-2 text-sm font-semibold text-white hover:bg-rfp-black-2 disabled:opacity-50"
+              className="rounded-lg bg-rfp-ink px-3.5 py-2 text-sm font-semibold text-rfp-surface hover:opacity-90 disabled:opacity-50"
             >
               Save
             </button>

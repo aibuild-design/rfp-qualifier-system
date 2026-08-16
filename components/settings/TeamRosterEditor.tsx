@@ -127,7 +127,7 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
         />
         <button
           onClick={addMember}
-          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-rfp-black px-4 text-sm font-semibold text-white press hover:bg-rfp-black-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
+          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-rfp-ink px-4 text-sm font-semibold text-rfp-surface press hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
         >
           Add
         </button>
