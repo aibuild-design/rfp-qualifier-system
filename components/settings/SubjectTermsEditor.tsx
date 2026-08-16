@@ -13,10 +13,14 @@ import { DEFAULT_IGNORE_TERMS, DEFAULT_SUBJECT_TERMS } from "@/lib/intake-filter
  * looks exactly like a slow week.
  *
  * Three controls rather than one, because they are one decision. Reading the
- * body catches the forward whose subject says "thought of you", and it also
- * catches every newsletter that mentions an RFP in passing, at eighteen cents
- * each. The ignore list is the brake that makes the switch safe to leave on, so
- * it sits next to it rather than in some other section.
+ * body catches the forward whose subject says "thought of you"; the ignore list
+ * is the brake for anything noisy that follows, so it sits beside the switch
+ * rather than in some other section.
+ *
+ * The ignore list ships empty. Broad terms are tempting and wrong here: this
+ * mailbox mostly receives aggregator alerts, which carry "unsubscribe from" in
+ * the footer and often call themselves newsletters, and the list is checked
+ * against the body. A term added before seeing the mail drops the mail.
  */
 export function IntakeFilterEditor({
   initialTerms,
@@ -73,16 +77,16 @@ export function IntakeFilterEditor({
             Also read the message body
           </span>
           <span className="mt-0.5 block text-xs leading-relaxed text-rfp-ink-muted">
-            Catches a forward whose subject says nothing useful. Also catches newsletters, which
-            is what the ignore list below is for.
+            Catches a forward whose subject says nothing useful. If something noisy starts
+            arriving, add a narrow term to the ignore list below rather than turning this off.
           </span>
         </span>
       </label>
 
       <ChipList
         label="Never triage"
-        hint="Checked last, against subject and body together, so it overrules a match."
-        emptyWarning="Empty. Nothing is excluded."
+        hint="Checked against subject and body together, and checked last, so it overrules a match. Keep terms narrow: aggregator footers contain words like unsubscribe and newsletter, so a broad term here silently drops real solicitations."
+        emptyWarning="Empty. Nothing is excluded, which is the safe default."
         placeholder="webinar"
         column="email_ignore_terms"
         initial={initialIgnore}

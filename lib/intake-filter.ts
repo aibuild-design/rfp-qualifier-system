@@ -16,17 +16,20 @@ export const DEFAULT_SUBJECT_TERMS = [
 /**
  * Substrings that disqualify an email even when it matched.
  *
- * Only meaningful once the body is being read: a subject line is short enough
- * that a false positive is rare, but a body is long and full of other people's
- * words, and a procurement newsletter mentioning an RFP in passing costs the
- * same to triage as a real one.
+ * Deliberately empty.
+ *
+ * The obvious defaults - unsubscribe, newsletter, webinar - are reasoned from a
+ * general inbox that happens to receive solicitations. This is a dedicated
+ * address whose main traffic is aggregator alerts, and almost every one of
+ * those carries "unsubscribe from" in its footer. Since the ignore list is
+ * checked against the body, those defaults would have dropped the mail the desk
+ * exists to catch, silently, because an email that never matches is never
+ * fetched and a missed opportunity looks exactly like a quiet week.
+ *
+ * The mechanism is worth having and costs nothing sitting unused. Guessing at
+ * its contents before seeing the mail is what was wrong.
  */
-export const DEFAULT_IGNORE_TERMS = [
-  "unsubscribe from",
-  "webinar",
-  "newsletter",
-  "survey invitation",
-] as const;
+export const DEFAULT_IGNORE_TERMS: readonly string[] = [];
 
 export type IntakeFilter = {
   terms: readonly string[];
