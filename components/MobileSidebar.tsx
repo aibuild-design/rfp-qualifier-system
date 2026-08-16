@@ -131,7 +131,7 @@ export function MobileSidebar({
                 if ((e.target as HTMLElement).closest("a[href]"))
                   setOpen(false);
               }}
-              className="drawer-panel absolute inset-y-0 left-0 flex w-[17rem] max-w-[85vw] flex-col overflow-hidden bg-rfp-black text-white outline-none"
+              className="drawer-panel absolute inset-y-0 left-0 flex w-[17rem] max-w-[85vw] flex-col overflow-hidden border-r border-white/10 bg-rfp-black text-white outline-none"
             >
               <button
                 type="button"

@@ -11,16 +11,16 @@
   color-scheme: light;
 
   /* surfaces */
-  --rfp-page: #fafafa;
+  --rfp-page: #f1f0ec;
   --rfp-surface: #ffffff;
   --rfp-surface-sunken: #f2f2f0;
-  --rfp-border: #e7e5e1;
-  --rfp-border-strong: #d4d1ca;
+  --rfp-border: #dbd8d1;
+  --rfp-border-strong: #c3bfb6;
 
   /* ink */
   --rfp-ink: #0a0a0a;
   --rfp-ink-secondary: #52524d;
-  --rfp-ink-muted: #8f8d84;
+  --rfp-ink-muted: #6e6c64;
 
   /* brand */
   --rfp-black: #0a0a0a;
@@ -75,11 +75,11 @@
   :root:not([data-theme="light"]) {
     color-scheme: dark;
 
-    --rfp-page: #131211;
+    --rfp-page: #0d0c0b;
     --rfp-surface: #1b1a18;
     --rfp-surface-sunken: #232220;
-    --rfp-border: #2f2c29;
-    --rfp-border-strong: #443f3a;
+    --rfp-border: #38352f;
+    --rfp-border-strong: #4a463f;
 
     --rfp-ink: #f2efe9;
     --rfp-ink-secondary: #b6b1a7;
@@ -104,11 +104,11 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --rfp-page: #131211;
+  --rfp-page: #0d0c0b;
   --rfp-surface: #1b1a18;
   --rfp-surface-sunken: #232220;
-  --rfp-border: #2f2c29;
-  --rfp-border-strong: #443f3a;
+  --rfp-border: #38352f;
+  --rfp-border-strong: #4a463f;
 
   --rfp-ink: #f2efe9;
   --rfp-ink-secondary: #b6b1a7;

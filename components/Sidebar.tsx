@@ -49,8 +49,12 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
 
+  // The rail carries an explicit right edge. It is brand black and the dark page
+  // is nearly the same value, so without a border the whole left side of the app
+  // dissolved into one field. A border defines it without moving the brand
+  // colour, which a lighter rail would have.
   return (
-    <aside className="hidden w-64 shrink-0 flex-col overflow-hidden bg-rfp-black text-white lg:flex">
+    <aside className="hidden w-64 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-rfp-black text-white lg:flex">
       <RailContent userEmail={userEmail} counts={counts} attention={attention} pathname={pathname} />
     </aside>
   );

@@ -77,7 +77,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           sliding underneath it. */}
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         <Topbar userEmail={user.email ?? null} counts={counts} attention={attention} />
-        <main className="flex-1 p-5 lg:p-8">
+        {/* Capped and centred. Without a ceiling the queue stretched to 2240px on a
+            2560 monitor, so a table row ran the full width of the glass and the
+            eye had to travel from a title on the far left to a due date on the
+            far right. Pages that want to be narrower still set their own
+            max-width inside this. */}
+        <main className="mx-auto w-full max-w-[1440px] flex-1 p-5 lg:p-8">
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
