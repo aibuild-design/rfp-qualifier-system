@@ -11,7 +11,7 @@
   color-scheme: light;
 
   /* surfaces */
-  --rfp-page: #f1f0ec;
+  --rfp-page: #e8e6df;
   --rfp-surface: #ffffff;
   --rfp-surface-sunken: #f2f2f0;
   --rfp-border: #dbd8d1;
@@ -20,7 +20,7 @@
   /* ink */
   --rfp-ink: #0a0a0a;
   --rfp-ink-secondary: #52524d;
-  --rfp-ink-muted: #6e6c64;
+  --rfp-ink-muted: #615f58;
 
   /* brand */
   --rfp-black: #0a0a0a;
@@ -30,13 +30,13 @@
      #ffbd36 scores 11.9:1 on the near-black surfaces and only 1.7:1 on white,
      so it is a dark-surface colour only. --rfp-gold is the accessible sibling
      for text, borders and focus rings on light surfaces at 5.0:1. */
-  --rfp-gold: #96650f;
+  --rfp-gold: #7d540c;
   --rfp-gold-bright: #ffbd36;
   --rfp-cream: #f5f2ea;
 
   /* status (fixed, never themed - kept distinct from --rfp-gold so verdict/
      deadline badges don't visually blend with the brand accent) */
-  --rfp-good: #1b8a5a;
+  --rfp-good: #146b45;
   --rfp-warning: #d9962c;
   --rfp-serious: #d97a3a;
   --rfp-critical: #c23b3b;
@@ -83,7 +83,7 @@
 
     --rfp-ink: #f2efe9;
     --rfp-ink-secondary: #b6b1a7;
-    --rfp-ink-muted: #8b867c;
+    --rfp-ink-muted: #9d988d;
 
     --rfp-black: #0b0a09;
     --rfp-black-2: #171614;
@@ -112,7 +112,7 @@
 
   --rfp-ink: #f2efe9;
   --rfp-ink-secondary: #b6b1a7;
-  --rfp-ink-muted: #8b867c;
+  --rfp-ink-muted: #9d988d;
 
   --rfp-black: #0b0a09;
   --rfp-black-2: #171614;
@@ -273,6 +273,37 @@ body {
   :root[data-theme="dark"] .brand-on-dark {
     display: block;
   }
+}
+
+/* Cards read as objects, not as regions of the page.
+
+   Contrast alone could not do this: a card is white, the page is near-white, and
+   pushing them further apart turns the background grey before the edge becomes
+   obvious. A shadow separates them by depth instead of by value, which is what
+   the eye actually uses, and it costs no contrast.
+
+   Targeted at the pattern every card in the app already uses rather than a new
+   class, so nothing has to be retrofitted component by component. */
+.bg-rfp-surface.border {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 1px 1px rgb(0 0 0 / 0.03);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .bg-rfp-surface.border {
+    /* On a dark page a drop shadow is invisible, so the lift comes from a light
+       top edge instead: the same trick a raised surface uses in daylight. */
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.04),
+      0 1px 2px rgb(0 0 0 / 0.4);
+  }
+}
+
+:root[data-theme="dark"] .bg-rfp-surface.border {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 1px 2px rgb(0 0 0 / 0.4);
 }
 
 /* Anything clickable. Gives a real, immediate response to a press - which on
