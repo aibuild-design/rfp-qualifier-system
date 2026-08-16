@@ -270,6 +270,26 @@ export interface Database {
         Relationships: [];
       };
 
+      question_bank: {
+        Row: {
+          id: string;
+          lane: QuestionLane;
+          question_text: string;
+          /** Lowercased and stripped to letters and digits. Generated in the
+           *  database, so it is never written by a caller. */
+          normalised: string;
+          times_approved: number;
+          first_seen_at: string;
+          last_approved_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["question_bank"]["Row"]> & {
+          lane: QuestionLane;
+          question_text: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["question_bank"]["Row"]>;
+        Relationships: [];
+      };
+
       rfp_questions: {
         Row: {
           id: string;

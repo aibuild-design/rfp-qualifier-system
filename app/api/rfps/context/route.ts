@@ -21,15 +21,26 @@ export async function GET(req: NextRequest) {
 
   const supabase = createServiceRoleClient();
 
-  const [{ data: orgProfile }, { data: sectors }, { data: portalRules }] = await Promise.all([
-    supabase.from("org_profile").select("*").eq("id", true).maybeSingle(),
-    supabase.from("sector_experience").select("sector, years_experience, engagement_count, notes").order("sector"),
-    supabase.from("portal_rules").select("portal_name, rule_text").order("portal_name"),
-  ]);
+  const [{ data: orgProfile }, { data: sectors }, { data: portalRules }, { data: bank }] =
+    await Promise.all([
+      supabase.from("org_profile").select("*").eq("id", true).maybeSingle(),
+      supabase.from("sector_experience").select("sector, years_experience, engagement_count, notes").order("sector"),
+      supabase.from("portal_rules").select("portal_name, rule_text").order("portal_name"),
+      // Capped and ranked by how often Khaled has approved it. The bank is what
+      // makes module 7 improve with use, but pasting an unbounded list into
+      // every prompt would cost more each week and eventually crowd out the
+      // solicitation it is supposed to be helping read.
+      supabase
+        .from("question_bank")
+        .select("lane, question_text, times_approved")
+        .order("times_approved", { ascending: false })
+        .limit(40),
+    ]);
 
   return NextResponse.json({
     org_profile: orgProfile ?? null,
     sector_experience: sectors ?? [],
     portal_rules: portalRules ?? [],
+    question_bank: bank ?? [],
   });
 }

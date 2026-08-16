@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser, safeError, type ActionResult } from "@/lib/auth";
+import type { QuestionLane } from "@/lib/supabase/types";
 import { assembleDraft, DEFAULT_SECTIONS } from "@/lib/proposal";
 import { recommendTeam } from "@/lib/team-match";
 
@@ -246,22 +247,70 @@ export async function confirmAssignment(rfpId: string, assignmentId: string): Pr
 
 /** Approving a question is a human act and is recorded as one. Sending is
  *  separate and not wired: the SOW requires Khaled to send the records-request
- *  lane himself, and there is no mail credential in this build. */
+ *  lane himself, and there is no mail credential in this build.
+ *
+ *  Approval is also the only learning signal in the system. A drafted question
+ *  is the desk's opinion; an approved one is a person saying it was worth
+ *  asking, so that is the moment it enters the bank. */
 export async function approveQuestion(rfpId: string, questionId: string): Promise<ActionResult> {
   const { supabase, user, denied } = await requireUser();
   if (denied) return denied;
 
-  const { error } = await supabase
+  const { data: question, error } = await supabase
     .from("rfp_questions")
     .update({
       status: "approved",
       approved_at: new Date().toISOString(),
       approved_by: user?.email ?? null,
     })
-    .eq("id", questionId);
+    .eq("id", questionId)
+    .select("lane, question_text")
+    .maybeSingle();
   if (error) return safeError("approve the question", error);
+
+  if (question) await rememberQuestion(supabase, question.lane, question.question_text);
+
   revalidatePath(`/dashboard/rfps/${rfpId}`);
   return { ok: true };
+}
+
+/**
+ * Add an approved question to the bank, or count it again if it is already
+ * there.
+ *
+ * Deliberately never fails the approval. Banking is a side benefit, and a
+ * unique-constraint race between two tabs approving the same question must not
+ * surface to the person as "could not approve", which would be both wrong and
+ * alarming - the approval already succeeded by the time this runs.
+ */
+async function rememberQuestion(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  lane: QuestionLane,
+  text: string,
+): Promise<void> {
+  const normalised = text.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ");
+  try {
+    const { data: seen } = await supabase
+      .from("question_bank")
+      .select("id, times_approved")
+      .eq("lane", lane)
+      .eq("normalised", normalised)
+      .maybeSingle();
+
+    if (seen) {
+      await supabase
+        .from("question_bank")
+        .update({
+          times_approved: seen.times_approved + 1,
+          last_approved_at: new Date().toISOString(),
+        })
+        .eq("id", seen.id);
+      return;
+    }
+    await supabase.from("question_bank").insert({ lane, question_text: text.trim() });
+  } catch {
+    /* the approval stands either way */
+  }
 }
 
 /** Records that an approved question was sent by hand. No mail is dispatched
