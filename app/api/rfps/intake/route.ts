@@ -6,12 +6,6 @@ import { toTimestamp } from "@/lib/rfp";
 import { decideVerdict, thresholdsFromSettings, type Decision } from "@/lib/verdict";
 import { recommendTeam } from "@/lib/team-match";
 import { costLaneFrom } from "@/lib/cost-lane";
-import { assembleDraft, DEFAULT_SECTIONS, proposalFileName } from "@/lib/proposal";
-import { buildProposalDocx } from "@/lib/docx-export";
-import { caravannLogo } from "@/lib/brand-logo";
-import { caravannTemplate } from "@/lib/template-store";
-import { fillTemplate } from "@/lib/docx-fill";
-import { Packer } from "docx";
 import { scoreFromRubric, type RubricBreakdown, type RubricWeights } from "@/lib/rubric";
 import type { Database, TableInsert } from "@/lib/supabase/types";
 
@@ -530,115 +524,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // The draft comes back with the verdict so n8n can file it in the bid folder
-  // without a second round trip. Assembled here rather than in n8n because the
-  // language library and the section structure are the app's to own - n8n
-  // moves documents, it does not decide what is in them.
+  // No proposal is written here any more.
   //
-  // Only for bids worth pursuing. A no-go does not need a proposal, and writing
-  // one into the folder would suggest otherwise.
-  // Returned as a real Word file, not as text for something downstream to lay
-  // out. The formatting is the point: Caravann's three-line navy masthead with
-  // the rule beneath, the solicitation number and due date on the same line,
-  // Times New Roman, one-inch margins, the footer on every page. An evaluator
-  // sees the masthead before a word of the writing, and a proposal whose
-  // furniture does not match the firm's other submissions reads as assembled by
-  // someone else.
+  // It used to be assembled on arrival for every go and maybe, which meant a
+  // fourteen-section draft existed under bids Khaled had not looked at, let
+  // alone decided on, and the page showed him that draft before it showed him
+  // the decision he was there to make. Drafting is now something he asks for,
+  // after accepting the bid: `buildDraft` in the bid page's actions does the
+  // same assembly on the same library, so nothing was lost by removing it here.
   //
-  // Base64 so it survives a JSON response; n8n decodes it straight back to a
-  // .docx and files it. Uploaded that way Drive converts it to a Google Doc with
-  // the styling intact, which plain text could never do.
-  let proposal_docx: string | null = null;
-  let proposal_name: string | null = null;
-  if (body.status === "go" || body.status === "maybe") {
-    const [{ data: blocks }, { data: full }] = await Promise.all([
-      supabase.from("language_blocks").select("*"),
-      supabase.from("rfps").select("*").eq("id", rfpId).maybeSingle(),
-    ]);
-    if (full) {
-      const sections = assembleDraft(full, blocks ?? [], DEFAULT_SECTIONS).map((s, i) => ({
-        id: `s${i}`, rfp_id: rfpId, section_type: s.section_type, heading: s.heading,
-        body: s.body, status: s.status, sort_order: s.sort_order,
-        source_block_ids: s.source_block_ids, notes: s.notes,
-        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-      }));
-
-      // Persist them. These were already being assembled for the filed
-      // document and then thrown away, so the dashboard showed an empty
-      // proposal panel next to a Drive folder that already contained the
-      // finished draft - and "Build draft" existed to recompute, from the same
-      // inputs, what had just been computed and discarded.
-      //
-      // Suggestions, not decisions: sections land as `draft` or `needs_input`
-      // and approving one stays a person's click. Replaced on re-triage so an
-      // addendum rewrites the draft rather than appending a second copy.
-      const { error: wipeError } = await supabase
-        .from("rfp_proposal_sections")
-        .delete()
-        .eq("rfp_id", rfpId)
-        .neq("status", "approved");
-      if (wipeError) {
-        failures.push(`rfp_proposal_sections: ${wipeError.message}`);
-      } else {
-        // An approved section is Khaled's, and regenerating it would silently
-        // undo a review. Only the ones he has not signed off are rewritten.
-        const { data: kept } = await supabase
-          .from("rfp_proposal_sections")
-          .select("section_type")
-          .eq("rfp_id", rfpId);
-        const approved = new Set((kept ?? []).map((k) => k.section_type));
-        const rows = sections
-          .filter((sec) => !approved.has(sec.section_type))
-          .map(({ id: _id, created_at: _c, updated_at: _u, ...rest }) => rest);
-        if (rows.length > 0) {
-          const { error } = await supabase.from("rfp_proposal_sections").insert(rows);
-          if (error) failures.push(`rfp_proposal_sections (${rows.length} row(s)): ${error.message}`);
-        }
-      }
-      // Caravann's own file, filled - not a lookalike rebuilt from
-      // measurements. Everything the template already gets right stays right:
-      // the logo, the contents field, the page size, the spacing. Falls back to
-      // building the document from scratch if storage is unreachable, because a
-      // worse proposal beats losing the verdict with it.
-      const template = await caravannTemplate();
-      let buffer: Buffer;
-      if (template) {
-        const filled = await fillTemplate(template, {
-          title: full.title,
-          // Never external_id. That is n8n's dedupe key, and for an emailed
-          // solicitation it reads "gmail-19ff705ed2230acc" - an internal message
-          // id printed where the evaluator expects their own reference. Blank
-          // is honest when the document names no number; wrong is not.
-          solicitationNumber: full.solicitation_number?.trim() || "",
-          dueDate: full.due_at
-            ? new Date(full.due_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" })
-            : "[Insert due date]",
-          agencyName: full.client_agency,
-          // Straight from the solicitation. Anything the document did not state
-          // is left undefined, and the template's own red placeholder stays -
-          // a visible gap beats a blank an evaluator reads as an oversight.
-          agencyAddress: body.agency_address ?? undefined,
-          agencyPocName: body.agency_poc_name ?? undefined,
-          agencyPocPhone: body.agency_poc_phone ?? undefined,
-          agencyPocEmail: body.agency_poc_email ?? undefined,
-          // Keyed by the template's own heading text, so the assembler's
-          // section list and the template stay joined by something visible in
-          // both rather than by an index nobody would notice drifting.
-          sections: Object.fromEntries(
-            sections.filter((sec) => sec.body).map((sec) => [sec.heading, sec.body as string])
-          ),
-        });
-        if (filled.unreplaced.length) {
-          console.warn(`[intake ${body.external_id}] template placeholders left unfilled: ${filled.unreplaced.join(", ")}`);
-        }
-        buffer = filled.buffer;
-      } else {
-        buffer = Buffer.from(await Packer.toBuffer(buildProposalDocx(full, sections as never, (await caravannLogo()) ?? undefined)));
-      }
-      proposal_docx = buffer.toString("base64");
-      proposal_name = `${proposalFileName(full)}.docx`;
-    }
-  }
+  // The response shape is unchanged. A bid with no draft yet carries nulls, and
+  // n8n's filing branch already handles that by filing the solicitation alone -
+  // "Proposal as multipart" returns an empty list when proposal_docx is absent,
+  // and "Is there a file to file?" routes past the upload.
+  const proposal_docx: string | null = null;
+  const proposal_name: string | null = null;
 
   // `verdict` is separate from `status` on purpose. `status` is this endpoint's
   // success flag and always reads "ok" on the happy path; n8n was filing every

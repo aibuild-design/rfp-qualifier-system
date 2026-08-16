@@ -6,6 +6,7 @@ import { VerdictBadge } from "@/components/VerdictBadge";
 import { DemoTag } from "@/components/DemoBanner";
 import { ProvisionalTag } from "@/components/ProfileIncompleteBanner";
 import { HumanVerdict } from "@/components/HumanVerdict";
+import { BidSteps, bidSteps } from "@/components/BidSteps";
 import { QuestionMemo } from "@/components/QuestionMemo";
 import { TeamMatch } from "@/components/TeamMatch";
 import { ProposalDraft } from "@/components/ProposalDraft";
@@ -88,6 +89,13 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
   if (!rfp) {
     notFound();
   }
+
+  // A decision is Khaled's human verdict, not the desk's computed one. The desk
+  // never accepts anything on his behalf.
+  const decided = rfp.human_verdict !== null;
+  const declined = rfp.human_verdict === "no_go";
+  const accepted = decided && !declined;
+  const drafted = (sections ?? []).length > 0;
 
   const rubric = scoreFromRubric(rfp.score_breakdown as RubricBreakdown | null, scoring?.rubric_weights ?? undefined);
 
@@ -204,6 +212,16 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
             )}
           </div>
         )}
+
+        <BidSteps
+          steps={bidSteps({
+            scored: rfp.score_percent !== null,
+            decided,
+            declined,
+            drafted,
+            filed: rfp.filing_status === "filed",
+          })}
+        />
 
         <HumanVerdict
           rfpId={rfp.id}
@@ -412,6 +430,24 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         })}
       />
 
+      {/* Nothing below this point exists until Khaled has accepted the bid.
+          Drafting a proposal for a decision that has not been made puts the
+          last step of the process at the top of the page, and puts work under
+          bids that are about to be declined. */}
+      {!accepted ? (
+        <section className="mt-8 rounded-xl border border-dashed border-rfp-border-strong bg-rfp-surface px-5 py-4">
+          <h2 className="font-display text-sm font-semibold text-rfp-ink">
+            {declined ? "No proposal needed" : "The proposal comes next"}
+          </h2>
+          <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-rfp-ink-secondary">
+            {declined
+              ? "You declined this bid, so nothing is drafted and nothing is filed beyond the solicitation itself."
+              : "Accept this bid above and a Draft button appears here. Fourteen sections are built from Caravann's approved language, filed to the bid folder, and nothing is written before you decide."}
+          </p>
+        </section>
+      ) : (
+        <>
+
       {/* The cost lane (module 8). Sits directly above the draft because it is
           an instruction about how to price the thing below it, not a fact about
           the solicitation - those all live further up the page. */}
@@ -454,6 +490,8 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
 
       {/* Filing (module 10) */}
       <FilingStatusCard rfp={rfp} />
+        </>
+      )}
 
     </div>
   );
