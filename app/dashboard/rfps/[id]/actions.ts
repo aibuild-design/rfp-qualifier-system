@@ -233,6 +233,29 @@ export async function setComplianceComplete(
   return { ok: true };
 }
 
+/**
+ * Take a confirmed person back off the bid.
+ *
+ * Confirming was one-way, so a person put on a bid by mistake stayed on it, and
+ * the only route back was removing them and running the match again - which
+ * also discards every other decision on that panel.
+ *
+ * Returns them to "recommended" rather than deleting the row. They were a
+ * sensible suggestion before being confirmed and they still are; deleting would
+ * lose the match reason and the score that explained why.
+ */
+export async function unconfirmAssignment(rfpId: string, assignmentId: string): Promise<ActionResult> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
+  const { error } = await supabase
+    .from("rfp_team_assignments")
+    .update({ status: "recommended" })
+    .eq("id", assignmentId);
+  if (error) return safeError("take them off the bid", error);
+  revalidatePath(`/dashboard/rfps/${rfpId}`);
+  return { ok: true };
+}
+
 export async function confirmAssignment(rfpId: string, assignmentId: string): Promise<ActionResult> {
   const { supabase, denied } = await requireUser();
   if (denied) return denied;

@@ -223,14 +223,6 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
           })}
         />
 
-        <HumanVerdict
-          rfpId={rfp.id}
-          computed={rfp.status}
-          current={rfp.human_verdict}
-          currentNote={rfp.human_verdict_note}
-          decidedAt={rfp.human_verdict_at}
-        />
-
         {rfp.source_url && (
           <a
             href={rfp.source_url}
@@ -503,6 +495,22 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
       <FilingStatusCard rfp={rfp} />
         </>
       )}
+
+      {/* The decision, last. It used to sit in the header behind a link reading
+          "Do you agree with this verdict?", which put the one thing only a
+          person can do above everything that informs it, and hid it behind a
+          click. The page now reads top down: what the desk found, then what you
+          decide. */}
+      <section className="mt-10 border-t-2 border-rfp-border-strong pt-6">
+        <HumanVerdict
+          rfpId={rfp.id}
+          computed={rfp.status}
+          current={rfp.human_verdict}
+          currentNote={rfp.human_verdict_note}
+          decidedAt={rfp.human_verdict_at}
+        />
+
+      </section>
 
     </div>
   );

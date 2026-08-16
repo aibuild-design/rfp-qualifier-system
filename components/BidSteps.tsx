@@ -123,9 +123,23 @@ export function ReadyToDraft({
   unconfirmedTeam: number;
   openCompliance: number;
 }) {
+  // Mandatory and optional are not decoration. Compliance is the only one that
+  // loses a bid on its own: a missed page limit or a wrong submission method
+  // gets a good proposal thrown out unopened. Questions and team are judgement,
+  // and plenty of bids go out without asking anything.
   const rows = [
     {
+      label: "Compliance worked through",
+      mandatory: true,
+      done: openCompliance === 0,
+      detail:
+        openCompliance === 0
+          ? "Every item ticked."
+          : `${openCompliance} item${openCompliance === 1 ? "" : "s"} not ticked yet.`,
+    },
+    {
       label: "Questions decided",
+      mandatory: false,
       done: openQuestions === 0,
       detail:
         openQuestions === 0
@@ -134,21 +148,15 @@ export function ReadyToDraft({
     },
     {
       label: "Team confirmed",
+      mandatory: false,
       done: unconfirmedTeam === 0,
       detail:
         unconfirmedTeam === 0
           ? "Nobody is left as a suggestion."
           : `${unconfirmedTeam} suggested, none confirmed yet.`,
     },
-    {
-      label: "Compliance worked through",
-      done: openCompliance === 0,
-      detail:
-        openCompliance === 0
-          ? "Every item ticked."
-          : `${openCompliance} item${openCompliance === 1 ? "" : "s"} not ticked yet.`,
-    },
   ];
+  const openMandatory = rows.filter((r) => r.mandatory && !r.done).length;
   const open = rows.filter((r) => !r.done).length;
 
   return (
@@ -157,7 +165,9 @@ export function ReadyToDraft({
       <p className="mt-0.5 text-xs text-rfp-ink-muted">
         {open === 0
           ? "Nothing outstanding. Drafting now uses everything you have decided."
-          : "None of this blocks drafting. It is what the draft will not know about if you go now."}
+          : openMandatory > 0
+            ? "Nothing here blocks you, but the mandatory line is the one that loses bids on a technicality."
+            : "Only optional items left. These are judgement calls, and plenty of bids go out without them."}
       </p>
       <ul className="mt-3 divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
         {rows.map((row) => (
@@ -170,6 +180,15 @@ export function ReadyToDraft({
               {row.done ? "\u2713" : "\u25cb"}
             </span>
             <span className="text-sm font-medium text-rfp-ink">{row.label}</span>
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest"
+              style={{
+                color: row.mandatory ? "var(--rfp-warning)" : "var(--rfp-ink-muted)",
+                background: "var(--rfp-surface-sunken)",
+              }}
+            >
+              {row.mandatory ? "Mandatory" : "Optional"}
+            </span>
             <span className="text-xs text-rfp-ink-muted">{row.detail}</span>
           </li>
         ))}

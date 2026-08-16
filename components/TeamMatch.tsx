@@ -1,7 +1,7 @@
 "use client";
 
 import { useOptimistic, useState, useTransition } from "react";
-import { assignMember, confirmAssignment, matchTeam } from "@/app/dashboard/rfps/[id]/actions";
+import { assignMember, confirmAssignment, matchTeam, unconfirmAssignment } from "@/app/dashboard/rfps/[id]/actions";
 
 export type AssignmentView = {
   id: string;
@@ -86,9 +86,23 @@ export function TeamMatch({
                     <span className="tabular text-xs font-semibold text-rfp-ink-muted">{a.match_score}</span>
                   )}
                   {a.status === "confirmed" || justConfirmed.includes(a.id) ? (
-                    <span className="rounded-full bg-rfp-good/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-rfp-good">
-                      Confirmed
-                    </span>
+                    <>
+                      <span className="rounded-full bg-rfp-good/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-rfp-good">
+                        Confirmed
+                      </span>
+                      {/* Confirming was one-way, so a person put on a bid by
+                          mistake stayed on it. They go back to being a
+                          suggestion rather than being deleted: the match reason
+                          and score that explained the pick are worth keeping. */}
+                      <button
+                        onClick={() => start(async () => void (await unconfirmAssignment(rfpId, a.id)))}
+                        disabled={pending}
+                        className="press px-1 text-xs font-medium text-rfp-ink-muted hover:text-rfp-critical disabled:opacity-40"
+                        title="Take them off this bid"
+                      >
+                        Cancel
+                      </button>
+                    </>
                   ) : (
                     <button
                       onClick={() =>
