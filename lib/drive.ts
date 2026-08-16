@@ -36,7 +36,16 @@ async function ask(payload: Record<string, unknown>): Promise<DriveReply | null>
   }
 }
 
-/** File a built proposal into the bid folder as a Google Doc. */
+/**
+ * File a built proposal into the bid folder as a Google Doc.
+ *
+ * Then tidy, because nothing in Drive ever replaced anything. Every re-triage
+ * added another copy of the solicitation and every rebuild another copy of the
+ * proposal, and one bid folder had reached twenty-six files before anybody
+ * looked. Tidying after the upload rather than before means the new document
+ * exists before the old one goes, so a failed upload cannot leave the folder
+ * empty.
+ */
 export async function fileProposal(
   folderId: string,
   fileName: string,
@@ -48,7 +57,14 @@ export async function fileProposal(
     file_name: fileName,
     docx_base64: docx.toString("base64"),
   });
+  if (reply?.doc_url) await ask({ action: "tidy-folder", folder_id: folderId });
   return reply?.doc_url ?? null;
+}
+
+/** Leave one of each thing in a bid folder and trash the rest. */
+export async function tidyFolder(folderId: string): Promise<boolean> {
+  const reply = await ask({ action: "tidy-folder", folder_id: folderId });
+  return Boolean(reply?.ok);
 }
 
 /**
