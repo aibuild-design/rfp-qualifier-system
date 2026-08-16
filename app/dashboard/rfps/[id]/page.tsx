@@ -9,10 +9,7 @@ import { HumanVerdict } from "@/components/HumanVerdict";
 import { BidSteps, bidSteps, ReadyToDraft } from "@/components/BidSteps";
 import { QuestionMemo } from "@/components/QuestionMemo";
 import { TeamMatch } from "@/components/TeamMatch";
-import { ProposalDraft } from "@/components/ProposalDraft";
-import { StandingDocuments } from "@/components/StandingDocuments";
-import { FilingStatusCard } from "@/components/FilingStatusCard";
-import { proposalFileName } from "@/lib/proposal";
+import { BuildDraftCard } from "@/components/BuildDraftCard";
 import { daysUntil, deadlineColor, deadlineWindowsFrom, formatBudget, formatDate, formatDeadline } from "@/lib/rfp";
 import { consensusGap } from "@/lib/verdict";
 import { scoreFromRubric, type RubricBreakdown } from "@/lib/rubric";
@@ -53,9 +50,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
     { data: sections },
     { data: assignmentRows },
     { data: roster },
-    { count: libraryCount },
     { data: scoring },
-    { data: standingDocs },
   ] = await Promise.all([
       supabase.from("rfps").select("*").eq("id", id).maybeSingle(),
       supabase.from("rfp_gap_items").select("*").eq("rfp_id", id).order("created_at"),
@@ -76,12 +71,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         .eq("rfp_id", id)
         .order("match_score", { ascending: false, nullsFirst: false }),
       supabase.from("team_members").select("*"),
-      supabase.from("language_blocks").select("*", { count: "exact", head: true }),
       supabase.from("scoring_settings").select("deadline_warning_days,deadline_critical_days,rubric_weights").eq("id", true).maybeSingle(),
-      // Not scoped to this bid on purpose: standing documents attach to every
-      // submission, and a per-bid link would turn "always include this" into
-      // "remember to add this", which is the thing that already does not work.
-      supabase.from("standing_documents").select("id, label, file_name, expires_on").order("label"),
     ]);
 
   const windows = deadlineWindowsFrom(scoring);
@@ -476,7 +466,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
       {/* Band three: everything that follows accepting the bid. */}
       <div className="mt-10 flex items-baseline gap-3 border-b border-rfp-border-strong pb-2">
         <h2 className="font-display text-base font-semibold text-rfp-ink">The proposal</h2>
-        <p className="text-xs text-rfp-ink-muted">What is still open, how to price it, the draft, and where it was filed.</p>
+        <p className="text-xs text-rfp-ink-muted">What is still open, and the draft.</p>
       </div>
 
       {/* What is still open. Placed above the draft because it is the last
@@ -490,48 +480,10 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         openCompliance={(compliance ?? []).filter((c) => !c.is_complete).length}
       />
 
-      {/* The cost lane (module 8). Sits directly above the draft because it is
-          an instruction about how to price the thing below it, not a fact about
-          the solicitation - those all live further up the page. */}
-      {rfp.cost_lane_note && (
-        <section className="mt-8 rounded-xl border border-rfp-border bg-rfp-surface p-5">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h2 className="font-display text-sm font-semibold text-rfp-ink">How to price this</h2>
-            <span
-              className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest"
-              style={{
-                color: rfp.cost_lane === "price_led" ? "var(--rfp-warning)" : "var(--rfp-ink-secondary)",
-                background: "var(--rfp-surface-sunken)",
-              }}
-            >
-              {rfp.cost_lane === "price_led"
-                ? "Price led"
-                : rfp.cost_lane === "quality_led"
-                  ? "Quality led"
-                  : "Balanced"}
-            </span>
-            <span className="tabular text-xs text-rfp-ink-muted">
-              cost is {rfp.cost_weight_percent}% of the award
-            </span>
-          </div>
-          <p className="mt-1.5 text-sm leading-relaxed text-rfp-ink-secondary">{rfp.cost_lane_note}</p>
-        </section>
-      )}
-
-      {/* Proposal assembly (module 8) */}
-      <ProposalDraft
-        rfpId={rfp.id}
-        sections={sections ?? []}
-        fileName={proposalFileName(rfp)}
-        libraryCount={libraryCount ?? 0}
-      />
-
-      {/* Standing documents (module 8). Above filing, because they belong in
-          the envelope before it is sealed. */}
-      <StandingDocuments docs={standingDocs ?? []} />
-
-      {/* Filing (module 10) */}
-      <FilingStatusCard rfp={rfp} />
+      {/* The writing half lives at /dashboard/proposals now. What is left here
+          is the one card that gets you there, because a bid page should end
+          with the decision, not with a fourteen-section document. */}
+      <BuildDraftCard rfpId={rfp.id} drafted={(sections ?? []).length} />
         </>
       )}
 
