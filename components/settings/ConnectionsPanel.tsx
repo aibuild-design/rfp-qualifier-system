@@ -22,7 +22,8 @@
  * state and link to where it is actually managed.
  */
 
-import { TOP_UP_URL, type Credit } from "@/lib/openrouter-credit";
+import type { Credit } from "@/lib/openrouter-credit";
+import { CreditMeter } from "./CreditMeter";
 
 type Line = {
   label: string;
@@ -144,59 +145,7 @@ export function ConnectionsPanel({
         })}
       </ul>
 
-      {/* Running out of credit does not announce itself: triage starts failing
-          and solicitations keep arriving without verdicts, which looks like a
-          quiet week rather than an outage. Stated in solicitations as well as
-          dollars, because "about 80 more" is a number someone can act on. */}
-      {credit && (
-        <div
-          className="mt-3 rounded-lg border px-4 py-3 text-xs leading-relaxed"
-          style={{
-            borderColor:
-              credit.level === "ok"
-                ? "var(--rfp-border)"
-                : credit.level === "empty"
-                  ? "var(--rfp-critical)"
-                  : "var(--rfp-warning)",
-            background:
-              credit.level === "critical" || credit.level === "empty"
-                ? "color-mix(in srgb, var(--rfp-critical) 8%, transparent)"
-                : "transparent",
-          }}
-        >
-          <span className="font-medium text-rfp-ink">
-            ${credit.remaining.toFixed(2)} left on OpenRouter
-          </span>
-          <span className="text-rfp-ink-secondary">
-            {" "}of ${credit.total.toFixed(2)}, roughly {credit.solicitationsLeft} more solicitations.
-          </span>
-          {credit.level !== "ok" && (
-            <>
-              <span
-                className="mt-1 block font-medium"
-                style={{ color: credit.level === "empty" ? "var(--rfp-critical)" : "var(--rfp-warning)" }}
-              >
-                {credit.level === "empty"
-                  ? "Out of credit. The next solicitation will arrive with no verdict."
-                  : credit.level === "critical"
-                    ? "Nearly out. When it runs dry, triage stops and solicitations arrive with no verdict."
-                    : "Getting low. Top up before it stops returning verdicts."}
-              </span>
-              {/* The warning and the fix in the same place. Being told the tank
-                  is empty and then having to go and find the pump is how a
-                  warning gets read and not acted on. */}
-              <a
-                href={TOP_UP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="press mt-1.5 inline-flex min-h-11 items-center font-semibold text-rfp-gold hover:underline"
-              >
-                Add credit on OpenRouter &rarr;
-              </a>
-            </>
-          )}
-        </div>
-      )}
+      {credit && <CreditMeter credit={credit} />}
 
       {!profileConfirmed && (
         <p className="mt-3 rounded-lg border border-dashed border-rfp-border-strong px-4 py-3 text-xs leading-relaxed text-rfp-ink-secondary">

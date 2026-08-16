@@ -27,6 +27,23 @@ export const COST_PER_SOLICITATION = 0.18;
 /** Where money actually goes in. */
 export const TOP_UP_URL = "https://openrouter.ai/settings/credits";
 
+/**
+ * The gauge reads out of this many solicitations, not out of whatever was last
+ * topped up.
+ *
+ * Remaining over lifetime total is the obvious scale and the wrong one: it
+ * makes $9 look nearly empty against a $50 top-up and comfortable against a
+ * $200 one, for exactly the same real capacity. Worse, the colour is decided in
+ * solicitations, so the two disagree - a green label above a bar that looks
+ * almost empty, which is the kind of thing that teaches someone to stop reading
+ * the panel.
+ */
+export const GAUGE_FULL_SOLICITATIONS = 100;
+
+/** Where "getting low" starts. Shared so the notch and the message cannot drift. */
+export const LOW_AT_SOLICITATIONS = 40;
+export const CRITICAL_AT_SOLICITATIONS = 10;
+
 export async function openRouterCredit(apiKey: string | undefined): Promise<Credit | null> {
   if (!apiKey) return null;
   try {
@@ -57,9 +74,9 @@ export async function openRouterCredit(apiKey: string | undefined): Promise<Cred
       level:
         solicitationsLeft < 2
           ? "empty"
-          : solicitationsLeft <= 10
+          : solicitationsLeft <= CRITICAL_AT_SOLICITATIONS
             ? "critical"
-            : solicitationsLeft <= 40
+            : solicitationsLeft <= LOW_AT_SOLICITATIONS
               ? "low"
               : "ok",
     };
