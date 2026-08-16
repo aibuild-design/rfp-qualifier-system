@@ -61,7 +61,7 @@ export function ProvisionalTag() {
   return (
     <span
       title="Scored against an unconfirmed eligibility profile - re-triage before acting on it."
-      className="ml-2 inline-flex shrink-0 items-center rounded bg-rfp-warning/15 px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-rfp-warning"
+      className="ml-2 inline-flex shrink-0 items-center rounded border border-rfp-border px-1.5 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-rfp-ink-muted"
     >
       Provisional
     </span>

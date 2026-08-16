@@ -37,7 +37,7 @@
   /* status (fixed, never themed - kept distinct from --rfp-gold so verdict/
      deadline badges don't visually blend with the brand accent) */
   --rfp-good: #146b45;
-  --rfp-warning: #d9962c;
+  --rfp-warning: #8a5a12;
   --rfp-serious: #d97a3a;
   --rfp-critical: #c23b3b;
   --rfp-neutral: #8f8d84;

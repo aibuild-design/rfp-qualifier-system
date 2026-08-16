@@ -87,7 +87,7 @@ export function FolderBar({
   const chip = (isActive: boolean) =>
     `press press-row inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold ${
       isActive
-        ? "border-rfp-ink bg-rfp-ink text-white"
+        ? "border-rfp-ink bg-rfp-ink text-rfp-surface"
         : "border-rfp-border bg-rfp-surface text-rfp-ink-secondary hover:bg-rfp-surface-sunken"
     }`;
 

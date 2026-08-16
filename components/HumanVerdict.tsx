@@ -105,7 +105,7 @@ export function HumanVerdict({
             aria-pressed={choice === c}
             className={`press inline-flex min-h-11 items-center rounded-lg border px-3.5 text-sm font-semibold ${
               choice === c
-                ? "border-rfp-ink bg-rfp-ink text-white"
+                ? "border-rfp-ink bg-rfp-ink text-rfp-surface"
                 : "border-rfp-border bg-rfp-surface text-rfp-ink-secondary hover:bg-rfp-surface-sunken"
             }`}
           >
