@@ -39,12 +39,15 @@ export function ProfileIncompleteBanner({ reason }: { reason: "no-sectors" | "un
           </>
         ) : (
           <>
-            Every figure in the {settingsLink} is a placeholder nobody has checked - locations,
-            capabilities, certifications, insurance and the sector map. Verdicts computed against
-            it are stored and marked <span className="font-medium text-rfp-ink">provisional</span>,
-            and confirming the profile later does not make them correct; they need re-triaging.
-            Go through it once and tick <span className="font-medium text-rfp-ink">Profile
-            confirmed</span> at the bottom.
+            {/* This used to say every figure was "a placeholder nobody has
+                checked", which stopped being true once the profile was built
+                from Caravann's own documents. A banner that overstates its case
+                is read once and ignored after that, and it was overstating on
+                every page load. */}
+            Insurance and set-aside status are blank, so any solicitation naming
+            an insurance minimum stalls at maybe. Verdicts stay{" "}
+            <span className="font-medium text-rfp-ink">provisional</span> until you fill those in
+            and tick Profile confirmed in {settingsLink}.
           </>
         )}
       </p>

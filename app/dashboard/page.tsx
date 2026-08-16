@@ -159,7 +159,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       {/* Each card filters the queue below it. `rise-stagger` brings them in
           left to right, which reads as the numbers being counted up rather than
           the page popping into place. */}
-      <div className="rise-stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="rise-stagger mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard
           label="RFPs received" value={totalCount ?? 0} subtext="All time"
           icon={DocumentIcon} accent="#0a0a0a" href="/dashboard" active={!view}
