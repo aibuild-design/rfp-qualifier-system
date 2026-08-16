@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { approveQuestion, markQuestionSent } from "@/app/dashboard/rfps/[id]/actions";
+import { approveQuestion, declineQuestion, markQuestionSent } from "@/app/dashboard/rfps/[id]/actions";
 import type { RfpQuestionRow } from "@/lib/supabase/types";
 import { daysUntil } from "@/lib/rfp";
 
@@ -43,11 +43,20 @@ export function QuestionMemo({
             <p className="mt-0.5 text-xs text-rfp-ink-muted">{lane.blurb}</p>
             <ul className="mt-2 divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
               {items.map((q) => (
-                <li key={q.id} className="flex items-start justify-between gap-3 px-5 py-3">
+                <li
+                  key={q.id}
+                  className="flex items-start justify-between gap-3 px-5 py-3"
+                  style={{ opacity: q.status === "declined" ? 0.55 : 1 }}
+                >
                   <div className="min-w-0">
                     <p className="text-sm text-rfp-ink">{q.question_text}</p>
-                    {q.approved_by && (
+                    {q.approved_by && q.status !== "declined" && (
                       <p className="mt-0.5 text-[11px] text-rfp-ink-muted">Approved by {q.approved_by}</p>
+                    )}
+                    {q.status === "declined" && (
+                      <p className="mt-0.5 text-[11px] text-rfp-ink-muted">
+                        Not asking this one. Undo by approving it.
+                      </p>
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -65,14 +74,30 @@ export function QuestionMemo({
                         Mark sent
                       </button>
                     ) : (
-                      <button
-                        onClick={() => start(async () => void (await approveQuestion(rfpId, q.id)))}
-                        disabled={pending || windowClosed}
-                        className="rounded-lg border border-rfp-border px-2.5 py-1 text-xs font-semibold text-rfp-ink-secondary hover:bg-rfp-surface-sunken disabled:opacity-40"
-                        title={windowClosed ? "The question window has closed" : undefined}
-                      >
-                        Approve
-                      </button>
+                      <>
+                        {/* Declining is its own action rather than the absence
+                            of one. Without it, a question read and rejected
+                            looked exactly like a question nobody had reached,
+                            and both sat at the bottom of the page as pending. */}
+                        {q.status !== "declined" && (
+                          <button
+                            onClick={() => start(async () => void (await declineQuestion(rfpId, q.id)))}
+                            disabled={pending}
+                            className="press rounded-lg px-2.5 py-1 text-xs font-medium text-rfp-ink-muted hover:text-rfp-critical disabled:opacity-40"
+                            title="Records that you decided not to ask this"
+                          >
+                            Not asking
+                          </button>
+                        )}
+                        <button
+                          onClick={() => start(async () => void (await approveQuestion(rfpId, q.id)))}
+                          disabled={pending || windowClosed}
+                          className="rounded-lg border border-rfp-border px-2.5 py-1 text-xs font-semibold text-rfp-ink-secondary hover:bg-rfp-surface-sunken disabled:opacity-40"
+                          title={windowClosed ? "The question window has closed" : undefined}
+                        >
+                          {q.status === "declined" ? "Approve after all" : "Approve"}
+                        </button>
+                      </>
                     )}
                   </div>
                 </li>

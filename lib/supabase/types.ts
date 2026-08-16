@@ -28,7 +28,7 @@ export type ComplianceCategory =
   | "rubric"
   | "other";
 export type QuestionLane = "public_memo" | "incumbent_request";
-export type QuestionStatus = "drafted" | "approved" | "sent";
+export type QuestionStatus = "drafted" | "approved" | "declined" | "sent";
 export type AssignmentStatus = "recommended" | "confirmed";
 export type FileType = "rfp" | "addendum" | "draft" | "form" | "other";
 export type EdgeCaseStatus = "pending" | "approved" | "rejected";
@@ -323,6 +323,8 @@ export interface Database {
           status: QuestionStatus;
           sent_at: string | null;
           approved_at: string | null;
+          /** Set when explicitly turned down, which is different from never looked at. */
+          declined_at: string | null;
           approved_by: string | null;
           created_at: string;
         };

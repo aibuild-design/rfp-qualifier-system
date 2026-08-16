@@ -102,3 +102,78 @@ export function BidSteps({ steps }: { steps: BidStep[] }) {
     </section>
   );
 }
+
+/**
+ * What is still open before drafting is sensible.
+ *
+ * Not a gate. Every one of these is a judgement Khaled is allowed to skip, and
+ * a system that refused to draft until the boxes were ticked would be making
+ * his decisions for him. It is a list of what is still undecided, so pressing
+ * Draft is a choice rather than a guess.
+ *
+ * Only shown once the bid is accepted. Before that the answer to all of it is
+ * "not yet", which is noise.
+ */
+export function ReadyToDraft({
+  openQuestions,
+  unconfirmedTeam,
+  openCompliance,
+}: {
+  openQuestions: number;
+  unconfirmedTeam: number;
+  openCompliance: number;
+}) {
+  const rows = [
+    {
+      label: "Questions decided",
+      done: openQuestions === 0,
+      detail:
+        openQuestions === 0
+          ? "Every question is approved or turned down."
+          : `${openQuestions} still waiting on approve or not asking.`,
+    },
+    {
+      label: "Team confirmed",
+      done: unconfirmedTeam === 0,
+      detail:
+        unconfirmedTeam === 0
+          ? "Nobody is left as a suggestion."
+          : `${unconfirmedTeam} suggested, none confirmed yet.`,
+    },
+    {
+      label: "Compliance worked through",
+      done: openCompliance === 0,
+      detail:
+        openCompliance === 0
+          ? "Every item ticked."
+          : `${openCompliance} item${openCompliance === 1 ? "" : "s"} not ticked yet.`,
+    },
+  ];
+  const open = rows.filter((r) => !r.done).length;
+
+  return (
+    <section className="mt-8">
+      <h2 className="font-display text-sm font-semibold text-rfp-ink">Before you draft</h2>
+      <p className="mt-0.5 text-xs text-rfp-ink-muted">
+        {open === 0
+          ? "Nothing outstanding. Drafting now uses everything you have decided."
+          : "None of this blocks drafting. It is what the draft will not know about if you go now."}
+      </p>
+      <ul className="mt-3 divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
+        {rows.map((row) => (
+          <li key={row.label} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-5 py-3">
+            <span
+              aria-hidden
+              className="text-xs font-semibold"
+              style={{ color: row.done ? "var(--rfp-good)" : "var(--rfp-warning)" }}
+            >
+              {row.done ? "\u2713" : "\u25cb"}
+            </span>
+            <span className="text-sm font-medium text-rfp-ink">{row.label}</span>
+            <span className="text-xs text-rfp-ink-muted">{row.detail}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}

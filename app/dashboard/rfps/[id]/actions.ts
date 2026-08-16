@@ -313,6 +313,29 @@ async function rememberQuestion(
   }
 }
 
+/**
+ * Turn a question down, on the record.
+ *
+ * Without this, "no" was expressed by doing nothing, so a question Khaled had
+ * read and rejected was indistinguishable from one he had not reached yet.
+ *
+ * Deliberately does not touch the bank. The bank learns from approval, and a
+ * declined question is not evidence that a similar question is bad next time -
+ * it is usually evidence that this document already answered it.
+ */
+export async function declineQuestion(rfpId: string, questionId: string): Promise<ActionResult> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
+
+  const { error } = await supabase
+    .from("rfp_questions")
+    .update({ status: "declined", declined_at: new Date().toISOString() })
+    .eq("id", questionId);
+  if (error) return safeError("decline the question", error);
+  revalidatePath(`/dashboard/rfps/${rfpId}`);
+  return { ok: true };
+}
+
 /** Records that an approved question was sent by hand. No mail is dispatched
  *  from here - this marks what a human already did, so the memo doesn't get
  *  sent twice. */

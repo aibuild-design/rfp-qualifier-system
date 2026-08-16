@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useUnsavedGuard } from "@/components/useUnsavedGuard";
 import type { OrgProfileRow } from "@/lib/supabase/types";
 
 // The org-wide eligibility profile (module 3) - confirmed once, read by the
@@ -10,6 +11,19 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
   const [profile, setProfile] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  // These fields save on blur, which is invisible and mostly fine. The gap is
+  // typing an insurance paragraph and then reloading without leaving the field:
+  // gone, with no indication it was ever at risk, and that paragraph is the
+  // most valuable thing anyone types into this system.
+  //
+  // Compared against what was last written rather than against the props, so
+  // the warning clears the moment a save lands rather than staying on for the
+  // rest of the session.
+  // State rather than a ref: a ref cannot be read during render, and this has
+  // to be compared on every keystroke to know whether the guard is armed.
+  const [lastSaved, setLastSaved] = useState(() => JSON.stringify(initial));
+  useUnsavedGuard(JSON.stringify(profile) !== lastSaved);
 
   async function save(next: OrgProfileRow) {
     setProfile(next);
@@ -32,6 +46,7 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
       })
       .eq("id", true);
     setSaving(false);
+    setLastSaved(JSON.stringify(next));
     setSavedAt(Date.now());
   }
 

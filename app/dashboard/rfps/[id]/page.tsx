@@ -6,7 +6,7 @@ import { VerdictBadge } from "@/components/VerdictBadge";
 import { DemoTag } from "@/components/DemoBanner";
 import { ProvisionalTag } from "@/components/ProfileIncompleteBanner";
 import { HumanVerdict } from "@/components/HumanVerdict";
-import { BidSteps, bidSteps } from "@/components/BidSteps";
+import { BidSteps, bidSteps, ReadyToDraft } from "@/components/BidSteps";
 import { QuestionMemo } from "@/components/QuestionMemo";
 import { TeamMatch } from "@/components/TeamMatch";
 import { ProposalDraft } from "@/components/ProposalDraft";
@@ -447,6 +447,17 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         </section>
       ) : (
         <>
+
+      {/* What is still open. Placed above the draft because it is the last
+          thing worth glancing at before pressing the button, and below the
+          panels it counts so the numbers are already in view. */}
+      <ReadyToDraft
+        openQuestions={(questions ?? []).filter((q) => q.status === "drafted").length}
+        unconfirmedTeam={
+          (assignmentRows ?? []).filter((a) => a.status !== "confirmed").length
+        }
+        openCompliance={(compliance ?? []).filter((c) => !c.is_complete).length}
+      />
 
       {/* The cost lane (module 8). Sits directly above the draft because it is
           an instruction about how to price the thing below it, not a fact about
