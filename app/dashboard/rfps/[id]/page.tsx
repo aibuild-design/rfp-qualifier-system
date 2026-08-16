@@ -223,16 +223,43 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
           })}
         />
 
-        {rfp.source_url && (
-          <a
-            href={rfp.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-5 inline-block text-xs font-medium text-rfp-ink-muted hover:text-rfp-gold"
-          >
-            View original solicitation →
-          </a>
+        {/* Everything this bid has a file for, in one row at the top.
+            The Drive link used to live at the very bottom in the filing card,
+            which is where you look to find out whether filing worked, not where
+            you look to open the document. */}
+        {(rfp.source_url || rfp.drive_folder_url) && (
+          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t border-rfp-border pt-4">
+            {rfp.source_url && (
+              <a
+                href={rfp.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="press inline-flex min-h-11 items-center text-xs font-medium text-rfp-gold hover:underline"
+              >
+                The original document &rarr;
+              </a>
+            )}
+            {rfp.drive_folder_url && (
+              <a
+                href={rfp.drive_folder_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="press inline-flex min-h-11 items-center text-xs font-medium text-rfp-gold hover:underline"
+              >
+                The bid folder in Drive &rarr;
+              </a>
+            )}
+            <span className="inline-flex min-h-11 items-center text-xs text-rfp-ink-muted">
+              The folder holds the original file and a readable copy.
+            </span>
+          </div>
         )}
+      </div>
+
+      {/* Band one: the reasoning behind the verdict. */}
+      <div className="mt-10 flex items-baseline gap-3 border-b border-rfp-border-strong pb-2">
+        <h2 className="font-display text-base font-semibold text-rfp-ink">Why the desk said this</h2>
+        <p className="text-xs text-rfp-ink-muted">The score, the hard gate, and what Caravann is short on.</p>
       </div>
 
       {rubric && (
@@ -399,6 +426,12 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         )}
       </Section>
 
+      {/* Band two: the work only a person can do. */}
+      <div className="mt-10 flex items-baseline gap-3 border-b border-rfp-border-strong pb-2">
+        <h2 className="font-display text-base font-semibold text-rfp-ink">What needs you</h2>
+        <p className="text-xs text-rfp-ink-muted">Questions to send, and who is on the bid.</p>
+      </div>
+
       {/* Question memo - approve / mark sent (module 7) */}
       {questions && questions.length > 0 && (
         <QuestionMemo rfpId={rfp.id} questions={questions} questionDeadline={rfp.question_deadline_at} />
@@ -439,6 +472,12 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         </section>
       ) : (
         <>
+
+      {/* Band three: everything that follows accepting the bid. */}
+      <div className="mt-10 flex items-baseline gap-3 border-b border-rfp-border-strong pb-2">
+        <h2 className="font-display text-base font-semibold text-rfp-ink">The proposal</h2>
+        <p className="text-xs text-rfp-ink-muted">What is still open, how to price it, the draft, and where it was filed.</p>
+      </div>
 
       {/* What is still open. Placed above the draft because it is the last
           thing worth glancing at before pressing the button, and below the
