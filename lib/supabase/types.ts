@@ -451,6 +451,10 @@ export interface Database {
           status: SectionStatus;
           source_block_ids: string[];
           notes: string | null;
+          /** The section adapted to this solicitation. The stitched original
+           *  stays in `body` and is never overwritten. */
+          tailored_body: string | null;
+          tailored_at: string | null;
           created_at: string;
           updated_at: string;
         };
