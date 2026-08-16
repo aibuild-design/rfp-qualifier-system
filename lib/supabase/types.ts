@@ -185,6 +185,11 @@ export interface Database {
           budget_source: BudgetSource;
           status: RfpStatus;
           score_percent: number | null;
+          /** How much of the award is on price, derived from the captured
+           *  evaluation criteria. Null when the document never states one. */
+          cost_weight_percent: number | null;
+          cost_lane: "price_led" | "balanced" | "quality_led" | null;
+          cost_lane_note: string | null;
           score_samples: number[] | null;
           score_breakdown: Record<string, { level: string; note?: string | null }> | null;
           verdict_why: string | null;

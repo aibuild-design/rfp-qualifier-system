@@ -5,6 +5,7 @@ import { isServiceRoleConfigured } from "@/lib/supabase/config";
 import { toTimestamp } from "@/lib/rfp";
 import { decideVerdict, thresholdsFromSettings, type Decision } from "@/lib/verdict";
 import { recommendTeam } from "@/lib/team-match";
+import { costLaneFrom } from "@/lib/cost-lane";
 import { assembleDraft, DEFAULT_SECTIONS, proposalFileName } from "@/lib/proposal";
 import { buildProposalDocx } from "@/lib/docx-export";
 import { caravannLogo } from "@/lib/brand-logo";
@@ -251,9 +252,22 @@ export async function POST(req: NextRequest) {
     due_at: toTimestamp(item.due_at),
   }));
 
+  // Read out of the compliance items the model already produced rather than
+  // asked for separately: the evaluation weighting is in the document once, and
+  // two ways of capturing it is two ways to disagree.
+  const costLane = costLaneFrom(compliance_items ?? []);
+
   const { data: rfp, error: rfpError } = await supabase
     .from("rfps")
-    .upsert(pickRfpFields(body), { onConflict: "external_id" })
+    .upsert(
+      {
+        ...pickRfpFields(body),
+        cost_weight_percent: costLane?.percent ?? null,
+        cost_lane: costLane?.lane ?? null,
+        cost_lane_note: costLane?.note ?? null,
+      },
+      { onConflict: "external_id" },
+    )
     .select()
     .single();
 

@@ -406,6 +406,34 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         })}
       />
 
+      {/* The cost lane (module 8). Sits directly above the draft because it is
+          an instruction about how to price the thing below it, not a fact about
+          the solicitation - those all live further up the page. */}
+      {rfp.cost_lane_note && (
+        <section className="mt-8 rounded-xl border border-rfp-border bg-rfp-surface p-5">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2 className="font-display text-sm font-semibold text-rfp-ink">How to price this</h2>
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest"
+              style={{
+                color: rfp.cost_lane === "price_led" ? "var(--rfp-warning)" : "var(--rfp-ink-secondary)",
+                background: "var(--rfp-surface-sunken)",
+              }}
+            >
+              {rfp.cost_lane === "price_led"
+                ? "Price led"
+                : rfp.cost_lane === "quality_led"
+                  ? "Quality led"
+                  : "Balanced"}
+            </span>
+            <span className="tabular text-xs text-rfp-ink-muted">
+              cost is {rfp.cost_weight_percent}% of the award
+            </span>
+          </div>
+          <p className="mt-1.5 text-sm leading-relaxed text-rfp-ink-secondary">{rfp.cost_lane_note}</p>
+        </section>
+      )}
+
       {/* Proposal assembly (module 8) */}
       <ProposalDraft
         rfpId={rfp.id}
