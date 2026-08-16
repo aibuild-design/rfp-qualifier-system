@@ -23,7 +23,51 @@ export type Extraction = {
   /** Set when the text is probably not a solicitation, so the caller can stop
    *  rather than triage a login page. */
   warning?: string;
+  /** Set when the file has to be finished by a person: fillable form fields, or
+   *  permissions that forbid editing. A cost form or signature page that must
+   *  be completed by hand reads as ordinary text once extracted, so without
+   *  this the checklist never mentions the one item that cannot be automated. */
+  handwork?: { fields: number; restricted: boolean; note: string };
 };
+
+/**
+ * Does this PDF have to be finished by a person?
+ *
+ * Two different things, and both mean the same thing to whoever is submitting.
+ * An AcroForm means the agency shipped a form to fill in - almost always the
+ * cost sheet, the signature page, or the addenda acknowledgement. Restricted
+ * permissions mean the file forbids modification outright.
+ *
+ * Never throws. A checklist hint is not worth failing an extraction over, and
+ * older PDFs return all sorts of things from these calls.
+ */
+async function handworkIn(doc: {
+  getFieldObjects?: () => Promise<Record<string, unknown> | null>;
+  getPermissions?: () => Promise<number[] | null>;
+}): Promise<Extraction["handwork"]> {
+  let fields = 0;
+  let restricted = false;
+  try {
+    const objs = (await doc.getFieldObjects?.()) ?? null;
+    if (objs) fields = Object.keys(objs).length;
+  } catch {
+    /* not a form, or a form we cannot read */
+  }
+  try {
+    // pdf.js returns null when nothing is restricted, and an array of the
+    // permissions that ARE granted otherwise. An empty array is the locked-down
+    // case, so length is not the test - presence of the array is.
+    restricted = (await doc.getPermissions?.()) != null;
+  } catch {
+    /* encrypted in a way we cannot inspect */
+  }
+  if (!fields && !restricted) return undefined;
+
+  const note = fields
+    ? `This PDF contains ${fields} fillable form field${fields === 1 ? "" : "s"}. Agency forms like this - cost sheets, signature pages, addenda acknowledgements - have to be completed by hand and cannot be generated.`
+    : "This PDF restricts editing, so it has to be completed and signed by hand rather than generated.";
+  return { fields, restricted, note };
+}
 
 /**
  * Identify a file from its leading bytes.
@@ -132,6 +176,7 @@ export async function extractText(
 ): Promise<Extraction> {
   const format = sniffFormat(bytes, contentType);
   let text = "";
+  let handwork: Extraction["handwork"];
 
   switch (format) {
     case "pdf": {
@@ -141,6 +186,7 @@ export async function extractText(
       const doc = await getDocumentProxy(bytes);
       const { text: pages } = await pdfText(doc, { mergePages: true });
       text = String(pages);
+      handwork = await handworkIn(doc);
       break;
     }
     case "docx": {
@@ -183,5 +229,5 @@ export async function extractText(
   }
 
   text = text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-  return { text, format, chars: text.length, warning: looksUnusable(text, format) };
+  return { text, format, chars: text.length, warning: looksUnusable(text, format), handwork };
 }

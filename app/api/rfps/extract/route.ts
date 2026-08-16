@@ -174,13 +174,20 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({
-    text: extraction.text,
+    text: extraction.handwork
+      ? `${extraction.text}\n\n[FILE NOTE] ${extraction.handwork.note}`
+      : extraction.text,
     format: extraction.format,
     chars: extraction.chars,
     bytes: buffer.byteLength,
     // Passed through rather than thrown: short-but-present text is still worth
     // triaging, as long as the caller knows it was thin.
     ...(extraction.warning ? { warning: extraction.warning } : {}),
+    // Appended to the document text as well as returned on its own. The
+    // compliance checklist is built by reading the document, so a fact about
+    // the file rather than its contents is invisible unless it is put where the
+    // reader is looking.
+    ...(extraction.handwork ? { handwork: extraction.handwork } : {}),
   });
 }
 
