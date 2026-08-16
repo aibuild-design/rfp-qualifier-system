@@ -178,6 +178,8 @@ export interface Database {
            *  eligibility profile. Only a re-triage clears it. */
           is_provisional: boolean;
           drive_folder_url: string | null;
+          /** The built proposal as a Google Doc. Null until a draft exists. */
+          proposal_doc_url: string | null;
           received_at: string;
           due_at: string | null;
           question_deadline_at: string | null;

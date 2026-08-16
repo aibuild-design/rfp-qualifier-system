@@ -23,7 +23,7 @@ export default async function ProposalsPage() {
 
   const { data: bids } = await supabase
     .from("rfps")
-    .select("id,title,client_agency,status,human_verdict,score_percent,due_at,drive_folder_url,filing_status")
+    .select("id,title,client_agency,status,human_verdict,score_percent,due_at,drive_folder_url,proposal_doc_url,filing_status")
     .not("human_verdict", "is", null)
     .neq("human_verdict", "no_go")
     .order("due_at", { ascending: true, nullsFirst: false });
@@ -145,6 +145,16 @@ export default async function ProposalsPage() {
                   >
                     {drafted ? "Open the draft" : "Build the draft"}
                   </Link>
+                  {bid.proposal_doc_url && (
+                    <a
+                      href={bid.proposal_doc_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="press inline-flex min-h-11 items-center rounded-lg border border-rfp-border px-4 text-sm font-semibold text-rfp-ink-secondary hover:bg-rfp-surface-sunken"
+                    >
+                      Open in Google Docs
+                    </a>
+                  )}
                   {drafted > 0 && (
                     <a
                       href={`/api/rfps/${bid.id}/docx`}

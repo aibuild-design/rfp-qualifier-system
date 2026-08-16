@@ -55,6 +55,18 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
           >
             The verdict and reasoning
           </Link>
+          {/* The Doc first. Downloading a .docx to read your own draft is a
+              detour when the same document is already open-able in a tab. */}
+          {rfp.proposal_doc_url && (
+            <a
+              href={rfp.proposal_doc_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="press inline-flex min-h-11 items-center rounded-lg bg-rfp-ink px-4 text-sm font-semibold text-rfp-surface hover:opacity-90"
+            >
+              Open in Google Docs
+            </a>
+          )}
           {rfp.drive_folder_url && (
             <a
               href={rfp.drive_folder_url}
