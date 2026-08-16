@@ -29,13 +29,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     // React hydrates, which React would otherwise flag as a mismatch.
     <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        {/* Applies the saved theme before first paint. Without it a dark-mode
-            user gets a full-white flash on every navigation, because the
-            stylesheet only learns the choice once React has mounted. Inline and
-            blocking on purpose - it is two lines and it has to run first. */}
+        {/* Applies the theme before first paint. Without it a dark-mode user
+            gets a full-white flash on every navigation, because the stylesheet
+            only learns the choice once React has mounted. Inline and blocking on
+            purpose: it is two lines and it has to run first.
+
+            Dark is the default rather than the operating system's preference.
+            Caravann's brand is black and gold, the rail is black in both themes,
+            and on a light desktop the app opened as a white field with a black
+            bar down the side. Following the OS is still one click away in the
+            rail, and an explicit choice always wins over this. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("rfp-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}`,
+            __html: `try{var t=localStorage.getItem("rfp-theme");document.documentElement.setAttribute("data-theme",t==="light"||t==="dark"?t:(t==="system"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):"dark"))}catch(e){document.documentElement.setAttribute("data-theme","dark")}`,
           }}
         />
       </head>

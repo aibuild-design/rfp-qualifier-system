@@ -44,10 +44,14 @@ function subscribe(cb: () => void) {
 function readTheme(): Theme {
   try {
     const v = localStorage.getItem(KEY);
-    return v === "dark" || v === "light" ? v : "system";
+    if (v === "dark" || v === "light" || v === "system") return v;
+    // Nothing stored means nothing chosen, and the boot script renders dark in
+    // that case. Reporting "system" here would light up a button that does not
+    // match what is on the screen.
+    return "dark";
   } catch {
     // Private modes throw on localStorage. A theme is never worth an error.
-    return "system";
+    return "dark";
   }
 }
 
