@@ -448,7 +448,19 @@ function injectSections(
       // xml:space="preserve" so leading and trailing spaces in the prose are
       // not collapsed by Word.
       const tag = open.includes("xml:space") ? open : open.replace(/>$/, ' xml:space="preserve">');
-      return `${tag}${esc(body)}${close}`;
+
+      // Newlines have to become real breaks. Word ignores them inside a <w:t>,
+      // so a section stitched from three library blocks and joined with blank
+      // lines arrived as one unbroken wall - reported from the document as
+      // "the marketplace?Design", which is the end of one block and the start
+      // of the next with nothing between them.
+      //
+      // A blank line becomes two breaks, a single newline becomes one, so the
+      // paragraph structure the library was written with survives the trip.
+      const withBreaks = esc(body)
+        .replace(/\n{2,}/g, `${close}<w:br/><w:br/>${tag}`)
+        .replace(/\n/g, `${close}<w:br/>${tag}`);
+      return `${tag}${withBreaks}${close}`;
     });
   });
 

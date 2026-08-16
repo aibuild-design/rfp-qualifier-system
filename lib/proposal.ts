@@ -206,7 +206,18 @@ export function fillPlaceholders(
 
 /** The naming convention the SOW fixes: [Engagement]_[Client]_Caravann Consulting.
  *  Slashes and colons are stripped because they break Drive and Windows paths. */
-export function proposalFileName(rfp: Pick<RfpRow, "title" | "client_agency">): string {
+export function proposalFileName(
+  rfp: Pick<RfpRow, "title" | "client_agency"> & { solicitation_number?: string | null },
+): string {
   const clean = (s: string) => s.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim();
-  return `${clean(rfp.title)}_${clean(rfp.client_agency)}_Caravann Consulting`;
+  // Agency and solicitation number first, because that is how a submission is
+  // referred to in every email about it. The old name led with the full title
+  // and ran past eighty characters, so it was truncated everywhere it appeared
+  // and every proposal looked like every other one in a list.
+  const parts = [
+    "Caravann Proposal",
+    clean(rfp.client_agency),
+    rfp.solicitation_number ? clean(rfp.solicitation_number) : null,
+  ].filter(Boolean);
+  return parts.join(" - ");
 }
