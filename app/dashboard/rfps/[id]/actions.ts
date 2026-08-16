@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { requireUser, safeError, type ActionResult } from "@/lib/auth";
 import type { QuestionLane } from "@/lib/supabase/types";
+import { fileProposal, folderIdFrom, moveToLane } from "@/lib/drive";
+import { caravannTemplate } from "@/lib/template-store";
+import { fillTemplate } from "@/lib/docx-fill";
+import { proposalFileName } from "@/lib/proposal";
 import { assembleDraft, DEFAULT_SECTIONS } from "@/lib/proposal";
 import { recommendTeam } from "@/lib/team-match";
 
@@ -67,7 +71,37 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
     if (error) return safeError("build the draft", error);
   }
 
+  // Straight to Drive, so "open the draft" can mean opening a document rather
+  // than downloading one. Never allowed to fail the build: the sections are
+  // already saved and correct by this point, and reporting failure because
+  // Drive was briefly unreachable would be a lie about the thing that matters.
+  const folderId = folderIdFrom(rfp.drive_folder_url);
+  if (folderId) {
+    try {
+      const template = await caravannTemplate();
+      const body = Object.fromEntries(
+        rows.filter((r) => r.body).map((r) => [r.heading, r.body as string]),
+      );
+      // Only the real template. A document that does not match Caravann's own
+      // furniture is not worth putting in the bid folder under its name.
+      if (template) {
+        const { buffer } = await fillTemplate(template, {
+          title: rfp.title,
+          solicitationNumber: rfp.solicitation_number ?? "",
+          dueDate: rfp.due_at ?? "",
+          agencyName: rfp.client_agency,
+          sections: body,
+        });
+        const docUrl = await fileProposal(folderId, `${proposalFileName(rfp)}.docx`, buffer);
+        if (docUrl) await supabase.from("rfps").update({ proposal_doc_url: docUrl }).eq("id", rfpId);
+      }
+    } catch {
+      /* the draft stands either way */
+    }
+  }
+
   revalidatePath(`/dashboard/rfps/${rfpId}`);
+  revalidatePath(`/dashboard/proposals/${rfpId}`);
   return {
     ok: true,
     drafted: rows.filter((r) => r.status === "draft").length,
@@ -107,8 +141,22 @@ export async function setHumanVerdict(
     .eq("id", rfpId);
   if (error) return safeError("record your decision", error);
 
+  // The folder follows the decision. Declined is a lane, never a deletion: the
+  // folder holds the solicitation as the agency sent it, and "did we see this?"
+  // is a real question six months later.
+  const { data: bid } = await supabase
+    .from("rfps")
+    .select("drive_folder_url")
+    .eq("id", rfpId)
+    .maybeSingle();
+  const folderId = folderIdFrom(bid?.drive_folder_url ?? null);
+  if (folderId && verdict) {
+    void moveToLane(folderId, verdict === "no_go" ? "Declined" : verdict === "go" ? "Go" : "Maybe");
+  }
+
   revalidatePath(`/dashboard/rfps/${rfpId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/proposals");
   return { ok: true };
 }
 
