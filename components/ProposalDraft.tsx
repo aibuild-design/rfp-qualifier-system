@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { checkVoice, voiceSummary } from "@/lib/voice";
-import { approveSection, buildDraft } from "@/app/dashboard/rfps/[id]/actions";
+import { approveSection, buildDraft, revertTailoring, tailorSection } from "@/app/dashboard/rfps/[id]/actions";
 import type { ProposalSectionRow } from "@/lib/supabase/types";
 
 export function ProposalDraft({
@@ -147,10 +147,52 @@ export function ProposalDraft({
                   </button>
                   {isOpen && (
                     <div className="border-t border-rfp-border bg-rfp-surface-sunken/40 px-5 py-4">
-                      {s.body ? (
-                        <p className="whitespace-pre-line text-sm leading-relaxed text-rfp-ink-secondary">
-                          {s.body}
-                        </p>
+                      {s.tailored_body ? (
+                        <>
+                          {/* Both, always. A rewrite you cannot see the before
+                              of is a rewrite nobody can check, and the before
+                              is the language Caravann actually stands behind. */}
+                          <p className="text-[11px] font-semibold uppercase tracking-widest text-rfp-gold">
+                            Tailored to this solicitation
+                          </p>
+                          <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-rfp-ink">
+                            {s.tailored_body}
+                          </p>
+                          <details className="mt-3">
+                            <summary className="press cursor-pointer text-xs font-medium text-rfp-ink-muted hover:text-rfp-ink">
+                              Show the approved original
+                            </summary>
+                            <p className="mt-2 whitespace-pre-line border-l-2 border-rfp-border pl-3 text-sm leading-relaxed text-rfp-ink-muted">
+                              {s.body}
+                            </p>
+                          </details>
+                          <button
+                            onClick={() => start(async () => { const r = await revertTailoring(rfpId, s.id); if (!r.error) setMessage("Put back to the approved language."); })}
+                            disabled={pending}
+                            className="press mt-2 text-xs font-medium text-rfp-ink-muted hover:text-rfp-critical disabled:opacity-50"
+                          >
+                            Put the approved text back
+                          </button>
+                        </>
+                      ) : s.body ? (
+                        <>
+                          <p className="whitespace-pre-line text-sm leading-relaxed text-rfp-ink-secondary">
+                            {s.body}
+                          </p>
+                          {/* One section, one call, only when asked. A page that
+                              tailored everything on open would spend ten model
+                              calls because somebody looked at it. */}
+                          <button
+                            onClick={() => start(async () => {
+                              const r = await tailorSection(rfpId, s.id);
+                              setMessage(r.error ?? r.note ?? "Done.");
+                            })}
+                            disabled={pending}
+                            className="press mt-3 inline-flex min-h-11 items-center rounded-lg border border-rfp-border px-3.5 text-xs font-semibold text-rfp-ink-secondary hover:bg-rfp-surface disabled:opacity-50"
+                          >
+                            {pending ? "Tailoring…" : "Tailor to this solicitation"}
+                          </button>
+                        </>
                       ) : (
                         <p className="text-sm italic text-rfp-ink-muted">
                           Nothing on file. Write it by hand, then add it to the library.

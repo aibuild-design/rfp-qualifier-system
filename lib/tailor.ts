@@ -43,7 +43,17 @@ export type TailorResult = {
  */
 export function factualTokens(text: string, everyCapital = false): Set<string> {
   const tokens = new Set<string>();
-  for (const m of text.matchAll(/\b\d[\d,.]*\b/g)) tokens.add(m[0].replace(/[.,]$/, ""));
+  // Normalised so the same name in a different shape is the same token. A live
+  // run rejected "EBJPA's" as an invention while the solicitation number
+  // EBJPA-2026-07 sat right there: an abbreviation of something already named
+  // is not a new claim, and possessives and hyphenated compounds are the two
+  // ways that kept happening.
+  const add = (raw: string) => {
+    const base = raw.replace(/[.,]$/, "").replace(/[\u2019']s$/i, "");
+    tokens.add(base);
+    for (const part of base.split("-")) if (part.length > 1) tokens.add(part);
+  };
+  for (const m of text.matchAll(/\b\d[\d,.]*\b/g)) add(m[0]);
   // Sentence-initial capitals are skipped when reading prose, because "We" and
   // "The" are grammar rather than claims. They are kept when reading the
   // solicitation, which is a reference list rather than prose: the agency name
@@ -52,7 +62,7 @@ export function factualTokens(text: string, everyCapital = false): Set<string> {
   const pattern = everyCapital
     ? /\b([A-Z][A-Za-z.'-]{2,})\b/g
     : /(?<![.!?]\s)(?<!^)\b([A-Z][A-Za-z.'-]{2,})\b/gm;
-  for (const m of text.matchAll(pattern)) tokens.add(m[1]);
+  for (const m of text.matchAll(pattern)) add(m[1]);
   return tokens;
 }
 

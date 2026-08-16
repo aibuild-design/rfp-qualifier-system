@@ -37,7 +37,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     );
   }
 
-  const doc = buildProposalDocx(rfp, sections, (await caravannLogo()) ?? undefined);
+  // The tailored text is what ships when it exists. Tailoring a section and
+  // then downloading the untailored original would make the whole pass
+  // theatre, and the difference would only surface after submission.
+  const shipped = sections.map((s) => (s.tailored_body ? { ...s, body: s.tailored_body } : s));
+
+  const doc = buildProposalDocx(rfp, shipped, (await caravannLogo()) ?? undefined);
   const buffer = await Packer.toBuffer(doc);
   const fileName = `${proposalFileName(rfp)}.docx`;
 

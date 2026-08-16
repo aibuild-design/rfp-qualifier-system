@@ -7,6 +7,7 @@ import { fileProposal, folderIdFrom, moveToLane } from "@/lib/drive";
 import { caravannTemplate } from "@/lib/template-store";
 import { fillTemplate } from "@/lib/docx-fill";
 import { proposalFileName } from "@/lib/proposal";
+import { tailorPrompt, vetTailored } from "@/lib/tailor";
 import { assembleDraft, DEFAULT_SECTIONS } from "@/lib/proposal";
 import { recommendTeam } from "@/lib/team-match";
 
@@ -79,8 +80,16 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
   if (folderId) {
     try {
       const template = await caravannTemplate();
+      // Tailored text wins where it exists, for the same reason the download
+      // uses it: filing the untailored original would make the pass theatre.
+      const { data: current } = await supabase
+        .from("rfp_proposal_sections")
+        .select("heading,body,tailored_body")
+        .eq("rfp_id", rfpId);
       const body = Object.fromEntries(
-        rows.filter((r) => r.body).map((r) => [r.heading, r.body as string]),
+        (current ?? [])
+          .map((r) => [r.heading, r.tailored_body ?? r.body] as const)
+          .filter(([, text]) => Boolean(text)) as [string, string][],
       );
       // Only the real template. A document that does not match Caravann's own
       // furniture is not worth putting in the bid folder under its name.
@@ -435,5 +444,97 @@ export async function markQuestionSent(rfpId: string, questionId: string): Promi
     .eq("id", questionId);
   if (error) return safeError("mark the question sent", error);
   revalidatePath(`/dashboard/rfps/${rfpId}`);
+  return { ok: true };
+}
+
+/**
+ * Adapt one section to this solicitation.
+ *
+ * One section at a time, and only when asked. Tailoring costs a model call, and
+ * a button that quietly spends ten of them because somebody opened a page is
+ * how a balance disappears without anybody deciding to spend it.
+ *
+ * The stitched text is never overwritten. What comes back is vetted against
+ * both the approved language and the solicitation, and anything asserting
+ * something neither of them says is thrown away with a reason, because the
+ * alternative is a false claim in a document sent to a government buyer.
+ */
+export async function tailorSection(rfpId: string, sectionId: string): Promise<ActionResult<{ changed: boolean; note: string }>> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
+
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) return { error: "OPENROUTER_API_KEY is not set, so nothing can be tailored." };
+
+  const [{ data: section }, { data: rfp }] = await Promise.all([
+    supabase.from("rfp_proposal_sections").select("*").eq("id", sectionId).maybeSingle(),
+    supabase.from("rfps").select("title,client_agency,solicitation_number,verdict_why").eq("id", rfpId).maybeSingle(),
+  ]);
+  if (!section?.body || !rfp) return { error: "Nothing to tailor in that section." };
+
+  // What the solicitation itself says, which the tailored text is allowed to
+  // draw on without it counting as invention.
+  const solicitation = [rfp.title, rfp.client_agency, rfp.solicitation_number, rfp.verdict_why]
+    .filter(Boolean)
+    .join(". ");
+
+  let reply: string;
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "anthropic/claude-sonnet-5",
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: tailorPrompt({
+              agency: rfp.client_agency,
+              title: rfp.title,
+              solicitationNumber: rfp.solicitation_number,
+              scopeNotes: rfp.verdict_why ?? "",
+            }),
+          },
+          { role: "user", content: `SECTION: ${section.heading}\n\n${section.body}` },
+        ],
+      }),
+      signal: AbortSignal.timeout(60000),
+    });
+    if (!res.ok) return { error: `OpenRouter refused the request (${res.status}).` };
+    const json = await res.json();
+    reply = String(json?.choices?.[0]?.message?.content ?? "").trim();
+  } catch {
+    return { error: "Could not reach OpenRouter. The stitched text is unchanged." };
+  }
+
+  const rejected = vetTailored(section.body, reply, solicitation);
+  if (rejected) {
+    return { ok: true, changed: false, note: `Kept the approved text. The rewrite ${rejected}.` };
+  }
+  if (reply.trim() === section.body.trim()) {
+    return { ok: true, changed: false, note: "Nothing to change: the approved text already fits." };
+  }
+
+  const { error } = await supabase
+    .from("rfp_proposal_sections")
+    .update({ tailored_body: reply, tailored_at: new Date().toISOString(), status: "draft" })
+    .eq("id", sectionId);
+  if (error) return safeError("save the tailored section", error);
+
+  revalidatePath(`/dashboard/proposals/${rfpId}`);
+  return { ok: true, changed: true, note: "Tailored. The approved original is kept underneath." };
+}
+
+/** Put a section back to the language it was stitched from. */
+export async function revertTailoring(rfpId: string, sectionId: string): Promise<ActionResult> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
+  const { error } = await supabase
+    .from("rfp_proposal_sections")
+    .update({ tailored_body: null, tailored_at: null })
+    .eq("id", sectionId);
+  if (error) return safeError("restore the approved text", error);
+  revalidatePath(`/dashboard/proposals/${rfpId}`);
   return { ok: true };
 }
