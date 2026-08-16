@@ -63,8 +63,8 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
           <tr className="border-b border-rfp-border text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">
             <th className="px-4 py-2.5">Name</th>
             <th className="px-4 py-2.5">Role</th>
-            <th className="px-4 py-2.5">Rate</th>
-            <th className="px-4 py-2.5">Wants</th>
+            <th className="px-4 py-2.5">Rate $/hr</th>
+            <th className="px-4 py-2.5">Best suited to</th>
             <th className="px-4 py-2.5">Bandwidth</th>
             <th className="px-4 py-2.5" />
           </tr>

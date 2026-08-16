@@ -296,9 +296,21 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
                     <div>
                       <p className="text-sm text-rfp-ink">{item.label}</p>
                       {item.detail && <p className="mt-0.5 text-xs text-rfp-ink-muted">{item.detail}</p>}
-                      <p className="mt-0.5 text-[11px] uppercase tracking-wide text-rfp-ink-muted">
-                        {COMPLIANCE_CATEGORY_LABEL[item.category] ?? item.category}
-                      </p>
+                      {/* The category is only worth printing when it says
+                          something the label does not. "20-page limit" followed
+                          by "Page limit" is the same fact twice, and a checklist
+                          that repeats itself teaches people to skim it. */}
+                      {(() => {
+                        const cat = COMPLIANCE_CATEGORY_LABEL[item.category] ?? item.category;
+                        const words = cat.toLowerCase().split(" ").filter((w) => w.length > 3);
+                        const label = item.label.toLowerCase();
+                        const echoes = words.length > 0 && words.every((w) => label.includes(w));
+                        return echoes ? null : (
+                          <p className="mt-0.5 text-[11px] uppercase tracking-wide text-rfp-ink-muted">
+                            {cat}
+                          </p>
+                        );
+                      })()}
                     </div>
                   </div>
                   {item.due_at && (

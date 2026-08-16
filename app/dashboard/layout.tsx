@@ -6,6 +6,7 @@ import { SupabaseNotConfigured } from "@/components/SupabaseNotConfigured";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { PageTransition } from "@/components/PageTransition";
+import { Tour } from "@/components/Tour";
 import { isoDaysFromNow } from "@/lib/rfp";
 import type { AttentionCounts, NavCounts } from "@/lib/nav";
 
@@ -86,6 +87,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
+      <Tour />
     </div>
   );
 }
