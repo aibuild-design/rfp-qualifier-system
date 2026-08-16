@@ -15,6 +15,18 @@ import { useEffect, useState } from "react";
  * so clearing one does not clear the other.
  */
 const KEY = "rfp-tour-seen";
+const REOPEN = "rfp-tour-reopen";
+
+/** Reopen the tour from anywhere. A tour you cannot get back is a tour you have
+ *  to be careful not to dismiss, which is the opposite of the point. */
+export function restartTour() {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* nothing to do */
+  }
+  window.dispatchEvent(new Event(REOPEN));
+}
 
 const STEPS = [
   {
@@ -43,11 +55,21 @@ export function Tour() {
   const [step, setStep] = useState<number | null>(null);
 
   useEffect(() => {
+    const open = () => setStep(0);
+    window.addEventListener(REOPEN, open);
+
+    let seen = true;
     try {
-      if (!localStorage.getItem(KEY)) setStep(0);
+      seen = Boolean(localStorage.getItem(KEY));
     } catch {
       // Private modes throw. A tour is never worth an error.
     }
+    // Deferred rather than set straight from the effect: opening on the first
+    // paint and then again on the next is a flash, and reading storage during
+    // render would disagree with what the server sent.
+    if (!seen) queueMicrotask(open);
+
+    return () => window.removeEventListener(REOPEN, open);
   }, []);
 
   function close() {

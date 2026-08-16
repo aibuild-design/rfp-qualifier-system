@@ -12,6 +12,7 @@ import {
   SettingsIcon,
 } from "./icons";
 import { SignOutButton } from "./SignOutButton";
+import { RestartTourButton } from "./RestartTourButton";
 import { TriageStatus } from "./TriageStatus";
 import {
   NAV_GROUPS,
@@ -152,6 +153,8 @@ export function RailContent({
       </nav>
 
       <AttentionPanel attention={attention} />
+
+      <RestartTourButton />
 
       <SignOutButton userEmail={userEmail} />
     </>

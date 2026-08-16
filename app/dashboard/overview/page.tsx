@@ -81,7 +81,6 @@ export default async function OverviewPage() {
   const rosterReady = (rosterCount ?? 0) > 0;
   const worked = new Map((health ?? []).map((h) => [h.kind, h]));
   const filingConnected = worked.has("drive") || (filedCount ?? 0) > 0;
-  const mailConnected = worked.has("gmail");
   const triageWorking = worked.has("triage");
 
   const decided = (goCount ?? 0) + (noGoCount ?? 0);
