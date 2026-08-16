@@ -178,8 +178,8 @@ export function NewSolicitationForm() {
       </button>
 
       <p className="text-center text-[11px] text-rfp-ink-muted">
-        Scored against the eligibility profile in Settings. If that is still placeholder data, treat
-        the verdict as a demonstration.
+        Scored against the profile in Settings. Placeholder data there makes the verdict a
+        demonstration.
       </p>
     </form>
   );

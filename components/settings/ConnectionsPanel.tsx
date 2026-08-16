@@ -92,10 +92,8 @@ export function ConnectionsPanel({
     <section className="mt-8">
       <h2 className="font-display text-sm font-semibold text-rfp-ink">Connections</h2>
       <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
-        Each line is the last time that connection actually did something, not whether a setting
-        exists. A credential can be present and revoked, and a tick that reads the setting would
-        call that healthy. Recorded when the work happens and kept separately from the queue, so
-        clearing solicitations does not erase it.
+        The last time each connection actually did something, not whether a setting exists. A
+        credential can be present and revoked.
       </p>
 
       <ul className="mt-3 divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">

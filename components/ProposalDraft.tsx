@@ -38,7 +38,7 @@ export function ProposalDraft({
         <div>
           <h2 className="font-display text-sm font-semibold text-rfp-ink">Proposal draft</h2>
           <p className="mt-0.5 text-xs text-rfp-ink-muted">
-            Stitched from the approved-language library - never a blank page, never invented text.
+            Stitched from the approved-language library, never invented.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -64,10 +64,8 @@ export function ProposalDraft({
 
       {libraryCount === 0 && (
         <p className="mt-3 rounded-lg border border-rfp-serious/40 bg-rfp-serious/10 p-3 text-xs leading-relaxed text-rfp-ink-secondary">
-          The approved-language library is empty, so every section will come back as
-          &ldquo;needs writing by hand&rdquo;. Load it from Caravann&rsquo;s past proposals and
-          winning submissions - that library is what makes a draft sound like Caravann rather
-          than like a language model.
+          The library is empty, so every section comes back as &ldquo;needs writing by
+          hand&rdquo;. Load it from Caravann&rsquo;s past proposals.
         </p>
       )}
 
@@ -99,8 +97,7 @@ export function ProposalDraft({
                         </p>
                       ) : (
                         <p className="text-sm italic text-rfp-ink-muted">
-                          Nothing on file for this section. Write it by hand, then add the text to
-                          the library so the next bid starts from it.
+                          Nothing on file. Write it by hand, then add it to the library.
                         </p>
                       )}
                       {/* Flagged, never rewritten. The body is Caravann's own

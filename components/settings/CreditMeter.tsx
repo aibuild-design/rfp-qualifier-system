@@ -45,9 +45,9 @@ export function CreditMeter({ credit }: { credit: Credit }) {
 
   const message =
     credit.level === "empty"
-      ? "Out of credit. The next solicitation will arrive with no verdict."
+      ? "Out of credit. The next solicitation arrives with no verdict."
       : credit.level === "low"
-        ? "Running low. Top up before it stops returning verdicts."
+        ? "Running low."
         : null;
 
   return (
@@ -65,10 +65,14 @@ export function CreditMeter({ credit }: { credit: Credit }) {
         <h3 className="text-xs font-semibold uppercase tracking-widest text-rfp-ink-muted">
           OpenRouter credit
         </h3>
-        <p className="text-xs text-rfp-ink-muted">
-          about <span className="tabular-nums">${COST_PER_SOLICITATION.toFixed(2)}</span> a
-          solicitation
-        </p>
+        <a
+          href={TOP_UP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="press inline-flex min-h-11 items-center text-xs font-medium text-rfp-gold hover:underline"
+        >
+          Add credit &rarr;
+        </a>
       </div>
 
       <div className="mt-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
@@ -78,6 +82,9 @@ export function CreditMeter({ credit }: { credit: Credit }) {
           ${credit.remaining.toFixed(2)}
         </span>
         <span className="text-sm font-medium text-rfp-ink">left</span>
+        <span className="text-xs text-rfp-ink-muted tabular-nums">
+          &middot; ${COST_PER_SOLICITATION.toFixed(2)} each
+        </span>
       </div>
 
       <div className="relative mt-3 h-2.5 overflow-hidden rounded-full bg-rfp-surface-sunken">
@@ -118,40 +125,19 @@ export function CreditMeter({ credit }: { credit: Credit }) {
         </div>
       )}
 
-      {/* Deliberately an estimate, and deliberately not the headline. It is
+      {/* Deliberately an estimate, and deliberately not the headline: it is
           division by an average, and a long solicitation costs more than an
           average one. */}
-      <p className="mt-1.5 text-xs leading-relaxed text-rfp-ink-muted">
-        {credit.solicitationsLeft === 0 ? (
-          <>Not enough for another one at that average, which was measured across real runs.</>
-        ) : (
-          <>
-            Roughly {credit.solicitationsLeft} more{" "}
-            {credit.solicitationsLeft === 1 ? "solicitation" : "solicitations"} at that average,
-            which was measured across real runs. Long documents cost more, so treat it as a guide
-            rather than a count.
-          </>
-        )}{" "}
-        The bar fills at ${GAUGE_CEILING.toFixed(2)} and stays on that scale however much you add.
+      <p className="mt-1.5 text-xs text-rfp-ink-muted">
+        {credit.solicitationsLeft === 0
+          ? "Not enough for another one."
+          : `Roughly ${credit.solicitationsLeft} more, fewer if they are long.`}
       </p>
 
       {message && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-rfp-border pt-3">
-          <p className="text-xs font-medium leading-relaxed" style={{ color: tone }}>
-            {message}
-          </p>
-          {/* The warning and the fix in one place. Being told the tank is empty
-              and then having to go and find the pump is how a warning gets read
-              and not acted on. */}
-          <a
-            href={TOP_UP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="press inline-flex min-h-11 shrink-0 items-center rounded-lg bg-rfp-ink px-4 text-xs font-semibold text-rfp-surface hover:opacity-90"
-          >
-            Add credit on OpenRouter &rarr;
-          </a>
-        </div>
+        <p className="mt-2.5 text-xs font-medium" style={{ color: tone }}>
+          {message}
+        </p>
       )}
     </div>
   );

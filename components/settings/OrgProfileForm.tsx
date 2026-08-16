@@ -96,8 +96,7 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
           Insurance carried
         </label>
         <p className="text-xs leading-relaxed text-rfp-ink-muted">
-          Types and limits, in your own words. Every solicitation that names an insurance
-          requirement currently stalls at <span className="font-medium text-rfp-ink">maybe</span>
+          Types and limits, in your own words. Until filled, insurance requirements stall at <span className="font-medium text-rfp-ink">maybe</span>
           {" "}because the desk has no way to check it.
         </p>
         <textarea
@@ -116,8 +115,7 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
           Facilitating elected or appointed bodies
         </label>
         <p className="text-xs leading-relaxed text-rfp-ink-muted">
-          Councils, boards, commissions. A mandatory requirement in most transit and
-          public-agency solicitations, and the single most common reason a bid sits unresolved.
+          Councils, boards, commissions. Mandatory in most public-agency solicitations.
         </p>
         <textarea
           id="governing"

@@ -178,8 +178,7 @@ function LoginForm() {
             Qualify incoming RFPs before you spend a single hour on the response.
           </h2>
           <p className="text-sm leading-relaxed text-white/60">
-            One place to screen, score, and track requests for proposal -
-            so time only goes into the ones worth pursuing.
+            Screen, score and track solicitations in one place.
           </p>
         </div>
       </div>

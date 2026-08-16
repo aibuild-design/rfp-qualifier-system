@@ -178,11 +178,8 @@ export default async function OverviewPage() {
             </div>
           ))}
         </dl>
-        {goRate !== null && (
-          <p className="mt-2 text-xs text-rfp-ink-muted">
-            {goRate}% of decided solicitations cleared the gate.
-          </p>
-        )}
+        {/* The go rate is stated once, beside Latest decisions, where the
+            decisions it is a rate of are actually listed. */}
       </section>
 
       {/* The pipeline, as one line. Five numbered cards became five dots: the

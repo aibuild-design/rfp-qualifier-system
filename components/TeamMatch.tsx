@@ -60,9 +60,8 @@ export function TeamMatch({
       <div className="mt-3 overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
         {assignments.length === 0 ? (
           <p className="px-5 py-4 text-sm leading-relaxed text-rfp-ink-muted">
-            No recommendations. Either the match has not been run, or nothing the solicitation
-            states as a requirement matches what anyone on the roster does. That usually means the
-            document itself could not be read, so there is nothing to match against yet.
+            No recommendations. Usually the document could not be read, so there is nothing to
+            match against.
           </p>
         ) : (
           <ul className="divide-y divide-rfp-border">

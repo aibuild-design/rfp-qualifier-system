@@ -18,14 +18,12 @@ export default async function LibraryPage() {
       <div className="mb-2">
         <h1 className="font-display text-2xl font-semibold text-rfp-ink">Approved language</h1>
         <p className="mt-1 text-sm text-rfp-ink-secondary">
-          What proposal drafts are built from. Text Caravann has already used and stands behind -
-          which is what stops a draft reading like it came from a language model.
+          What drafts are built from. Text Caravann has already used and stands behind.
         </p>
       </div>
       <p className="mb-6 text-xs leading-relaxed text-rfp-ink-muted">
-        Blocks from winning proposals are ranked above everything else, and locked boilerplate is
-        copied verbatim rather than reworded. A section with nothing on file is reported as needing
-        writing by hand instead of being filled with invented text.
+        Winning blocks rank highest, locked boilerplate is copied verbatim, and a section with
+        nothing on file is reported rather than invented.
       </p>
 
       <LanguageLibrary blocks={blocks ?? []} />

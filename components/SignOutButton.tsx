@@ -51,8 +51,7 @@ export function SignOutButton({ userEmail }: { userEmail: string | null }) {
               <strong className="font-semibold text-rfp-ink">{userEmail ?? "this account"}</strong>.
             </p>
             <p className="mt-2">
-              Nothing is lost - every verdict, note and draft is saved, and any solicitation being
-              triaged carries on without you.
+              Nothing is lost. Anything being triaged carries on without you.
             </p>
           </>
         }

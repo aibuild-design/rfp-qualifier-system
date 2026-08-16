@@ -22,8 +22,7 @@ export default async function ReviewPage() {
       <div className="mb-6">
         <h1 className="font-display text-2xl font-semibold text-rfp-ink">Weekly review</h1>
         <p className="mt-1 text-sm text-rfp-ink-secondary">
-          Edge cases and proposed rule changes. Nothing here changes how verdicts are made until
-          you approve it.
+          Edge cases and proposed rule changes. Nothing applies until you approve it.
         </p>
       </div>
 

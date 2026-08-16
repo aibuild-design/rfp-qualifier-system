@@ -83,8 +83,8 @@ export function QuestionMemo({
       })}
 
       <p className="mt-2 text-[11px] leading-relaxed text-rfp-ink-muted">
-        Nothing is emailed from this dashboard. Approving marks a question ready; you send it and
-        mark it sent. Automatic delivery needs a mail credential that isn&rsquo;t connected.
+        Nothing is emailed from here. Approving marks a question ready; you send it and mark it
+        sent.
       </p>
     </div>
   );

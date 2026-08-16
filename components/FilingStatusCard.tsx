@@ -90,8 +90,7 @@ export function FilingStatusCard({ rfp }: { rfp: RfpRow }) {
 
         {rfp.filing_status === "not_filed" && (
           <p className="mt-4 border-t border-rfp-border pt-3 text-[11px] leading-relaxed text-rfp-ink-muted">
-            Filing runs after the verdict. If this stays here once a verdict is in, check the Drive
-            step in n8n.
+            Runs after the verdict. If it stalls, check the Drive step in n8n.
           </p>
         )}
       </div>
