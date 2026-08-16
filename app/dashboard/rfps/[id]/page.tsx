@@ -201,13 +201,13 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
             {rfp.verdict_why && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-rfp-good">Why</p>
-                <p className="mt-1.5 whitespace-pre-line text-sm text-rfp-ink-secondary">{rfp.verdict_why}</p>
+                <Reasons text={rfp.verdict_why} />
               </div>
             )}
             {rfp.verdict_why_not && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-rfp-critical">Why not</p>
-                <p className="mt-1.5 whitespace-pre-line text-sm text-rfp-ink-secondary">{rfp.verdict_why_not}</p>
+                <Reasons text={rfp.verdict_why_not} />
               </div>
             )}
           </div>
@@ -567,4 +567,41 @@ function Section({ title, subtitle, children }: { title: string; subtitle: strin
 
 function EmptyRow({ text }: { text: string }) {
   return <p className="px-5 py-4 text-sm text-rfp-ink-muted">{text}</p>;
+}
+
+/**
+ * The verdict's reasons, one per line.
+ *
+ * These arrive as a paragraph, and a paragraph is the wrong shape for them:
+ * every one is a list of independent findings - depth here, references there,
+ * insurance unrecorded - and running them together makes the reader do the
+ * separating. Four reasons in prose read as one opinion; four bullets read as
+ * four things to check.
+ *
+ * Splits on newlines first, because the model is now asked for one reason per
+ * line. Falls back to sentence boundaries so the paragraphs already stored
+ * still break up, and to the whole string if neither applies, which is why a
+ * single unbroken reason still renders rather than vanishing.
+ */
+function Reasons({ text }: { text: string }) {
+  const lines = text
+    .split(/\n+/)
+    .flatMap((line) => (line.includes("\n") ? [line] : line.split(/(?<=\.)\s+(?=[A-Z])/)))
+    .map((line) => line.replace(/^[-*\u2022]\s*/, "").trim())
+    .filter(Boolean);
+
+  if (lines.length <= 1) {
+    return <p className="mt-1.5 text-sm leading-relaxed text-rfp-ink-secondary">{text}</p>;
+  }
+
+  return (
+    <ul className="mt-1.5 space-y-1.5">
+      {lines.map((line, i) => (
+        <li key={i} className="flex gap-2 text-sm leading-relaxed text-rfp-ink-secondary">
+          <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-rfp-ink-muted" />
+          <span>{line}</span>
+        </li>
+      ))}
+    </ul>
+  );
 }
