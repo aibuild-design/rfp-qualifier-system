@@ -275,6 +275,25 @@ export interface Database {
         Relationships: [];
       };
 
+      standing_documents: {
+        Row: {
+          id: string;
+          label: string;
+          file_name: string;
+          storage_path: string;
+          /** Null when the document does not expire. */
+          expires_on: string | null;
+          added_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["standing_documents"]["Row"]> & {
+          label: string;
+          file_name: string;
+          storage_path: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["standing_documents"]["Row"]>;
+        Relationships: [];
+      };
+
       question_bank: {
         Row: {
           id: string;

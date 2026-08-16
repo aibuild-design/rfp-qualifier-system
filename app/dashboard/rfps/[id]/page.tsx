@@ -9,6 +9,7 @@ import { HumanVerdict } from "@/components/HumanVerdict";
 import { QuestionMemo } from "@/components/QuestionMemo";
 import { TeamMatch } from "@/components/TeamMatch";
 import { ProposalDraft } from "@/components/ProposalDraft";
+import { StandingDocuments } from "@/components/StandingDocuments";
 import { FilingStatusCard } from "@/components/FilingStatusCard";
 import { proposalFileName } from "@/lib/proposal";
 import { daysUntil, deadlineColor, deadlineWindowsFrom, formatBudget, formatDate, formatDeadline } from "@/lib/rfp";
@@ -53,6 +54,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
     { data: roster },
     { count: libraryCount },
     { data: scoring },
+    { data: standingDocs },
   ] = await Promise.all([
       supabase.from("rfps").select("*").eq("id", id).maybeSingle(),
       supabase.from("rfp_gap_items").select("*").eq("rfp_id", id).order("created_at"),
@@ -75,6 +77,10 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
       supabase.from("team_members").select("*"),
       supabase.from("language_blocks").select("*", { count: "exact", head: true }),
       supabase.from("scoring_settings").select("deadline_warning_days,deadline_critical_days,rubric_weights").eq("id", true).maybeSingle(),
+      // Not scoped to this bid on purpose: standing documents attach to every
+      // submission, and a per-bid link would turn "always include this" into
+      // "remember to add this", which is the thing that already does not work.
+      supabase.from("standing_documents").select("id, label, file_name, expires_on").order("label"),
     ]);
 
   const windows = deadlineWindowsFrom(scoring);
@@ -441,6 +447,10 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         fileName={proposalFileName(rfp)}
         libraryCount={libraryCount ?? 0}
       />
+
+      {/* Standing documents (module 8). Above filing, because they belong in
+          the envelope before it is sealed. */}
+      <StandingDocuments docs={standingDocs ?? []} />
 
       {/* Filing (module 10) */}
       <FilingStatusCard rfp={rfp} />

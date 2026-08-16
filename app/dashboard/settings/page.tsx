@@ -6,6 +6,7 @@ import { ScoringSettingsForm } from "@/components/settings/ScoringSettingsForm";
 import { ProfileConfirmation } from "@/components/settings/ProfileConfirmation";
 import { ConnectionsPanel } from "@/components/settings/ConnectionsPanel";
 import { IntakeFilterEditor } from "@/components/settings/SubjectTermsEditor";
+import { StandingDocsManager } from "@/components/settings/StandingDocsManager";
 import { openRouterCredit } from "@/lib/openrouter-credit";
 
 // Everything on this page is Khaled's own occasional editing - the
@@ -25,6 +26,7 @@ export default async function SettingsPage() {
     { data: scoring },
     { data: scored },
     { data: health },
+    { data: standingDocs },
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from("org_profile").select("*").eq("id", true).maybeSingle(),
@@ -39,6 +41,10 @@ export default async function SettingsPage() {
     // stopped working, and deriving it from rfps meant an empty queue reported
     // three healthy connections as unproven.
     supabase.from("connection_events").select("kind,last_ok_at,detail"),
+    supabase
+      .from("standing_documents")
+      .select("id, label, file_name, storage_path, expires_on")
+      .order("label"),
   ]);
 
   const credit = await openRouterCredit(process.env.OPENROUTER_API_KEY);
@@ -170,6 +176,16 @@ export default async function SettingsPage() {
             initialIgnore={scoring?.email_ignore_terms ?? []}
             initialMatchBody={scoring?.intake_match_body ?? true}
           />
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-display text-sm font-semibold text-rfp-ink">Attach to every submission</h2>
+        <p className="mt-0.5 text-xs text-rfp-ink-muted">
+          Files that go out with every bid. They appear on every solicitation page.
+        </p>
+        <div className="mt-3">
+          <StandingDocsManager initial={standingDocs ?? []} />
         </div>
       </section>
 
