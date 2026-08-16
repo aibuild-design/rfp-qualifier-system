@@ -5,7 +5,7 @@ import { TeamRosterEditor } from "@/components/settings/TeamRosterEditor";
 import { ScoringSettingsForm } from "@/components/settings/ScoringSettingsForm";
 import { ProfileConfirmation } from "@/components/settings/ProfileConfirmation";
 import { ConnectionsPanel } from "@/components/settings/ConnectionsPanel";
-import { SubjectTermsEditor } from "@/components/settings/SubjectTermsEditor";
+import { IntakeFilterEditor } from "@/components/settings/SubjectTermsEditor";
 import { openRouterCredit } from "@/lib/openrouter-credit";
 
 // Everything on this page is Khaled's own occasional editing - the
@@ -162,10 +162,14 @@ export default async function SettingsPage() {
       <section className="mt-8">
         <h2 className="font-display text-sm font-semibold text-rfp-ink">Which emails get triaged</h2>
         <p className="mt-0.5 text-xs text-rfp-ink-muted">
-          An email whose subject contains none of these is never read.
+          An email matching none of these is never read.
         </p>
         <div className="mt-3">
-          <SubjectTermsEditor initial={scoring?.email_subject_terms ?? []} />
+          <IntakeFilterEditor
+            initialTerms={scoring?.email_subject_terms ?? []}
+            initialIgnore={scoring?.email_ignore_terms ?? []}
+            initialMatchBody={scoring?.intake_match_body ?? true}
+          />
         </div>
       </section>
 

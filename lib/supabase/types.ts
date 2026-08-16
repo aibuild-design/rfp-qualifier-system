@@ -94,6 +94,12 @@ export interface Database {
           /** Subject substrings that mark an email as a solicitation. Empty means
            *  every email qualifies. */
           email_subject_terms: string[];
+          /** Substrings that disqualify an email even when it matched. Checked
+           *  last and against subject and body together, so it always wins. */
+          email_ignore_terms: string[];
+          /** Match the qualifying terms against the body too, not only the
+           *  subject. The subject is always matched. */
+          intake_match_body: boolean;
           notes: string | null;
           updated_at: string;
         };
