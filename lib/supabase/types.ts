@@ -100,6 +100,9 @@ export interface Database {
           /** Match the qualifying terms against the body too, not only the
            *  subject. The subject is always matched. */
           intake_match_body: boolean;
+          /** Slack incoming-webhook URL. Null disables Slack; email is
+           *  unaffected either way. */
+          slack_webhook_url: string | null;
           notes: string | null;
           updated_at: string;
         };

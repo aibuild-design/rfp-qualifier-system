@@ -6,6 +6,7 @@ import { ScoringSettingsForm } from "@/components/settings/ScoringSettingsForm";
 import { ProfileConfirmation } from "@/components/settings/ProfileConfirmation";
 import { ConnectionsPanel } from "@/components/settings/ConnectionsPanel";
 import { IntakeFilterEditor } from "@/components/settings/SubjectTermsEditor";
+import { SlackWebhook } from "@/components/settings/SlackWebhook";
 import { StandingDocsManager } from "@/components/settings/StandingDocsManager";
 import { openRouterCredit } from "@/lib/openrouter-credit";
 
@@ -186,6 +187,16 @@ export default async function SettingsPage() {
         </p>
         <div className="mt-3">
           <StandingDocsManager initial={standingDocs ?? []} />
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-display text-sm font-semibold text-rfp-ink">Where verdicts are sent</h2>
+        <p className="mt-0.5 text-xs text-rfp-ink-muted">
+          Every verdict is emailed. Add a Slack channel and it goes to both.
+        </p>
+        <div className="mt-3">
+          <SlackWebhook initial={scoring?.slack_webhook_url ?? null} />
         </div>
       </section>
 

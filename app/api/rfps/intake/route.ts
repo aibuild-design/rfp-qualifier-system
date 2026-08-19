@@ -9,6 +9,7 @@ import { costLaneFrom } from "@/lib/cost-lane";
 import { stripDashesDeep } from "@/lib/no-dashes";
 import { scoreFromRubric, type RubricBreakdown, type RubricWeights } from "@/lib/rubric";
 import type { Database, TableInsert } from "@/lib/supabase/types";
+import { verdictMessage } from "@/lib/slack";
 
 // The landing point for n8n's intake → triage pipeline (modules 1-2 of the
 // SOW). n8n parses a solicitation, runs it through OpenRouter, and POSTs the
@@ -551,12 +552,48 @@ export async function POST(req: NextRequest) {
   // bid by it, so `"ok"` fell through the go/maybe/no_go ternary and landed on
   // "go" - a no-go would have been filed into a folder labelled [go], which is
   // the one thing the folder name exists to tell you at a glance.
+  // Slack, if it is set up. Composed here rather than in n8n because the
+  // wording of a decision belongs with the code that made it, and handed over
+  // ready to post so there is no second place a verdict could be phrased
+  // differently. Null when no webhook is recorded, which n8n treats as "skip".
+  // Read here rather than reusing the settings fetch above, which is scoped to
+  // the triage branch: a bid can reach this point without having been triaged,
+  // and it still deserves a notification.
+  const { data: notify } = await supabase
+    .from("scoring_settings")
+    .select("slack_webhook_url")
+    .eq("id", true)
+    .maybeSingle();
+  const slackUrl = notify?.slack_webhook_url?.trim() || null;
+  const deskUrl = `${(process.env.BID_DESK_URL ?? "").replace(/\/$/, "")}/dashboard/rfps/${rfpId}`;
+  const slack = slackUrl
+    ? {
+        url: slackUrl,
+        message: verdictMessage({
+          id: rfpId,
+          title: body.title ?? "Untitled solicitation",
+          agency: body.client_agency ?? null,
+          verdict: (body.status as "go" | "maybe" | "no_go") ?? "pending",
+          score: typeof body.score_percent === "number" ? body.score_percent : null,
+          budget: typeof body.budget_amount === "number" ? body.budget_amount : null,
+          dueAt: body.due_at ?? null,
+          questionDeadlineAt: body.question_deadline_at ?? null,
+          why: body.verdict_why ?? null,
+          whyNot: body.verdict_why_not ?? null,
+          provisional: body.is_provisional !== false,
+          deskUrl,
+          documentUrl: body.source_url ?? null,
+        }),
+      }
+    : null;
+
   return NextResponse.json({
     id: rfpId,
     status: "ok",
     verdict: body.status ?? "pending",
     proposal_docx,
     proposal_name,
+    slack,
   });
 }
 
