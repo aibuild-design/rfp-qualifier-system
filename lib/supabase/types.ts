@@ -180,6 +180,8 @@ export interface Database {
           /** True when this verdict was computed against an unconfirmed
            *  eligibility profile. Only a re-triage clears it. */
           is_provisional: boolean;
+          /** An amendment has landed and nobody has looked at it yet. */
+          has_unreviewed_amendment: boolean;
           drive_folder_url: string | null;
           /** The built proposal as a Google Doc. Null until a draft exists. */
           proposal_doc_url: string | null;
@@ -358,6 +360,27 @@ export interface Database {
           team_member_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["rfp_team_assignments"]["Row"]>;
+        Relationships: [];
+      };
+
+      rfp_related_documents: {
+        Row: {
+          id: string;
+          rfp_id: string;
+          kind: "addendum" | "clarifying_questions" | "notice";
+          /** Addendum 2 supersedes Addendum 1, so the order has to survive. */
+          sequence: number | null;
+          title: string | null;
+          body: string | null;
+          source_url: string | null;
+          drive_url: string | null;
+          received_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["rfp_related_documents"]["Row"]> & {
+          rfp_id: string;
+          kind: "addendum" | "clarifying_questions" | "notice";
+        };
+        Update: Partial<Database["public"]["Tables"]["rfp_related_documents"]["Row"]>;
         Relationships: [];
       };
 
