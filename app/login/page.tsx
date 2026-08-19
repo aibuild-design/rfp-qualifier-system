@@ -151,8 +151,13 @@ function LoginForm() {
         </div>
       </div>
 
-      {/* Right - what the tool does */}
-      <div className="relative hidden items-center justify-center overflow-hidden border-l border-rfp-border bg-rfp-ink px-16 lg:flex">
+      {/* Right - what the tool does.
+
+          Fixed dark, not `bg-rfp-ink`. Ink inverts with the theme, so in dark
+          mode this panel turned near-white while the text on it stayed white:
+          a heading nobody could read, on the first screen anybody sees. The
+          left rail is dark in both themes and this matches it. */}
+      <div className="relative hidden items-center justify-center overflow-hidden border-l border-rfp-border bg-rfp-black px-16 lg:flex">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.05]"
           style={{

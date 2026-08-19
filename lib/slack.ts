@@ -9,6 +9,13 @@
  * Written to be readable in a notification preview, which is where most of
  * these are actually read: the first line has to carry the verdict, the agency
  * and the deadline, because that is all anybody sees on a lock screen.
+ *
+ * The reasoning is deliberately not here. A first version carried the full why
+ * and why-not lists, which ran to a screen and a half in Slack and made the
+ * channel something to scroll past rather than glance at. The reasons have not
+ * gone anywhere: they are on the bid page, one click away, where there is room
+ * to read them properly. A notification's job is to say a decision is waiting,
+ * not to argue it.
  */
 
 import { DISPLAY_TIME_ZONE } from "@/lib/rfp";
@@ -75,52 +82,34 @@ function day(iso: string | null): string {
 /** Reasons arrive one per line. Slack has no nested lists worth the trouble, so
  *  they become bulleted lines, capped: a notification that needs scrolling has
  *  stopped being a notification. */
-function bullets(text: string | null, limit = 3): string {
-  if (!text) return "";
-  return text
-    .split(/\n+/)
-    .map((l) => l.replace(/^[-*•]\s*/, "").trim())
-    .filter(Boolean)
-    .slice(0, limit)
-    .map((l) => `• ${l}`)
-    .join("\n");
-}
-
 export function verdictMessage(v: SlackVerdict): Record<string, unknown> {
   const headline = `${MARK[v.verdict]} ${LABEL[v.verdict]}${v.score === null ? "" : ` ${v.score}%`} · ${v.agency ?? "unknown agency"}`;
 
   const facts = [
-    `*Due*  ${day(v.dueAt)}`,
-    `*Questions by*  ${day(v.questionDeadlineAt)}`,
-    `*Budget*  ${money(v.budget)}`,
-  ].join("\n");
+    { type: "mrkdwn", text: `*Due*\n${day(v.dueAt)}` },
+    { type: "mrkdwn", text: `*Questions by*\n${day(v.questionDeadlineAt)}` },
+    { type: "mrkdwn", text: `*Budget*\n${money(v.budget)}` },
+  ];
+
+  // One sentence, taken from the first reason the desk gave. The first is
+  // almost always the one that decided it, and a notification's job is to say a
+  // decision is waiting rather than to argue it. The full reasoning is on the
+  // bid page, one click away, where there is room to read it.
+  const summary = firstLine(v.why) || firstLine(v.whyNot);
 
   const blocks: Record<string, unknown>[] = [
     { type: "header", text: { type: "plain_text", text: headline.slice(0, 150), emoji: true } },
-    {
-      type: "section",
-      text: { type: "mrkdwn", text: `*<${v.deskUrl}|${v.title}>*` },
-    },
-    { type: "section", text: { type: "mrkdwn", text: facts } },
+    { type: "section", text: { type: "mrkdwn", text: `*<${v.deskUrl}|${v.title}>*` } },
+    ...(summary
+      ? [{ type: "context", elements: [{ type: "mrkdwn", text: summary }] }]
+      : []),
+    { type: "section", fields: facts },
   ];
 
-  const why = bullets(v.why);
-  const whyNot = bullets(v.whyNot);
-  if (why || whyNot) {
-    blocks.push({
-      type: "section",
-      fields: [
-        ...(why ? [{ type: "mrkdwn", text: `*Why*\n${why}` }] : []),
-        ...(whyNot ? [{ type: "mrkdwn", text: `*Why not*\n${whyNot}` }] : []),
-      ],
-    });
-  }
-
-  const links = [
-    `<${v.deskUrl}|Open the bid>`,
-    v.documentUrl ? `<${v.documentUrl}|The document>` : null,
-    v.driveFolderUrl ? `<${v.driveFolderUrl}|Drive folder>` : null,
-  ].filter(Boolean);
+  // The bid page only. Drive belongs on the proposal, which is where somebody
+  // goes when they are working on the submission rather than deciding whether
+  // to make one, and three links in a notification is a menu.
+  const links = [`<${v.deskUrl}|Open the bid>`];
 
   blocks.push({
     type: "context",
@@ -143,4 +132,15 @@ export function verdictMessage(v: SlackVerdict): Record<string, unknown> {
     text: `${LABEL[v.verdict]}${v.score === null ? "" : ` ${v.score}%`}: ${v.title} (${v.agency ?? "unknown agency"}), due ${day(v.dueAt)}`,
     blocks,
   };
+}
+
+/** The first reason, trimmed to something that reads as one line in Slack. */
+function firstLine(text: string | null): string {
+  if (!text) return "";
+  const first = text
+    .split(/\n+/)
+    .map((l) => l.replace(/^[-*\u2022]\s*/, "").trim())
+    .find(Boolean);
+  if (!first) return "";
+  return first.length > 170 ? first.slice(0, 170).replace(/[ ,;:]+\S*$/, "") + "…" : first;
 }

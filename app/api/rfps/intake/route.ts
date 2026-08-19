@@ -567,7 +567,13 @@ export async function POST(req: NextRequest) {
     .eq("id", true)
     .maybeSingle();
   const slackUrl = notify?.slack_webhook_url?.trim() || null;
-  const deskUrl = `${(process.env.BID_DESK_URL ?? "").replace(/\/$/, "")}/dashboard/rfps/${rfpId}`;
+  // Taken from the request rather than from BID_DESK_URL. That variable is set
+  // locally and was never set in Vercel, so the deployed API built the link as
+  // "/dashboard/rfps/..." with no host, and Slack rendered the raw markup
+  // instead of a link. The API always knows its own origin; an environment
+  // variable is one more thing to forget.
+  const origin = req.nextUrl.origin || (process.env.BID_DESK_URL ?? "").replace(/\/$/, "");
+  const deskUrl = `${origin}/dashboard/rfps/${rfpId}`;
   const slack = slackUrl
     ? {
         url: slackUrl,
