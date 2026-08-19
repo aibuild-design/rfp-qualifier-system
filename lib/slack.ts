@@ -21,6 +21,8 @@
 import { DISPLAY_TIME_ZONE } from "@/lib/rfp";
 
 export type SlackVerdict = {
+  /** One line on what makes this one notable. Written for a notification. */
+  standout?: string | null;
   id: string;
   title: string;
   agency: string | null;
@@ -91,11 +93,11 @@ export function verdictMessage(v: SlackVerdict): Record<string, unknown> {
     { type: "mrkdwn", text: `*Budget*\n${money(v.budget)}` },
   ];
 
-  // One sentence, taken from the first reason the desk gave. The first is
-  // almost always the one that decided it, and a notification's job is to say a
-  // decision is waiting rather than to argue it. The full reasoning is on the
-  // bid page, one click away, where there is room to read it.
-  const summary = firstLine(v.why) || firstLine(v.whyNot);
+  // What makes this one worth opening, written for exactly this purpose.
+  // Falls back to the first reason when triage did not produce one, which is
+  // better than nothing and worse than the real thing: a first reason argues
+  // the score to somebody who has not yet decided to care.
+  const summary = v.standout?.trim() || firstLine(v.why) || firstLine(v.whyNot);
 
   const blocks: Record<string, unknown>[] = [
     { type: "header", text: { type: "plain_text", text: headline.slice(0, 150), emoji: true } },

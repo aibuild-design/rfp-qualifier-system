@@ -41,6 +41,7 @@ import { verdictMessage } from "@/lib/slack";
 //   "score_percent": "number 0-100?",
 //   "verdict_why": "string?",
 //   "verdict_why_not": "string?",
+//   "standout": "string? - one line on what makes this one notable",
 //   "gap_items": [{ "gap_type": "...", "description": "..." }],
 //   "compliance_items": [{ "category": "...", "label": "...", "detail": "?", "due_at": "?", "is_complete": "?" }],
 //   "disqualifier_checks": [{ "requirement_text": "...", "is_required": "?", "result": "pass|fail|not_applicable", "is_hard_knockout": "?", "notes": "?" }],
@@ -100,6 +101,7 @@ const RFP_FIELDS = [
   "score_breakdown",
   "verdict_why",
   "verdict_why_not",
+  "standout",
   "verdict_set_at",
 ] as const;
 
@@ -586,6 +588,7 @@ export async function POST(req: NextRequest) {
           budget: typeof body.budget_amount === "number" ? body.budget_amount : null,
           dueAt: body.due_at ?? null,
           questionDeadlineAt: body.question_deadline_at ?? null,
+          standout: body.standout ?? null,
           why: body.verdict_why ?? null,
           whyNot: body.verdict_why_not ?? null,
           provisional: body.is_provisional !== false,

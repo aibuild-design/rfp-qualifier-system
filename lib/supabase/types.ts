@@ -201,6 +201,8 @@ export interface Database {
           score_breakdown: Record<string, { level: string; note?: string | null }> | null;
           verdict_why: string | null;
           verdict_why_not: string | null;
+          /** One line on what makes this one notable, for notifications. */
+          standout: string | null;
           verdict_set_at: string | null;
           /** What a human decided, when they disagreed with the computed
            *  verdict. Never overwrites `status` - the gap is the measurement. */
