@@ -2,14 +2,13 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { VerdictBadge } from "@/components/VerdictBadge";
-import { StatCard } from "@/components/StatCard";
+import { QueueFilter } from "@/components/QueueFilter";
 import { ScoreMeter } from "@/components/ScoreMeter";
 import { FolderBar } from "@/components/FolderBar";
 import { MoveToFolder } from "@/components/MoveToFolder";
 import { ProfileIncompleteBanner, ProvisionalTag } from "@/components/ProfileIncompleteBanner";
 import { DemoBanner, DemoTag } from "@/components/DemoBanner";
-import { ChartIcon, CheckCircleIcon, ClockIcon, DocumentIcon } from "@/components/icons";
-import { daysUntil, deadlineColor, deadlineWindowsFrom, formatBudget, formatDate, isoDaysFromNow } from "@/lib/rfp";
+import { daysUntil, deadlineColor, deadlineWindowsFrom, formatBudget, formatDate } from "@/lib/rfp";
 
 // The RFP queue - this *is* the dashboard per the SOW ("a simple dashboard
 // showing the RFP queue by stage"). Ranked by score by default so the
@@ -69,8 +68,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     { data: rfps },
     { count: totalCount },
     { count: goCount },
+    { count: maybeCount },
+    { count: noGoCount },
     { count: pendingCount },
-    { count: dueThisWeekCount },
     { count: sectorCount },
     { data: orgProfile },
     { data: folders },
@@ -82,13 +82,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       : listQuery.order("score_percent", { ascending: false, nullsFirst: false }),
     supabase.from("rfps").select("*", { count: "exact", head: true }),
     supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "go"),
+    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "maybe"),
+    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "no_go"),
     supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "pending"),
-    supabase
-      .from("rfp_compliance_items")
-      .select("*", { count: "exact", head: true })
-      .eq("is_complete", false)
-      .not("due_at", "is", null)
-      .lte("due_at", isoDaysFromNow(windows.warningDays)),
     supabase.from("sector_experience").select("*", { count: "exact", head: true }),
     supabase.from("org_profile").select("profile_confirmed").eq("id", true).maybeSingle(),
     supabase.from("rfp_folders").select("*").order("sort_order").order("name"),
@@ -151,12 +147,6 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           >
             {sortByDeadline ? "Sort by score" : "Sort by deadline"}
           </Link>
-          <Link
-            href={showNoGo ? "/dashboard" : "/dashboard?view=no-go"}
-            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-rfp-border px-3 text-rfp-ink-secondary press hover:bg-rfp-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
-          >
-            {showNoGo ? "Back to queue" : "View no-go folder"}
-          </Link>
         </div>
       </div>
 
@@ -170,28 +160,17 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         unfiled={(allFolderIds ?? []).filter((r) => !r.folder_id).length}
       />
 
-      {/* Each card filters the queue below it. `rise-stagger` brings them in
-          left to right, which reads as the numbers being counted up rather than
-          the page popping into place. */}
-      <div className="rise-stagger mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard
-          label="RFPs received" value={totalCount ?? 0} subtext="All time"
-          icon={DocumentIcon} accent="#0a0a0a" href="/dashboard" active={!view}
-        />
-        <StatCard
-          label="Qualified (go)" value={goCount ?? 0} subtext="Cleared the gate"
-          icon={CheckCircleIcon} accent="#1b8a5a" href="/dashboard?view=go" active={view === "go"}
-        />
-        <StatCard
-          label="Pending triage" value={pendingCount ?? 0} subtext="Awaiting verdict"
-          icon={ClockIcon} accent="#d9962c" href="/dashboard?view=pending" active={view === "pending"}
-        />
-        <StatCard
-          label={`Due within ${windows.warningDays} days`} value={dueThisWeekCount ?? 0}
-          subtext="Open compliance items" icon={ChartIcon} accent="#d97a3a"
-          href="/dashboard?sort=deadline" active={sortByDeadline}
-        />
-      </div>
+      <QueueFilter
+        counts={{
+          all: totalCount ?? 0,
+          go: goCount ?? 0,
+          maybe: maybeCount ?? 0,
+          no_go: noGoCount ?? 0,
+          pending: pendingCount ?? 0,
+        }}
+        active={view ?? null}
+        sortByDeadline={sortByDeadline}
+      />
 
       <div className="mt-6 overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
         {rows.length === 0 ? (
