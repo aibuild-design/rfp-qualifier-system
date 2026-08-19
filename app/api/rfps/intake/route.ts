@@ -174,13 +174,14 @@ export async function POST(req: NextRequest) {
   if (triaged) {
     // Thresholds are Khaled's, read fresh per verdict so a change in Settings
     // applies to the next solicitation without a deploy.
-    const [{ data: settingsRow }, { data: orgProfile }] = await Promise.all([
+    const [{ data: settingsRow }, { data: orgProfile }, { data: knockouts }] = await Promise.all([
       supabase
         .from("scoring_settings")
         .select("go_threshold,maybe_threshold,preferred_misses_are_fatal,max_score_spread,rubric_weights")
         .eq("id", true)
         .maybeSingle(),
       supabase.from("org_profile").select("profile_confirmed").eq("id", true).maybeSingle(),
+      supabase.from("hard_knockouts").select("term, reason"),
     ]);
     settings = settingsRow;
 
@@ -232,7 +233,7 @@ export async function POST(req: NextRequest) {
     decision = decideVerdict(
       body.score_percent,
       disqualifier_checks ?? [],
-      thresholdsFromSettings(settings),
+      thresholdsFromSettings(settings, knockouts ?? []),
       body.score_samples ?? null,
       body.due_at ?? null
     );

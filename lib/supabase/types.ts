@@ -301,6 +301,19 @@ export interface Database {
         Relationships: [];
       };
 
+      hard_knockouts: {
+        Row: {
+          id: string;
+          /** Matched case-insensitively against a requirement's text. */
+          term: string;
+          reason: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["hard_knockouts"]["Row"]> & { term: string };
+        Update: Partial<Database["public"]["Tables"]["hard_knockouts"]["Row"]>;
+        Relationships: [];
+      };
+
       question_bank: {
         Row: {
           id: string;

@@ -34,7 +34,12 @@ export type Thresholds = {
    *  default - the SOW is explicit that preferred lowers the score rather than
    *  killing it, and turning it on will rule out winnable work. */
   preferredIsFatal?: boolean;
+  /** Subjects Khaled has marked as genuine dealbreakers, from Settings. */
+  knockouts?: readonly Knockout[];
 };
+
+/** One of Khaled's own dealbreakers: a subject that closes a bid outright. */
+export type Knockout = { term: string; reason: string | null };
 
 /** The shape the settings row arrives in, mapped to what the decision reads.
  *  Falls back to the defaults if the row is missing, so a fresh database or a
@@ -48,13 +53,15 @@ export function thresholdsFromSettings(
         max_score_spread?: number | null;
       }
     | null
-    | undefined
+    | undefined,
+  knockouts: readonly Knockout[] = []
 ): Thresholds {
   return {
     go: row?.go_threshold ?? THRESHOLDS.go,
     maybe: row?.maybe_threshold ?? THRESHOLDS.maybe,
     preferredIsFatal: row?.preferred_misses_are_fatal ?? false,
     maxSpread: row?.max_score_spread ?? DEFAULT_MAX_SPREAD,
+    knockouts,
   };
 }
 
@@ -169,6 +176,33 @@ export function decideVerdict(
         reason: `The submission deadline passed on ${due.toISOString().slice(0, 10)}. Nothing else about the bid can change that.`,
       };
     }
+  }
+
+  // Khaled's own dealbreakers, checked before anything else scores.
+  //
+  // Module 2 asks for specific items to be markable as hard knockouts, "the
+  // ones your history says are real dealbreakers, behavioral health for
+  // instance". The only control that existed was a single switch making every
+  // preferred miss fatal, which could not express that: behavioral health
+  // could not be a dealbreaker unless a preferred font size became one too.
+  //
+  // Applies to unclear as well as fail. If a subject is genuinely fatal for
+  // this firm, "the profile does not say" is not a reason to spend a week on
+  // the bid; it is a reason to ask him and record the answer once.
+  const knocked = checks.find(
+    (c) =>
+      c.result !== "pass" &&
+      c.result !== "not_applicable" &&
+      thresholds.knockouts?.some((k) => new RegExp(k.term, "i").test(c.requirement_text ?? "")),
+  );
+  if (knocked) {
+    const rule = thresholds.knockouts?.find((k) =>
+      new RegExp(k.term, "i").test(knocked.requirement_text ?? ""),
+    );
+    return {
+      status: "no_go",
+      reason: `You marked "${rule?.term}" as a dealbreaker${rule?.reason ? `: ${rule.reason}` : ""}. This solicitation requires it${knocked.result === "unclear" ? " and the profile does not say whether Caravann meets it" : ""}.`,
+    };
   }
 
   const failed = checks.filter((c) => c.result === "fail");
