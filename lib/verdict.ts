@@ -124,8 +124,30 @@ export function decideVerdict(
   thresholds: Thresholds = THRESHOLDS,
   /** Every score the triage runs returned. When they disagree badly, the
    *  honest verdict is "look at this yourself" rather than a confident call. */
-  samples: readonly number[] | null = null
+  samples: readonly number[] | null = null,
+  /** The submission deadline, when the document stated one. */
+  dueAt: string | null = null,
+  /** Injected so this stays a pure function and can be tested against a fixed
+   *  clock rather than whenever the suite happens to run. */
+  now: Date = new Date()
 ): Decision {
+  // A closed solicitation is closed. This is arithmetic, not judgement, so it
+  // is decided here rather than asked of the model.
+  //
+  // It was asked of the model, and the model had no clock. A real Central
+  // Health posting that closed the previous day came back scored as having
+  // "roughly two weeks to prepare a proposal", because nothing in the prompt
+  // said what day it was. Runway was being judged against nothing at all.
+  if (dueAt) {
+    const due = new Date(dueAt);
+    if (!Number.isNaN(due.getTime()) && due.getTime() < now.getTime()) {
+      return {
+        status: "no_go",
+        reason: `The submission deadline passed on ${due.toISOString().slice(0, 10)}. Nothing else about the bid can change that.`,
+      };
+    }
+  }
+
   const failed = checks.filter((c) => c.result === "fail");
 
   // "Preferred but not met" costs score; it never closes the door on its own -

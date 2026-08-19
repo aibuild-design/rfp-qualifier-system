@@ -233,7 +233,8 @@ export async function POST(req: NextRequest) {
       body.score_percent,
       disqualifier_checks ?? [],
       thresholdsFromSettings(settings),
-      body.score_samples ?? null
+      body.score_samples ?? null,
+      body.due_at ?? null
     );
   }
   if (decision && decision.status !== "pending") {
