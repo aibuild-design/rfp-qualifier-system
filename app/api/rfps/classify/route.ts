@@ -3,6 +3,7 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { isAuthorized } from "@/lib/api-auth";
 import { isServiceRoleConfigured } from "@/lib/supabase/config";
 import { classifyDocument } from "@/lib/document-kind";
+import { budgetFromQa } from "@/lib/budget-from-qa";
 
 /**
  * What kind of document is this, and does it belong to a bid already here?
@@ -99,6 +100,34 @@ export async function POST(req: NextRequest) {
     source_url: sourceUrl,
   });
 
+  // A budget that only appears in the answers.
+  //
+  // Module 5 asks for this by name: a number that shows up only in the Q&A
+  // still has to land on the card. Applied only when the bid has none, so an
+  // answer can fill a gap but never overwrite a figure read from the
+  // solicitation itself, which remains the better source.
+  let budgetNote: string | null = null;
+  if (classified.kind === "clarifying_questions") {
+    const { data: bid } = await supabase
+      .from("rfps")
+      .select("budget_amount")
+      .eq("id", parent.id)
+      .maybeSingle();
+
+    if (bid && bid.budget_amount === null) {
+      const found = budgetFromQa(text);
+      if (found.found) {
+        await supabase
+          .from("rfps")
+          .update({ budget_amount: found.amount, budget_source: "qa_document" })
+          .eq("id", parent.id);
+        budgetNote = `Budget of $${found.amount.toLocaleString("en-US")} taken from the answers, which the solicitation did not state.`;
+      } else if (found.reason === "explicitly none") {
+        budgetNote = "The agency was asked about budget and said none is established.";
+      }
+    }
+  }
+
   // Deliberately not re-triaged. An amendment can move a deadline, reweight
   // scoring or reverse a page limit, and what that means for a bid already
   // accepted is a judgement rather than arithmetic. Flagging it means the
@@ -111,5 +140,6 @@ export async function POST(req: NextRequest) {
     attached: true,
     rfp_id: parent.id,
     attached_to: parent.title,
+    budget_note: budgetNote,
   });
 }
