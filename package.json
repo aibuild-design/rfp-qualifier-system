@@ -13,7 +13,6 @@
     "triage:test": "node n8n/test-triage.mjs",
     "n8n:validate": "node n8n/deploy.mjs --dry-run",
     "n8n:deploy": "node n8n/deploy.mjs",
-    "seed:profile": "node scripts/seed-profile.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
     "live-check": "node scripts/live-check.mjs",
     "access": "node scripts/manage-access.mjs",
