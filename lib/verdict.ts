@@ -107,6 +107,29 @@ function numberFromEnv(name: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+/**
+ * Requirements you satisfy by doing something, not by being something.
+ *
+ * Insurance, references, registrations, bonds and licences are all obtained
+ * before submission if you do not already hold them. None of them describes
+ * whether a firm can do the work, and none of them should hold a verdict down.
+ *
+ * They were holding verdicts down. An unclear mandatory requirement capped a
+ * bid at "maybe", which was the right rule applied to the wrong set: checked
+ * against a live bid, all three of the requirements capping it were **already
+ * on that bid's compliance checklist**, one of them under a category literally
+ * named "insurance". The same fact was being counted twice, once as a task and
+ * once as a doubt about eligibility.
+ *
+ * The scope agrees. Insurance appears in module 6, the compliance checklist. It
+ * was never an eligibility gate; that part was added here and is now removed.
+ *
+ * A capability gap still caps. "Five years of behavioral health experience" is
+ * not something anybody obtains before Friday.
+ */
+const OBTAINABLE =
+  /insur|liabilit|coverage|indemnif|\bbond(ed|ing)?\b|references?\b|registrat|licen[cs]e|certificate of|w-?9|sam\.gov|business registry/i;
+
 export type Decision = {
   status: VerdictStatus;
   /** Plain-language account of which rule fired, shown in the UI and the log. */
@@ -177,7 +200,11 @@ export function decideVerdict(
   // question, which is both the honest answer and the useful one: every
   // unclear here is a specific line Khaled can add to the profile once and
   // never be asked about again.
-  const unclear = checks.filter((c) => c.result === "unclear" && c.is_required === true);
+  const unclear = checks
+    .filter((c) => c.result === "unclear" && c.is_required === true)
+    // Obtainable requirements are tracked on the compliance checklist instead,
+    // which is where the scope put them and where they can actually be ticked.
+    .filter((c) => !OBTAINABLE.test(c.requirement_text ?? ""));
   if (unclear.length > 0) {
     const list = unclear
       .map((c) => c.requirement_text?.trim())
