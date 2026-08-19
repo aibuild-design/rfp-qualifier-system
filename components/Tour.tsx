@@ -67,6 +67,11 @@ const STEPS: Step[] = [
     body: "Every solicitation with its verdict, score, budget and both deadlines. Open one for the reasoning behind it.",
   },
   {
+    target: "proposals",
+    title: "The drafts themselves",
+    body: "Every bid you accepted and drafted, in one place. Open one to read the sections, tailor them to the solicitation, or open the Google Doc.",
+  },
+  {
     target: "library",
     title: "Where drafts come from",
     body: "Caravann's own approved language. Proposals are stitched from this, never invented.",
