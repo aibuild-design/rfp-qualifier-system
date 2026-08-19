@@ -5,6 +5,8 @@ import { EdgeCaseList, PortalRules } from "@/components/ReviewQueue";
 // the portal quirks it has been taught, in one place to clear in a sitting.
 import { CalibrationPanel } from "@/components/CalibrationPanel";
 import { calibrate, type Override } from "@/lib/calibration";
+import { learnPreferences } from "@/lib/preferences";
+import { loadBidSignals } from "@/lib/preference-loader";
 
 export default async function ReviewPage() {
   const supabase = await createClient();
@@ -45,6 +47,8 @@ export default async function ReviewPage() {
     scoring?.go_threshold ?? 70,
   );
 
+  const preferences = learnPreferences(await loadBidSignals(supabase));
+
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
@@ -56,7 +60,7 @@ export default async function ReviewPage() {
 
       {/* First, because it answers the question the rest of the page assumes:
           whether the desk's judgement is worth reviewing at all. */}
-      <CalibrationPanel calibration={calibration} />
+      <CalibrationPanel calibration={calibration} preferences={preferences} />
 
       <h2 className="font-display text-sm font-semibold text-rfp-ink">
         Waiting on you{pending?.length ? ` (${pending.length})` : ""}

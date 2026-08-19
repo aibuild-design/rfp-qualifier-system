@@ -3,6 +3,8 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { isAuthorized } from "@/lib/api-auth";
 import { isServiceRoleConfigured } from "@/lib/supabase/config";
 import { overrideExamples, type Override } from "@/lib/calibration";
+import { learnPreferences, preferenceBlock } from "@/lib/preferences";
+import { loadBidSignals } from "@/lib/preference-loader";
 
 // Everything n8n's triage prompt needs to judge a solicitation against
 // Caravann specifically: the eligibility profile and sector map Khaled
@@ -58,6 +60,10 @@ export async function GET(req: NextRequest) {
     sector_experience: sectors ?? [],
     portal_rules: portalRules ?? [],
     question_bank: bank ?? [],
+    // What he pursues, learned from what he did rather than what he said.
+    // Empty until there is enough behaviour to describe, and phrased as an
+    // observation rather than an instruction when there is.
+    preferences: preferenceBlock(learnPreferences(await loadBidSignals(supabase))),
     past_decisions: overrideExamples(
       (decided ?? []).map(
         (r): Override => ({
