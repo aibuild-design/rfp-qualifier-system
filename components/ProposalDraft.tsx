@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { checkVoice, voiceSummary } from "@/lib/voice";
 import { approveSection, buildDraft, revertTailoring, tailorSection } from "@/app/dashboard/rfps/[id]/actions";
+import { BuildProgress } from "./BuildProgress";
 import type { ProposalSectionRow } from "@/lib/supabase/types";
 
 export function ProposalDraft({
@@ -28,10 +29,17 @@ export function ProposalDraft({
   // asks.
   const [confirming, setConfirming] = useState(false);
 
+  // Only the draft build gets the progress panel. Approving a section and
+  // tailoring one are quick, and a progress bar on a fast action reads as the
+  // app being slow rather than as it being informative.
+  const [building, setBuilding] = useState(false);
+
   function rebuild() {
+    setBuilding(true);
     setConfirming(false);
     start(async () => {
       const r = await buildDraft(rfpId);
+      setBuilding(false);
       setMessage(
         r.error
           ? r.error
@@ -98,6 +106,8 @@ export function ProposalDraft({
           </div>
         </div>
       )}
+
+      {building && <BuildProgress running />}
 
       {message && (
         <p className="mt-2 text-xs font-medium" style={{ color: "var(--rfp-good)" }}>
@@ -185,7 +195,8 @@ export function ProposalDraft({
                           <button
                             onClick={() => start(async () => {
                               const r = await tailorSection(rfpId, s.id);
-                              setMessage(r.error ?? r.note ?? "Done.");
+                              setBuilding(false);
+      setMessage(r.error ?? r.note ?? "Done.");
                             })}
                             disabled={pending}
                             className="press mt-3 inline-flex min-h-11 items-center rounded-lg border border-rfp-border px-3.5 text-xs font-semibold text-rfp-ink-secondary hover:bg-rfp-surface disabled:opacity-50"
