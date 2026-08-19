@@ -85,8 +85,7 @@ export default async function SettingsPage() {
         <div className="border-b border-rfp-border pb-3">
           <h2 className="font-display text-lg font-semibold text-rfp-ink">1 · About Caravann</h2>
           <p className="mt-1 text-sm leading-relaxed text-rfp-ink-secondary">
-            The facts every verdict is computed from. Until they are confirmed, verdicts are
-            marked provisional.
+            Unconfirmed facts make every verdict provisional.
           </p>
         </div>
 
@@ -143,16 +142,14 @@ export default async function SettingsPage() {
         <div className="border-b border-rfp-border pb-3">
           <h2 className="font-display text-lg font-semibold text-rfp-ink">2 · How the desk decides</h2>
           <p className="mt-1 text-sm leading-relaxed text-rfp-ink-secondary">
-            Judgement, not fact. Change it as you see what the desk gets wrong. The next
-            solicitation uses the new numbers.
+            Change it as you see what the desk gets wrong.
           </p>
         </div>
 
         <div className="mt-6">
           <h3 className="font-display text-sm font-semibold text-rfp-ink">Scoring and thresholds</h3>
           <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
-            Where the go/no-go line sits, and what each dimension is worth. These numbers decide
-            the label, which is why the same solicitation always gets the same verdict.
+            Where the go/no-go line sits, and what each dimension is worth.
           </p>
           <div className="mt-3">
             {scoring ? (
@@ -193,7 +190,7 @@ export default async function SettingsPage() {
       <section className="mt-8">
         <h2 className="font-display text-sm font-semibold text-rfp-ink">Where verdicts are sent</h2>
         <p className="mt-0.5 text-xs text-rfp-ink-muted">
-          Every verdict is emailed. Add a Slack channel and it goes to both.
+          Emailed always. Add Slack for both.
         </p>
         <div className="mt-3">
           <SlackWebhook initial={scoring?.slack_webhook_url ?? null} />

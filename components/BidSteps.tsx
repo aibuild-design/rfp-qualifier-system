@@ -33,7 +33,7 @@ export function bidSteps({
   return [
     {
       label: "Read and scored",
-      detail: scored ? "The whole document, three times over." : "Waiting on triage.",
+      detail: scored ? "Three reads, reconciled." : "Waiting on triage.",
       state: scored ? "done" : "current",
     },
     {
@@ -42,7 +42,7 @@ export function bidSteps({
         ? declined
           ? "You declined this one."
           : "You accepted it."
-        : "Nothing else happens until you accept or decline.",
+        : "Accept or decline.",
       state: decided ? "done" : scored ? "current" : "blocked",
     },
     {
@@ -50,10 +50,10 @@ export function bidSteps({
       detail: declined
         ? "Not needed. You declined this bid."
         : drafted
-          ? "Built from the approved-language library."
+          ? "From your own language."
           : decided
             ? "Ready to build."
-            : "Unlocks once you accept.",
+            : "After you accept.",
       // A declined bid's remaining steps are settled, not pending. Showing them
       // as blocked would suggest there is still something to do.
       state: declined ? "done" : drafted ? "done" : decided ? "current" : "blocked",

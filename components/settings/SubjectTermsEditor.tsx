@@ -77,15 +77,14 @@ export function IntakeFilterEditor({
             Also read the message body
           </span>
           <span className="mt-0.5 block text-xs leading-relaxed text-rfp-ink-muted">
-            Catches a forward whose subject says nothing useful. If something noisy starts
-            arriving, add a narrow term to the ignore list below rather than turning this off.
+            Catches a forward whose subject says nothing useful.
           </span>
         </span>
       </label>
 
       <ChipList
         label="Never triage"
-        hint="Checked against subject and body together, and checked last, so it overrules a match. Keep terms narrow: aggregator footers contain words like unsubscribe and newsletter, so a broad term here silently drops real solicitations."
+        hint="Checked last, against subject and body, so it overrules a match. Keep terms narrow: a broad one silently drops real solicitations."
         emptyWarning="Empty. Nothing is excluded, which is the safe default."
         placeholder="webinar"
         column="email_ignore_terms"

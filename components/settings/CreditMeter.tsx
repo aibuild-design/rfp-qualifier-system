@@ -131,7 +131,7 @@ export function CreditMeter({ credit }: { credit: Credit }) {
       <p className="mt-1.5 text-xs text-rfp-ink-muted">
         {credit.solicitationsLeft === 0
           ? "Not enough for another one."
-          : `Roughly ${credit.solicitationsLeft} more, fewer if they are long.`}
+          : `Roughly ${credit.solicitationsLeft} more, fewer if long.`}
       </p>
 
       {message && (

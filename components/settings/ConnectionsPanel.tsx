@@ -92,8 +92,7 @@ export function ConnectionsPanel({
     <section className="mt-8">
       <h2 className="font-display text-sm font-semibold text-rfp-ink">Connections</h2>
       <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
-        The last time each connection actually did something, not whether a setting exists. A
-        credential can be present and revoked.
+        The last time each actually worked, not whether a setting exists.
       </p>
 
       <ul className="mt-3 divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
@@ -154,8 +153,7 @@ export function ConnectionsPanel({
       )}
 
       <p className="mt-3 text-xs leading-relaxed text-rfp-ink-muted">
-        Google is authorised in n8n rather than here. n8n keeps its own credentials and cannot use
-        a token this dashboard obtains, and the mail trigger runs there.{" "}
+        Google is authorised in n8n, which keeps its own credentials.{" "}
         {n8nUrl ? (
           <a
             href={`${n8nUrl}/home/credentials`}

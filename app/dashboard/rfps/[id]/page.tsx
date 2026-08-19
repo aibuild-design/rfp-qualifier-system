@@ -246,9 +246,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
                 The bid folder in Drive &rarr;
               </a>
             )}
-            <span className="inline-flex min-h-11 items-center text-xs text-rfp-ink-muted">
-              Both the original file and a readable copy.
-            </span>
+
           </div>
         )}
       </div>
@@ -263,14 +261,12 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
       {/* Band one: the reasoning behind the verdict. */}
       <div className="mt-10 flex items-baseline gap-3 border-b border-rfp-border-strong pb-2">
         <h2 className="font-display text-base font-semibold text-rfp-ink">Why the desk said this</h2>
-        <p className="text-xs text-rfp-ink-muted">The score, the hard gate, and what Caravann is short on.</p>
       </div>
 
       {rubric && (
         <Section
           title="How the score was reached"
-          subtitle="Each dimension is judged against a fixed standard; the percentage is the arithmetic, not a guess."
-        >
+                  >
           <ul className="divide-y divide-rfp-border">
             {rubric.dimensions.map((d) => (
               <li key={d.key} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-3">
@@ -305,7 +301,12 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
       )}
 
       {/* Gap list */}
-      <Section title="Gap list" subtitle="What Caravann is short on for this RFP - the teaming shopping list.">
+      <Section
+        title="Gap list"
+        subtitle="What a teaming partner would need to bring."
+        open={false}
+        count={`${(gaps ?? []).length}`}
+      >
         {!gaps || gaps.length === 0 ? (
           <EmptyRow text="No gaps flagged." />
         ) : (
@@ -323,7 +324,10 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
       </Section>
 
       {/* Compliance checklist */}
-      <Section title="Compliance checklist" subtitle="Everything that can disqualify on a technicality.">
+      <Section
+        title="Compliance checklist"
+        count={`${(compliance ?? []).filter((c) => !c.is_complete).length} open`}
+      >
         {!compliance || compliance.length === 0 ? (
           <EmptyRow text="No compliance items extracted yet." />
         ) : (
@@ -372,7 +376,11 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
       </Section>
 
       {/* Disqualifier checks */}
-      <Section title="Disqualifier checks" subtitle="The hard-gate pass, run against Caravann's eligibility profile.">
+      <Section
+        title="Disqualifier checks"
+        open={(disqualifiers ?? []).some((d) => d.result !== "pass")}
+        count={`${(disqualifiers ?? []).filter((d) => d.result === "pass").length} of ${(disqualifiers ?? []).length} pass`}
+      >
         {!disqualifiers || disqualifiers.length === 0 ? (
           <EmptyRow text="No disqualifier checks recorded." />
         ) : (
@@ -433,7 +441,6 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
       {/* Band two: the work only a person can do. */}
       <div className="mt-10 flex items-baseline gap-3 border-b border-rfp-border-strong pb-2">
         <h2 className="font-display text-base font-semibold text-rfp-ink">What needs you</h2>
-        <p className="text-xs text-rfp-ink-muted">Questions to send, and who is on the bid.</p>
       </div>
 
       {/* Question memo - approve / mark sent (module 7) */}
@@ -480,7 +487,6 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
       {/* Band three: everything that follows accepting the bid. */}
       <div className="mt-10 flex items-baseline gap-3 border-b border-rfp-border-strong pb-2">
         <h2 className="font-display text-base font-semibold text-rfp-ink">The proposal</h2>
-        <p className="text-xs text-rfp-ink-muted">What is still open, and the draft.</p>
       </div>
 
       {/* What is still open. Placed above the draft because it is the last
@@ -521,13 +527,51 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
   );
 }
 
-function Section({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+/**
+ * A section of the bid, open or folded away.
+ *
+ * The rule is: **open if it needs you, folded if it is evidence.** Cutting
+ * words got this page five percent shorter and no easier to read, because the
+ * length was never padding. It was fourteen hundred words of real findings,
+ * every one of them expanded at once, on a page whose actual purpose is a
+ * decision at the bottom.
+ *
+ * Folded sections still say how much is inside, so nothing is hidden, only
+ * stacked. A count on a closed row is more informative than eleven rows you
+ * scroll past.
+ *
+ * An empty subtitle renders nothing rather than a blank line, so a section
+ * whose heading already says everything does not pay for an empty row.
+ */
+function Section({
+  title,
+  subtitle,
+  count,
+  open = true,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  /** Shown on the fold, so a closed section still reports its size. */
+  count?: string;
+  open?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="mt-6">
-      <h2 className="font-display text-sm font-semibold text-rfp-ink">{title}</h2>
-      <p className="mt-0.5 text-xs text-rfp-ink-muted">{subtitle}</p>
-      <div className="mt-3 overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">{children}</div>
-    </div>
+    <details open={open} className="mt-6 group">
+      <summary className="press flex cursor-pointer flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 className="font-display text-sm font-semibold text-rfp-ink">{title}</h2>
+        {count ? (
+          <span className="rounded-full bg-rfp-surface-sunken px-2 py-0.5 text-[11px] font-medium tabular-nums text-rfp-ink-secondary">
+            {count}
+          </span>
+        ) : null}
+        {subtitle ? <p className="text-xs text-rfp-ink-muted">{subtitle}</p> : null}
+        <span className="ml-auto text-xs text-rfp-ink-muted group-open:hidden">show</span>
+        <span className="ml-auto hidden text-xs text-rfp-ink-muted group-open:inline">hide</span>
+      </summary>
+      <div className="mt-2.5 overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">{children}</div>
+    </details>
   );
 }
 
@@ -560,14 +604,38 @@ function Reasons({ text }: { text: string }) {
     return <p className="mt-1.5 text-sm leading-relaxed text-rfp-ink-secondary">{text}</p>;
   }
 
+  // Two, then the rest on request. This is the tallest thing above the fold and
+  // the first reason is almost always the one that decided it; the others are
+  // worth having and not worth three inches of the page every time.
+  const shown = lines.slice(0, 2);
+  const rest = lines.slice(2);
+
   return (
-    <ul className="mt-1.5 space-y-1.5">
-      {lines.map((line, i) => (
-        <li key={i} className="flex gap-2 text-sm leading-relaxed text-rfp-ink-secondary">
-          <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-rfp-ink-muted" />
-          <span>{line}</span>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="mt-1.5 space-y-1.5">
+        {shown.map((line, i) => (
+          <li key={i} className="flex gap-2 text-sm leading-relaxed text-rfp-ink-secondary">
+            <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-rfp-ink-muted" />
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
+      {rest.length > 0 && (
+        <details className="mt-1.5 group">
+          <summary className="press cursor-pointer text-xs font-medium text-rfp-ink-muted hover:text-rfp-ink">
+            <span className="group-open:hidden">{rest.length} more</span>
+            <span className="hidden group-open:inline">Fewer</span>
+          </summary>
+          <ul className="mt-1.5 space-y-1.5">
+            {rest.map((line, i) => (
+              <li key={i} className="flex gap-2 text-sm leading-relaxed text-rfp-ink-secondary">
+                <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-rfp-ink-muted" />
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </>
   );
 }

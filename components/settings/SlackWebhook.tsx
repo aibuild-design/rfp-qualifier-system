@@ -36,8 +36,8 @@ export function SlackWebhook({ initial }: { initial: string | null }) {
         Slack webhook URL
       </label>
       <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
-        In Slack: Apps, then Incoming Webhooks, then Add to Slack and pick the channel. Paste the
-        URL it gives you. Leave it empty and no Slack message is sent; the email goes either way.
+        Slack: Apps &rarr; Incoming Webhooks &rarr; Add to Slack, pick the channel, paste the URL.
+        Empty means email only.
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">
