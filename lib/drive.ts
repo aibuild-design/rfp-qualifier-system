@@ -61,6 +61,59 @@ export async function fileProposal(
   return reply?.doc_url ?? null;
 }
 
+/**
+ * Put the standing documents into a bid folder.
+ *
+ * Module 8 states it: "standing documents like your insurance certificate
+ * attach to every submission." Until now they were recorded in Settings, shown
+ * on the proposal page, and never went anywhere. A reminder list that knows the
+ * file exists but leaves you to go and find it is not what was asked for.
+ *
+ * Uploaded as-is rather than converted. The proposal becomes a Google Doc
+ * because it is a document people edit; a certificate of insurance is evidence,
+ * and converting it changes the artefact the agency asked to see.
+ *
+ * Expired documents are skipped and named in the return. An insurance
+ * certificate that lapsed in March is worse than none at all, because it gets
+ * attached with confidence.
+ */
+export async function attachStandingDocuments(
+  folderId: string,
+  docs: { label: string; file_name: string; expires_on: string | null; bytes: Buffer }[],
+): Promise<{ attached: string[]; expired: string[] }> {
+  const today = new Date().toISOString().slice(0, 10);
+  const attached: string[] = [];
+  const expired: string[] = [];
+
+  for (const doc of docs) {
+    if (doc.expires_on && doc.expires_on < today) {
+      expired.push(doc.label);
+      continue;
+    }
+    const reply = await ask({
+      action: "attach-file",
+      folder_id: folderId,
+      file_name: doc.file_name,
+      file_base64: doc.bytes.toString("base64"),
+      mime_type: mimeFor(doc.file_name),
+    });
+    if (reply?.ok) attached.push(doc.label);
+  }
+
+  return { attached, expired };
+}
+
+/** Enough to keep Drive from labelling everything a binary download. */
+function mimeFor(name: string): string {
+  const ext = name.toLowerCase().split(".").pop() ?? "";
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "docx") return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (ext === "doc") return "application/msword";
+  if (ext === "png") return "image/png";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  return "application/octet-stream";
+}
+
 /** Leave one of each thing in a bid folder and trash the rest. */
 export async function tidyFolder(folderId: string): Promise<boolean> {
   const reply = await ask({ action: "tidy-folder", folder_id: folderId });

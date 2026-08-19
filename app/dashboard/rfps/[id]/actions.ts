@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser, safeError, type ActionResult } from "@/lib/auth";
 import type { QuestionLane } from "@/lib/supabase/types";
-import { fileProposal, folderIdFrom, moveToLane } from "@/lib/drive";
+import { attachStandingDocuments, fileProposal, folderIdFrom, moveToLane } from "@/lib/drive";
 import { caravannTemplate } from "@/lib/template-store";
 import { fillTemplate } from "@/lib/docx-fill";
 import { proposalFileName } from "@/lib/proposal";
@@ -103,6 +103,33 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
         });
         const docUrl = await fileProposal(folderId, `${proposalFileName(rfp)}.docx`, buffer);
         if (docUrl) await supabase.from("rfps").update({ proposal_doc_url: docUrl }).eq("id", rfpId);
+
+        // The standing documents, into the same folder as the draft.
+        //
+        // Here rather than at intake because this is the moment a submission
+        // starts existing. A bid nobody has drafted does not need an insurance
+        // certificate sitting next to it, and filing one there would put a
+        // stale copy in every folder Khaled never pursued.
+        const { data: standing } = await supabase
+          .from("standing_documents")
+          .select("label, file_name, storage_path, expires_on");
+
+        if (standing?.length) {
+          const files = [];
+          for (const doc of standing) {
+            const { data: blob } = await supabase.storage
+              .from("client-documents")
+              .download(doc.storage_path);
+            if (!blob) continue;
+            files.push({
+              label: doc.label,
+              file_name: doc.file_name,
+              expires_on: doc.expires_on,
+              bytes: Buffer.from(await blob.arrayBuffer()),
+            });
+          }
+          if (files.length) await attachStandingDocuments(folderId, files);
+        }
       }
     } catch {
       /* the draft stands either way */
