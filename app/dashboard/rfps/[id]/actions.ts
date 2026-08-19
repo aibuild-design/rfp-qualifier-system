@@ -493,10 +493,17 @@ export async function tailorSection(rfpId: string, sectionId: string): Promise<A
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return { error: "OPENROUTER_API_KEY is not set, so nothing can be tailored." };
 
-  const [{ data: section }, { data: rfp }] = await Promise.all([
-    supabase.from("rfp_proposal_sections").select("*").eq("id", sectionId).maybeSingle(),
-    supabase.from("rfps").select("title,client_agency,solicitation_number,verdict_why").eq("id", rfpId).maybeSingle(),
-  ]);
+  // The analysis the desk already paid to produce. Reading it here is the
+  // difference between a section adapted to this solicitation and one with the
+  // agency's name pasted into it.
+  const [{ data: section }, { data: rfp }, { data: checks }, { data: rules }, { data: gaps }] =
+    await Promise.all([
+      supabase.from("rfp_proposal_sections").select("*").eq("id", sectionId).maybeSingle(),
+      supabase.from("rfps").select("title,client_agency,solicitation_number,verdict_why").eq("id", rfpId).maybeSingle(),
+      supabase.from("rfp_disqualifier_checks").select("requirement_text").eq("rfp_id", rfpId),
+      supabase.from("rfp_compliance_items").select("label, detail").eq("rfp_id", rfpId),
+      supabase.from("rfp_gap_items").select("description").eq("rfp_id", rfpId),
+    ]);
   if (!section?.body || !rfp) return { error: "Nothing to tailor in that section." };
 
   // What the solicitation itself says, which the tailored text is allowed to
@@ -521,6 +528,12 @@ export async function tailorSection(rfpId: string, sectionId: string): Promise<A
               title: rfp.title,
               solicitationNumber: rfp.solicitation_number,
               scopeNotes: rfp.verdict_why ?? "",
+              requirements: (checks ?? []).map((c) => c.requirement_text).filter(Boolean).slice(0, 12),
+              rules: (rules ?? [])
+                .map((r) => [r.label, r.detail].filter(Boolean).join(": "))
+                .filter(Boolean)
+                .slice(0, 10),
+              gaps: (gaps ?? []).map((g) => g.description).filter(Boolean).slice(0, 8),
             }),
           },
           { role: "user", content: `SECTION: ${section.heading}\n\n${section.body}` },

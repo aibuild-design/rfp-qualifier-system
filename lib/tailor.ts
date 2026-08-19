@@ -93,6 +93,12 @@ export function tailorPrompt(context: {
   title: string;
   solicitationNumber: string | null;
   scopeNotes: string;
+  /** What this solicitation actually asks for, from the gate pass. */
+  requirements?: string[];
+  /** Rules that decide the format, from the compliance checklist. */
+  rules?: string[];
+  /** What the desk found Caravann short on, so the text does not oversell it. */
+  gaps?: string[];
 }): string {
   return [
     "You adapt an existing proposal section to one specific solicitation.",
@@ -118,7 +124,20 @@ export function tailorPrompt(context: {
     `THE SOLICITATION: ${context.title}`,
     `AGENCY: ${context.agency}`,
     context.solicitationNumber ? `NUMBER: ${context.solicitationNumber}` : "",
-    context.scopeNotes ? `WHAT IT ASKS FOR: ${context.scopeNotes}` : "",
+    context.scopeNotes ? `WHY IT WAS SCORED AS IT WAS: ${context.scopeNotes}` : "",
+    // The analysis, which the draft previously ignored entirely. The desk read
+    // every stated requirement and every formatting rule, then wrote a proposal
+    // as though it had not: two bids for completely different solicitations
+    // came out with the same sentences and only the agency's name changed.
+    context.requirements?.length
+      ? `\nWHAT THIS AGENCY STATES IT REQUIRES. Where the text below already demonstrates one of these, say so in its own words. Do not claim any of them that the text does not already support:\n${context.requirements.map((r) => `- ${r}`).join("\n")}`
+      : "",
+    context.rules?.length
+      ? `\nRULES THIS PROPOSAL IS JUDGED AGAINST. Respect them in how you write, particularly any length limit:\n${context.rules.map((r) => `- ${r}`).join("\n")}`
+      : "",
+    context.gaps?.length
+      ? `\nWHERE CARAVANN IS GENUINELY THIN ON THIS BID. Never paper over these, and never make a claim that touches them:\n${context.gaps.map((g) => `- ${g}`).join("\n")}`
+      : "",
     "",
     "Return only the adapted text. No preamble, no explanation, no quotes around it.",
   ]
