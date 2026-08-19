@@ -538,3 +538,22 @@ export async function revertTailoring(rfpId: string, sectionId: string): Promise
   revalidatePath(`/dashboard/proposals/${rfpId}`);
   return { ok: true };
 }
+
+/**
+ * Record that a person has read the amendments on a bid.
+ *
+ * Only clears the flag. It does not re-triage, re-score or touch the verdict,
+ * because reading an amendment and deciding what it means are different acts,
+ * and the second one is Khaled's.
+ */
+export async function markAmendmentReviewed(rfpId: string): Promise<ActionResult> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
+  const { error } = await supabase
+    .from("rfps")
+    .update({ has_unreviewed_amendment: false })
+    .eq("id", rfpId);
+  if (error) return safeError("mark the amendments read", error);
+  revalidatePath(`/dashboard/rfps/${rfpId}`);
+  return { ok: true };
+}

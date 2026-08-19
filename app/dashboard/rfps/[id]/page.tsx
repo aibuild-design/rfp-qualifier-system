@@ -7,6 +7,7 @@ import { DemoTag } from "@/components/DemoBanner";
 import { ProvisionalTag } from "@/components/ProfileIncompleteBanner";
 import { HumanVerdict } from "@/components/HumanVerdict";
 import { BidSteps, bidSteps, ReadyToDraft } from "@/components/BidSteps";
+import { AmendmentNotice } from "@/components/AmendmentNotice";
 import { QuestionMemo } from "@/components/QuestionMemo";
 import { TeamMatch } from "@/components/TeamMatch";
 import { BuildDraftCard } from "@/components/BuildDraftCard";
@@ -51,6 +52,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
     { data: assignmentRows },
     { data: roster },
     { data: scoring },
+    { data: relatedDocs },
   ] = await Promise.all([
       supabase.from("rfps").select("*").eq("id", id).maybeSingle(),
       supabase.from("rfp_gap_items").select("*").eq("rfp_id", id).order("created_at"),
@@ -72,6 +74,11 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
         .order("match_score", { ascending: false, nullsFirst: false }),
       supabase.from("team_members").select("*"),
       supabase.from("scoring_settings").select("deadline_warning_days,deadline_critical_days,rubric_weights").eq("id", true).maybeSingle(),
+      supabase
+        .from("rfp_related_documents")
+        .select("id, kind, sequence, title, body, received_at")
+        .eq("rfp_id", id)
+        .order("received_at", { ascending: false })
     ]);
 
   const windows = deadlineWindowsFrom(scoring);
@@ -245,6 +252,13 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
           </div>
         )}
       </div>
+
+      {/* Above the reasoning, because it can invalidate it. */}
+      <AmendmentNotice
+        rfpId={rfp.id}
+        unreviewed={rfp.has_unreviewed_amendment}
+        documents={relatedDocs ?? []}
+      />
 
       {/* Band one: the reasoning behind the verdict. */}
       <div className="mt-10 flex items-baseline gap-3 border-b border-rfp-border-strong pb-2">
