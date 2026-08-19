@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { isAuthorized } from "@/lib/api-auth";
 import { isServiceRoleConfigured } from "@/lib/supabase/config";
+import { overrideExamples, type Override } from "@/lib/calibration";
 
 // Everything n8n's triage prompt needs to judge a solicitation against
 // Caravann specifically: the eligibility profile and sector map Khaled
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
 
   const supabase = createServiceRoleClient();
 
-  const [{ data: orgProfile }, { data: sectors }, { data: portalRules }, { data: bank }] =
+  const [{ data: orgProfile }, { data: sectors }, { data: portalRules }, { data: bank }, { data: decided }] =
     await Promise.all([
       supabase.from("org_profile").select("*").eq("id", true).maybeSingle(),
       supabase.from("sector_experience").select("sector, years_experience, engagement_count, notes").order("sector"),
@@ -35,6 +36,21 @@ export async function GET(req: NextRequest) {
         .select("lane, question_text, times_approved")
         .order("times_approved", { ascending: false })
         .limit(40),
+      // Khaled's own past calls, and only the ones he disagreed with the desk
+      // on. This is the loop that was missing: every override was written to a
+      // column and never read again, so the desk could be corrected a hundred
+      // times and start each new solicitation knowing none of it.
+      //
+      // Capped and recent-first for the same reason as the question bank: it is
+      // pasted into every triage, and an unbounded history would cost more each
+      // week and eventually crowd out the document being read.
+      supabase
+        .from("rfps")
+        .select("id, title, status, human_verdict, human_verdict_note, human_verdict_at, score_percent")
+        .not("human_verdict", "is", null)
+        .not("human_verdict_note", "is", null)
+        .order("human_verdict_at", { ascending: false })
+        .limit(20),
     ]);
 
   return NextResponse.json({
@@ -42,5 +58,18 @@ export async function GET(req: NextRequest) {
     sector_experience: sectors ?? [],
     portal_rules: portalRules ?? [],
     question_bank: bank ?? [],
+    past_decisions: overrideExamples(
+      (decided ?? []).map(
+        (r): Override => ({
+          id: r.id,
+          title: r.title,
+          computed: r.status as Override["computed"],
+          human: r.human_verdict as Override["human"],
+          score: r.score_percent,
+          note: r.human_verdict_note,
+          decidedAt: r.human_verdict_at,
+        }),
+      ),
+    ),
   });
 }

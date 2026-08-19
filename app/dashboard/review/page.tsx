@@ -3,10 +3,14 @@ import { EdgeCaseList, PortalRules } from "@/components/ReviewQueue";
 
 // Module 11 - the weekly pass. Everything the system was unsure about, plus
 // the portal quirks it has been taught, in one place to clear in a sitting.
+import { CalibrationPanel } from "@/components/CalibrationPanel";
+import { calibrate, type Override } from "@/lib/calibration";
+
 export default async function ReviewPage() {
   const supabase = await createClient();
 
-  const [{ data: pending }, { data: resolved }, { data: rules }] = await Promise.all([
+  const [{ data: pending }, { data: resolved }, { data: rules }, { data: decided }, { data: scoring }] =
+    await Promise.all([
     supabase.from("rfp_edge_cases").select("*").eq("status", "pending").order("created_at"),
     supabase
       .from("rfp_edge_cases")
@@ -15,7 +19,31 @@ export default async function ReviewPage() {
       .order("resolved_at", { ascending: false })
       .limit(10),
     supabase.from("portal_rules").select("*").order("portal_name"),
+    // Every bid a person put their own verdict on. The comparison against what
+    // the desk computed is the only measure of whether any of this is right.
+    supabase
+      .from("rfps")
+      .select("id, title, status, human_verdict, human_verdict_note, human_verdict_at, score_percent")
+      .not("human_verdict", "is", null)
+      .order("human_verdict_at", { ascending: false })
+      .limit(100),
+    supabase.from("scoring_settings").select("go_threshold").eq("id", true).maybeSingle(),
   ]);
+
+  const calibration = calibrate(
+    (decided ?? []).map(
+      (r): Override => ({
+        id: r.id,
+        title: r.title,
+        computed: r.status as Override["computed"],
+        human: r.human_verdict as Override["human"],
+        score: r.score_percent,
+        note: r.human_verdict_note,
+        decidedAt: r.human_verdict_at,
+      }),
+    ),
+    scoring?.go_threshold ?? 70,
+  );
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -25,6 +53,10 @@ export default async function ReviewPage() {
           Edge cases and proposed rule changes. Nothing applies until you approve it.
         </p>
       </div>
+
+      {/* First, because it answers the question the rest of the page assumes:
+          whether the desk's judgement is worth reviewing at all. */}
+      <CalibrationPanel calibration={calibration} />
 
       <h2 className="font-display text-sm font-semibold text-rfp-ink">
         Waiting on you{pending?.length ? ` (${pending.length})` : ""}
