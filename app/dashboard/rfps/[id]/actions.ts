@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser, safeError, type ActionResult } from "@/lib/auth";
-import type { QuestionLane } from "@/lib/supabase/types";
+import type { QuestionLane, RfpRow } from "@/lib/supabase/types";
 import { attachStandingDocuments, fileProposal, folderIdFrom, moveToLane } from "@/lib/drive";
 import { caravannTemplate } from "@/lib/template-store";
 import { fillTemplate } from "@/lib/docx-fill";
 import { proposalFileName } from "@/lib/proposal";
 import { tailorPrompt, vetTailored } from "@/lib/tailor";
+import { ADAPTIVE_SECTIONS, composePrompt, vetComposed } from "@/lib/compose";
 import { assembleDraft, DEFAULT_SECTIONS } from "@/lib/proposal";
 import { recommendTeam } from "@/lib/team-match";
 
@@ -28,6 +29,25 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
   if (!rfp) return { error: "RFP not found" };
 
   const sections = assembleDraft(rfp, blocks ?? [], DEFAULT_SECTIONS);
+
+  // The sections a library cannot hold, written from the analysis instead.
+  //
+  // Reading Caravann's real SamTrans submission made the split clear: the
+  // skeleton was right, but the sections carrying the work are written fresh
+  // for each client every time. Those came back "needs writing by hand" and
+  // always would have, because there is nothing reusable to stitch.
+  //
+  // Everything they are built from is already in the database, put there by
+  // triage: the tasks the agency stated, the rules it will be judged against,
+  // the gaps found, and the people confirmed onto the bid.
+  const composed = await composeAdaptiveSections(supabase, rfpId, rfp, sections);
+  for (const section of sections) {
+    const text = composed.get(section.section_type);
+    if (!text) continue;
+    section.body = text;
+    section.status = "draft";
+    section.notes = "Written for this solicitation from the analysis.";
+  }
 
   // Replace wholesale so a rebuild after adding library material doesn't
   // leave stale sections behind. Approved sections are preserved - losing a
@@ -596,4 +616,89 @@ export async function markAmendmentReviewed(rfpId: string): Promise<ActionResult
   if (error) return safeError("mark the amendments read", error);
   revalidatePath(`/dashboard/rfps/${rfpId}`);
   return { ok: true };
+}
+
+/**
+ * Draft every adaptive section for one bid, in parallel.
+ *
+ * Returns a map rather than mutating, so a section that fails vetting simply
+ * has no entry and keeps whatever the library gave it. A composed section that
+ * cannot be trusted is worse than an honest "needs writing by hand".
+ */
+async function composeAdaptiveSections(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  rfpId: string,
+  rfp: RfpRow,
+  sections: { section_type: string }[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) return out;
+
+  const wanted = sections.filter((s) => s.section_type in ADAPTIVE_SECTIONS);
+  if (wanted.length === 0) return out;
+
+  const [{ data: checks }, { data: rules }, { data: gaps }, { data: assigned }, { data: roster }, { data: profile }] =
+    await Promise.all([
+      supabase.from("rfp_disqualifier_checks").select("requirement_text").eq("rfp_id", rfpId),
+      supabase.from("rfp_compliance_items").select("label, detail").eq("rfp_id", rfpId),
+      supabase.from("rfp_gap_items").select("description").eq("rfp_id", rfpId),
+      supabase.from("rfp_team_assignments").select("team_member_id").eq("rfp_id", rfpId).eq("status", "confirmed"),
+      supabase.from("team_members").select("id, name, role"),
+      supabase.from("org_profile").select("capabilities").eq("id", true).maybeSingle(),
+    ]);
+
+  const byId = new Map((roster ?? []).map((m) => [m.id, m]));
+  const team = (assigned ?? [])
+    .map((a) => byId.get(a.team_member_id))
+    .filter((m): m is NonNullable<typeof m> => Boolean(m))
+    .map((m) => ({ name: m.name, role: m.role }));
+
+  const context = {
+    agency: rfp.client_agency,
+    title: rfp.title,
+    solicitationNumber: rfp.solicitation_number,
+    requirements: (checks ?? []).map((c) => c.requirement_text).filter(Boolean).slice(0, 14),
+    rules: (rules ?? []).map((r) => [r.label, r.detail].filter(Boolean).join(": ")).filter(Boolean).slice(0, 12),
+    gaps: (gaps ?? []).map((g) => g.description).filter(Boolean).slice(0, 8),
+    team,
+    capabilities: [
+      ...(profile?.capabilities?.subject_areas ?? []),
+      ...(profile?.capabilities?.key_capabilities ?? []),
+    ].slice(0, 14),
+    dueDate: rfp.due_at?.slice(0, 10) ?? null,
+    budget: rfp.budget_amount,
+  };
+
+  // In parallel. Four sequential model calls is most of a minute of somebody
+  // watching a progress bar for no reason.
+  await Promise.all(
+    wanted.map(async (s) => {
+      try {
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "anthropic/claude-sonnet-5",
+            temperature: 0,
+            messages: [
+              { role: "system", content: composePrompt(s.section_type, context) },
+              { role: "user", content: `Draft the ${s.section_type} section.` },
+            ],
+          }),
+          signal: AbortSignal.timeout(90000),
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const text = String(json?.choices?.[0]?.message?.content ?? "").trim();
+        const verdict = vetComposed(text, team.map((m) => m.name));
+        if (verdict.ok) out.set(s.section_type, text);
+        else console.info(`[compose ${rfpId}] ${s.section_type} rejected: ${verdict.reason}`);
+      } catch {
+        /* the stitched version stands */
+      }
+    }),
+  );
+
+  return out;
 }
