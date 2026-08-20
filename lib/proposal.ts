@@ -130,7 +130,8 @@ export function assembleDraft(
     heading: string;
     sort_order: number;
     attachment?: boolean;
-  }[] = DEFAULT_SECTIONS
+  }[] = DEFAULT_SECTIONS,
+  addenda: { kind: string; sequence: number | null }[] = []
 ): AssembledSection[] {
   const byType = new Map<string, LanguageBlockRow[]>();
   for (const b of blocks) {
@@ -163,7 +164,7 @@ export function assembleDraft(
     }
 
     const body = available
-      .map((b) => fillPlaceholders(b.body, rfp))
+      .map((b) => fillPlaceholders(b.body, rfp, addenda))
       .join("\n\n");
 
     const fromWins = available.filter((b) => b.won).length;
@@ -186,11 +187,38 @@ export function assembleDraft(
  *  so a human sees what still needs filling. */
 export function fillPlaceholders(
   text: string,
-  rfp: Pick<RfpRow, "title" | "client_agency" | "project_type" | "due_at">
+  rfp: Pick<RfpRow, "title" | "client_agency" | "project_type" | "due_at">,
+  /** Addenda attached to this bid, newest first. */
+  addenda: { kind: string; sequence: number | null }[] = []
 ): string {
+  // Solicitation titles frequently lead with the agency, so "{{CLIENT}}'s
+  // {{ENGAGEMENT}}" produced "East Bay Joint Powers Authority's East Bay Joint
+  // Powers Authority - Executive Team Facilitation". Stripped here rather than
+  // at extraction, because the full title is correct on the card and in the
+  // folder name; it is only wrong inside a possessive.
+  const client = rfp.client_agency ?? "";
+  const engagement = (() => {
+    const t = rfp.title ?? "";
+    if (!client) return t;
+    const lead = new RegExp(`^${client.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*[-:\u2013]\\s*`, "i");
+    return lead.test(t) ? t.replace(lead, "") : t;
+  })();
+
+  // The addenda actually received, which the desk now detects and attaches
+  // rather than leaving a writer to remember. An acknowledgement that lists
+  // nothing is a compliance failure on a bid where an addendum was issued.
+  const numbered = addenda
+    .filter((a) => a.kind === "addendum")
+    .map((a) => a.sequence)
+    .filter((n): n is number => typeof n === "number")
+    .sort((a, b) => a - b);
+
   const values: Record<string, string> = {
-    ENGAGEMENT: rfp.title,
-    CLIENT: rfp.client_agency,
+    ADDENDA: numbered.length
+      ? `Receipt is acknowledged of ${numbered.length === 1 ? "Addendum" : "Addenda"} ${numbered.join(", ")}.`
+      : "No addenda had been issued at the time of submission.",
+    ENGAGEMENT: engagement,
+    CLIENT: client,
     PROJECT_TYPE: rfp.project_type ?? "the engagement",
     DUE_DATE: rfp.due_at
       ? new Date(rfp.due_at).toLocaleDateString("en-US", {

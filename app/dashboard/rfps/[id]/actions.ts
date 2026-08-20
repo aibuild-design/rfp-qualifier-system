@@ -21,14 +21,15 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
   const { supabase, denied } = await requireUser();
   if (denied) return denied;
 
-  const [{ data: rfp }, { data: blocks }] = await Promise.all([
+  const [{ data: rfp }, { data: blocks }, { data: addenda }] = await Promise.all([
     supabase.from("rfps").select("*").eq("id", rfpId).maybeSingle(),
     supabase.from("language_blocks").select("*"),
+    supabase.from("rfp_related_documents").select("kind, sequence").eq("rfp_id", rfpId),
   ]);
 
   if (!rfp) return { error: "RFP not found" };
 
-  const sections = assembleDraft(rfp, blocks ?? [], DEFAULT_SECTIONS);
+  const sections = assembleDraft(rfp, blocks ?? [], DEFAULT_SECTIONS, addenda ?? []);
 
   // The sections a library cannot hold, written from the analysis instead.
   //
