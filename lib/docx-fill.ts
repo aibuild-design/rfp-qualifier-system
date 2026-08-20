@@ -67,6 +67,40 @@ export type TemplateValues = {
    * where guidance used to be.
    */
   sections?: Record<string, string>;
+  /**
+   * The three numbered reference slots under Past Performance.
+   *
+   * The template does not treat past performance as prose. It has a narrative
+   * heading and then three structured blocks, each asking for a contract
+   * number, an amount, a period, a role and a reachable customer contact. The
+   * drafted narrative went into the prose slot and the three blocks kept their
+   * "(Enter name of Customer Agency...)" instructions, which is why a reader
+   * looking at the document concluded past performance had not been written.
+   *
+   * A field left null keeps its red instruction rather than being guessed at.
+   * Contract numbers, dollar values and reference phone numbers are exactly the
+   * facts a public buyer verifies, and a plausible invention is worse here than
+   * a visible blank.
+   */
+  pastPerformance?: PastPerformanceEntry[];
+  /** Rows for the solicitation amendments table. */
+  amendments?: { label: string; date: string }[];
+  /** Body text for the appendix headings, keyed by heading text. */
+  appendices?: Record<string, string>;
+};
+
+export type PastPerformanceEntry = {
+  /** Names the block: "Past Performance #1: <client>". */
+  client: string;
+  contractNumber?: string | null;
+  amount?: string | null;
+  contractType?: string | null;
+  period?: string | null;
+  role?: string | null;
+  referenceName?: string | null;
+  referencePhone?: string | null;
+  referenceEmail?: string | null;
+  description: string;
 };
 
 const COMPANY = "Caravann Consulting";
@@ -206,6 +240,36 @@ export async function fillTemplate(template: Buffer | Uint8Array, values: Templa
     droppedSections = filled.dropped;
   }
 
+  // The structured past-performance blocks, the appendices and the amendments
+  // table. All three are parts of the template that carry no writing
+  // instruction for injectSections to find, which is why all three arrived
+  // untouched in every document produced before this.
+  if (values.pastPerformance?.length) {
+    const documentPart = zip.file("word/document.xml")!;
+    const done = injectPastPerformance(await documentPart.async("string"), values.pastPerformance);
+    zip.file("word/document.xml", done.xml);
+    replacements += done.filled;
+  }
+  if (values.appendices && Object.keys(values.appendices).length > 0) {
+    const documentPart = zip.file("word/document.xml")!;
+    const done = injectAppendices(await documentPart.async("string"), values.appendices);
+    zip.file("word/document.xml", done.xml);
+    replacements += done.filled;
+  }
+  if (values.amendments?.length) {
+    const documentPart = zip.file("word/document.xml")!;
+    const done = fillAmendments(await documentPart.async("string"), values.amendments);
+    zip.file("word/document.xml", done.xml);
+    replacements += done.filled;
+  }
+
+  // One font for the whole document. See setDefaultFont: the template names
+  // none, so without this the body renders in whatever the reader's
+  // application defaults to while the reference blocks render in Times New
+  // Roman beside it.
+  const stylesPart = zip.file("word/styles.xml");
+  if (stylesPart) zip.file("word/styles.xml", setDefaultFont(await stylesPart.async("string")));
+
   // Blank pages. The template carries 54 paragraphs with pageBreakBefore, and
   // several of them hold no text at all - an empty paragraph forced onto a new
   // page is a blank page, which is what shows up as "page 2 is empty".
@@ -336,6 +400,24 @@ export const TEMPLATE_PLACEHOLDERS = [
  * removed, because Word keeps formatting per run and deleting them would drop
  * the paragraph's styling.
  */
+/**
+ * Drop the template's red from text we have just written.
+ *
+ * Every unfilled field in the template is red, `w:color w:val="ff0000"`, so
+ * whoever completes it can see at a glance what still needs a human. That
+ * convention is worth keeping. It is also exactly why our own prose must not
+ * inherit it: text written into a red run stays red, and a finished section
+ * rendered in warning-red tells the reader the opposite of the truth.
+ *
+ * Applied only to runs actually filled, so a field nobody supplied a value for
+ * keeps its red and keeps meaning "this one still needs you". Only the two red
+ * values the template uses are removed, rather than every colour, so a heading
+ * or a deliberate accent elsewhere in the paragraph survives.
+ */
+function clearFilledColour(fragment: string): string {
+  return fragment.replace(/<w:color\s+w:val="(?:ff0000|c00000)"\s*\/>/gi, "");
+}
+
 function replaceAcrossRuns(xml: string, subs: [string, string][]): { xml: string; count: number } {
   let count = 0;
 
@@ -374,12 +456,13 @@ function replaceAcrossRuns(xml: string, subs: [string, string][]): { xml: string
       // would drop the styling. Losing the split is the point: it was an
       // artefact of how the placeholder was typed, not a deliberate mix.
       let first = true;
-      return segment.replace(/(<w:t[^>]*>)([^<]*)(<\/w:t>)/g, (_all, open: string, _old: string, close: string) => {
+      const filled = segment.replace(/(<w:t[^>]*>)([^<]*)(<\/w:t>)/g, (_all, open: string, _old: string, close: string) => {
         if (!first) return `${open}${close}`;
         first = false;
         const tag = open.includes("xml:space") ? open : open.replace(/>$/, ' xml:space="preserve">');
         return `${tag}${replaced}${close}`;
       });
+      return clearFilledColour(filled);
     });
 
     return touched ? rebuilt.join("") : paragraph;
@@ -401,6 +484,59 @@ function replaceAcrossRuns(xml: string, subs: [string, string][]): { xml: string
  * than removed. Word stores formatting per run, so deleting them would drop the
  * paragraph's styling, and an emptied run renders as nothing.
  */
+/** Lines that carry the structure of a section and should read as headings. */
+function isStructuralHeading(line: string): boolean {
+  if (line.length > 80) return false;
+  return (
+    /^Phase\s+\d+\b/i.test(line) ||
+    /^(Methodology|Sequencing Rationale|Measurement|Key Risks and Challenges)\s*:?$/i.test(line)
+  );
+}
+
+/**
+ * One drafted line as its own Word paragraph, modelled on the template's.
+ *
+ * The whole section used to go into a single paragraph with `<w:br/>` between
+ * its parts. Word treats a line break as a break *within* a paragraph, so
+ * `spacing after` never applied and a 2,246-word Technical Description arrived
+ * as one unbroken wall with "Methodology" flush against the sentence beneath
+ * it. Real paragraphs get real spacing, and they are editable one at a time.
+ */
+function renderParagraph(templateParagraph: string, text: string): string {
+  let first = true;
+  let out = templateParagraph.replace(
+    /(<w:t[^>]*>)([^<]*)(<\/w:t>)/g,
+    (_all, open: string, _old: string, close: string) => {
+      if (!first) return `${open}${close}`;
+      first = false;
+      const tag = open.includes("xml:space") ? open : open.replace(/>$/, ' xml:space="preserve">');
+      return `${tag}${esc(text)}${close}`;
+    }
+  );
+
+  // Space after. These paragraphs carry w:after="0", which was harmless while
+  // everything was one paragraph and is the whole problem once it is not.
+  if (/<w:spacing[^>]*w:after="\d+"/.test(out)) {
+    out = out.replace(/(<w:spacing[^>]*w:after=")\d+(")/, `$1160$2`);
+  } else if (/<w:spacing[^>]*\/>/.test(out)) {
+    out = out.replace(/<w:spacing([^>]*)\/>/, '<w:spacing$1 w:after="160"/>');
+  } else if (/<w:pPr>/.test(out)) {
+    out = out.replace("<w:pPr>", '<w:pPr><w:spacing w:after="160"/>');
+  }
+
+  if (isStructuralHeading(text)) {
+    // Bold the first run only, which is the one carrying the text.
+    let bolded = false;
+    out = out.replace(/<w:rPr>([\s\S]*?)<\/w:rPr>/g, (all, inner: string) => {
+      if (bolded) return all;
+      bolded = true;
+      const withoutOff = inner.replace(/<w:b w:val="0"\/>/g, "").replace(/<w:bCs w:val="0"\/>/g, "");
+      return `<w:rPr><w:b w:val="1"/><w:bCs w:val="1"/>${withoutOff}</w:rPr>`;
+    });
+  }
+  return out;
+}
+
 function injectSections(
   xml: string,
   sections: Record<string, string>
@@ -462,27 +598,15 @@ function injectSections(
     wanted.delete(currentHeading);
     written++;
 
-    let first = true;
-    return p.replace(/(<w:t[^>]*>)([^<]*)(<\/w:t>)/g, (_all, open: string, _old: string, close: string) => {
-      if (!first) return `${open}${close}`;
-      first = false;
-      // xml:space="preserve" so leading and trailing spaces in the prose are
-      // not collapsed by Word.
-      const tag = open.includes("xml:space") ? open : open.replace(/>$/, ' xml:space="preserve">');
-
-      // Newlines have to become real breaks. Word ignores them inside a <w:t>,
-      // so a section stitched from three library blocks and joined with blank
-      // lines arrived as one unbroken wall - reported from the document as
-      // "the marketplace?Design", which is the end of one block and the start
-      // of the next with nothing between them.
-      //
-      // A blank line becomes two breaks, a single newline becomes one, so the
-      // paragraph structure the library was written with survives the trip.
-      const withBreaks = esc(body)
-        .replace(/\n{2,}/g, `${close}<w:br/><w:br/>${tag}`)
-        .replace(/\n/g, `${close}<w:br/>${tag}`);
-      return `${tag}${withBreaks}${close}`;
-    });
+    // One Word paragraph per line of drafted prose. Blank lines are dropped
+    // rather than preserved: the spacing between paragraphs is what separates
+    // the blocks now, so keeping them would double every gap.
+    const lines = body
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const rendered = (lines.length ? lines : [body]).map((line) => renderParagraph(p, line)).join("");
+    return clearFilledColour(rendered);
   });
 
   let i = 0;
@@ -517,6 +641,233 @@ function injectSections(
  * number goes to the right margin, and both hold whatever the page count
  * reaches.
  */
+/**
+ * Put a value into a "Label: (Enter something)" line.
+ *
+ * These lines are two runs: a black label and a red instruction. Writing into
+ * the second run and leaving the first alone keeps the label's formatting and
+ * puts the value where a reader expects it.
+ *
+ * `supplied` decides the colour. A real value clears the red, so the line reads
+ * as finished. A value we do not have keeps the red and says so in four words
+ * instead of thirty, which leaves the document honest and tells Khaled exactly
+ * what he still owes it.
+ */
+function setLabelledValue(paragraph: string, value: string, supplied: boolean): string {
+  const slots = [...paragraph.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)];
+  if (slots.length < 2) return paragraph;
+
+  // Half these labels keep the colon in the label run ("Contract#/Purchase
+  // Order#:") and half leave it at the head of the value run we overwrite
+  // ("Agency/Business" + ": (Enter name...)"). Overwriting blindly produced
+  // "Agency/Business San Francisco County Transportation Authority", so the
+  // colon goes back when the label does not already end in one.
+  const separator = /:\s*$/.test(slots[0][1]) ? " " : ": ";
+
+  // Where the instruction actually is. These paragraphs are not two runs: the
+  // label is followed by one or more *empty* black runs and only then the red
+  // "(Enter ...)" text. Writing into the second slot therefore put the value in
+  // an empty black run and blanked the red one, so a field nobody has supplied
+  // rendered as though it were finished. The value has to land on the run that
+  // held the instruction, which is the one that carries the colour.
+  // Word content, not merely non-empty. Every one of these lines is four runs:
+  // the label, a black ": " separator, the red instruction, then an empty run.
+  // Testing for non-empty text matched the separator, so the value landed in a
+  // black run and only the one line whose separator happens to be a bare space
+  // came out red.
+  let target = slots.findIndex((slot, i) => i > 0 && /[A-Za-z0-9]/.test(slot[1]));
+  if (target === -1) target = 1;
+
+  let seen = -1;
+  const out = paragraph.replace(/(<w:t[^>]*>)([^<]*)(<\/w:t>)/g, (_all, open: string, old: string, close: string) => {
+    seen++;
+    if (seen === 0) return `${open}${old}${close}`;
+    if (seen !== target) return `${open}${close}`;
+    const tag = open.includes("xml:space") ? open : open.replace(/>$/, ' xml:space="preserve">');
+    return `${tag}${separator}${esc(value)}${close}`;
+  });
+  return supplied ? clearFilledColour(out) : out;
+}
+
+/**
+ * Fill the three numbered past-performance blocks and name them.
+ *
+ * The headings ship as "Past Performance#1:" with nothing after the colon. A
+ * reference block that does not say who it is about makes the reader hunt for
+ * the agency name in the body, so the client's name goes into the heading.
+ */
+function injectPastPerformance(
+  xml: string,
+  entries: PastPerformanceEntry[]
+): { xml: string; filled: number } {
+  const paragraphs = xml.match(/<w:p[ >][\s\S]*?<\/w:p>/g);
+  if (!paragraphs) return { xml, filled: 0 };
+
+  const textOf = (p: string) =>
+    [...p.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => m[1]).join("").trim();
+
+  // Label to value, resolved per entry. Order follows the template.
+  const fieldFor = (e: PastPerformanceEntry, label: string): { value: string; supplied: boolean } | null => {
+    const pending = "To be supplied by Caravann.";
+    const known = (v: string | null | undefined) =>
+      v && v.trim() ? { value: v.trim(), supplied: true } : { value: pending, supplied: false };
+    if (/^Contract#/i.test(label)) return known(e.contractNumber);
+    if (/^Agency\/Business/i.test(label)) return { value: e.client, supplied: true };
+    if (/^Contract Amount/i.test(label)) return known(e.amount);
+    if (/^Contract type/i.test(label)) return known(e.contractType);
+    if (/^Period of performance/i.test(label)) return known(e.period);
+    if (/^Project Role/i.test(label)) return known(e.role);
+    if (/^Name \/ Title/i.test(label)) return known(e.referenceName);
+    if (/^Phone/i.test(label)) return known(e.referencePhone);
+    if (/^Email/i.test(label)) return known(e.referenceEmail);
+    if (/^Description of services/i.test(label)) return { value: e.description, supplied: true };
+    return null;
+  };
+
+  let current = -1;
+  let filled = 0;
+  const out = paragraphs.map((p) => {
+    const text = textOf(p);
+    // Heading style required. The table of contents carries its own copy of
+    // every heading ("Past Performance#1:3", the 3 being a page number), and
+    // matching on text alone renamed those too, so the contents page listed an
+    // engagement while the body kept the placeholder.
+    const numbered = /<w:pStyle w:val="Heading[12]"/.test(p)
+      ? text.match(/^Past Performance\s*#\s*(\d+)\s*:?/i)
+      : null;
+    if (numbered) {
+      const index = Number(numbered[1]) - 1;
+      current = index < entries.length ? index : -1;
+      if (current === -1) return p;
+      // Rename the heading to the engagement it describes.
+      let first = true;
+      return p.replace(/(<w:t[^>]*>)([^<]*)(<\/w:t>)/g, (_all, open: string, _old: string, close: string) => {
+        if (!first) return `${open}${close}`;
+        first = false;
+        const tag = open.includes("xml:space") ? open : open.replace(/>$/, ' xml:space="preserve">');
+        return `${tag}Past Performance #${index + 1}: ${esc(entries[index].client)}${close}`;
+      });
+    }
+    // A Heading1 ends the run of numbered blocks.
+    if (/<w:pStyle w:val="Heading1"/.test(p)) { current = -1; return p; }
+    if (current === -1 || !text) return p;
+
+    const field = fieldFor(entries[current], text);
+    if (!field) return p;
+    filled++;
+    return setLabelledValue(p, field.value, field.supplied);
+  });
+
+  let i = 0;
+  return { xml: xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, () => out[i++]), filled };
+}
+
+/**
+ * Give the appendix headings a body.
+ *
+ * They ship as bare headings with no paragraph under them, so `injectSections`
+ * had nothing to write into and all three came out as a title over white space.
+ * A paragraph is built and inserted rather than substituted, because there is
+ * nothing there to substitute.
+ */
+function injectAppendices(xml: string, bodies: Record<string, string>): { xml: string; filled: number } {
+  const normalise = (t: string) =>
+    t.replace(/&amp;/g, "&").replace(/[\u2010-\u2015]/g, "-").replace(/\s+/g, " ").trim().toLowerCase();
+  const wanted = new Map(Object.entries(bodies).map(([k, v]) => [normalise(k), v]));
+
+  let filled = 0;
+  const out = xml.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, (p) => {
+    if (!/<w:pStyle w:val="Heading1"/.test(p)) return p;
+    const text = [...p.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => m[1]).join("").trim();
+    const body = wanted.get(normalise(text));
+    if (!body) return p;
+    wanted.delete(normalise(text));
+    filled++;
+    // Red, because every one of these is a document somebody still has to
+    // attach. Black would say it was already done.
+    const needsAttention = /to be attached|prior to submission/i.test(body);
+    const colour = needsAttention ? '<w:color w:val="ff0000"/>' : "";
+    const para =
+      '<w:p><w:pPr><w:spacing w:after="120"/><w:rPr>' + colour + '<w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:pPr>' +
+      '<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman"/>' +
+      colour + '<w:sz w:val="24"/><w:szCs w:val="24"/><w:rtl w:val="0"/></w:rPr>' +
+      '<w:t xml:space="preserve">' + esc(body) + "</w:t></w:r></w:p>";
+    return p + para;
+  });
+  return { xml: out, filled };
+}
+
+/**
+ * Fill the solicitation amendments table.
+ *
+ * The template ships three empty rows under the header. They are written into
+ * rather than added to, so the table keeps its own borders and widths.
+ */
+function fillAmendments(xml: string, rows: { label: string; date: string }[]): { xml: string; filled: number } {
+  let filled = 0;
+  const out = xml.replace(/<w:tbl>[\s\S]*?<\/w:tbl>/g, (table) => {
+    if (!table.includes("Solicitation / Amendment")) return table;
+    let r = -1;
+    return table.replace(/<w:tr[ >][\s\S]*?<\/w:tr>/g, (row) => {
+      r++;
+      if (r === 0) return row; // header
+      const entry = rows[r - 1];
+      if (!entry) return row;
+      filled++;
+      let cell = -1;
+      return row.replace(/<w:tc>[\s\S]*?<\/w:tc>/g, (tc) => {
+        cell++;
+        const value = cell === 0 ? entry.label : cell === 1 ? entry.date : "";
+        if (!value) return tc;
+        // The empty rows carry a run with no <w:t> at all, so one is added.
+        // `<w:tcPr/>` also begins with "<w:t", so a substring test says every
+        // cell already holds text and the table came out empty. The character
+        // after the tag name is what separates `<w:t>` from `<w:tcPr>`.
+        const written = /<w:t[ >]/.test(tc)
+          ? tc.replace(/(<w:t[^>]*>)([^<]*)(<\/w:t>)/, (_a, open: string, _o: string, close: string) => `${open}${esc(value)}${close}`)
+          : tc.replace(/(<w:r[ >][^>]*>(?:<w:rPr>[\s\S]*?<\/w:rPr>)?)(<\/w:r>)/, (_a, open: string, close: string) => `${open}<w:t xml:space="preserve">${esc(value)}</w:t>${close}`);
+        return clearFilledColour(written);
+      });
+    });
+  });
+  return { xml: out, filled };
+}
+
+/**
+ * Name the document's default font, because the template never does.
+ *
+ * `docDefaults` in this template sets a size and a language and no `w:rFonts`
+ * at all, and the `Normal` style it points at is empty. So for 92% of the text
+ * nothing in the whole style chain says which family to use, and each
+ * application substitutes its own: Word reaches for Aptos or Calibri, Google
+ * Docs for Arial. The remaining 8% - the past-performance blocks and the
+ * appendix paragraphs - name Times New Roman explicitly, which is what the
+ * heading style and Caravann's own submitted proposal use.
+ *
+ * The result is a document that renders in two fonts, and which two depends on
+ * where you open it. Declaring the default is what makes it one.
+ *
+ * Times New Roman rather than anything else because that is what the template
+ * already commits to everywhere it commits to anything: Heading1, and every
+ * run in the past-performance blocks it shipped with.
+ */
+function setDefaultFont(styles: string): string {
+  // The block first, then the test inside it. Testing the whole file for
+  // `<w:docDefaults>[\s\S]*?<w:rFonts` looks scoped and is not: the lazy
+  // quantifier keeps going until it finds an rFonts *anywhere* after the
+  // opening tag, and Heading1 has one, so the guard reported the font was
+  // already set and returned the styles untouched.
+  const block = styles.match(/<w:docDefaults>[\s\S]*?<\/w:docDefaults>/);
+  if (!block) return styles;
+  if (block[0].includes("<w:rFonts")) return styles;
+
+  const font =
+    '<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" ' +
+    'w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>';
+  const patched = block[0].replace("<w:rPr>", `<w:rPr>${font}`);
+  return styles.replace(block[0], patched);
+}
+
 function fixFooter(xml: string): string {
   // Two shapes to handle. In footer2 and footer3 the text and the field share a
   // paragraph. In footer1 - which is what page 2 actually uses, because section

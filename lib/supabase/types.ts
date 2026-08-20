@@ -192,6 +192,10 @@ export interface Database {
           source_mailbox: string | null;
           title: string;
           client_agency: string;
+          agency_address: string | null;
+          agency_poc_name: string | null;
+          agency_poc_phone: string | null;
+          agency_poc_email: string | null;
           project_type: string | null;
           source: RfpSource;
           source_url: string | null;
@@ -439,10 +443,11 @@ export interface Database {
         Row: {
           kind: string;
           last_ok_at: string;
+          last_alerted_at: string | null;
           detail: string | null;
         };
-        Insert: { kind: string; last_ok_at: string; detail?: string | null };
-        Update: Partial<{ kind: string; last_ok_at: string; detail: string | null }>;
+        Insert: { kind: string; last_ok_at: string; detail?: string | null; last_alerted_at?: string | null };
+        Update: Partial<{ kind: string; last_ok_at: string; detail: string | null; last_alerted_at: string | null }>;
         Relationships: [];
       };
       rfp_edge_cases: {
@@ -507,6 +512,9 @@ export interface Database {
           started_on: string | null;
           ended_on: string | null;
           contract_value: number | null;
+          contract_number: string | null;
+          contract_type: string | null;
+          project_role: string | null;
           situation: string | null;
           what_we_did: string | null;
           outcome: string | null;

@@ -272,7 +272,16 @@ export function fillPlaceholders(
     // Khaled's own phrasing, from the SamTrans submission: "...for San Mateo
     // County Transit District's RFP 27-S-S-003 and acknowledges receipt of
     // Addendum 1."
-    SOLICITATION: rfp.solicitation_number ? `RFP ${rfp.solicitation_number}` : engagement,
+    // The "RFP " prefix only when the number does not already carry one.
+    // Khaled's SamTrans number was bare ("27-S-S-003") so the prefix read
+    // correctly there, but agencies that number their solicitations "RFP No.
+    // EBJPA-2026-07" produced "for East Bay Joint Powers Authority's RFP RFP
+    // No. EBJPA-2026-07".
+    SOLICITATION: rfp.solicitation_number
+      ? /^\s*(rfp|rfq|rfi|ifb|solicitation)\b/i.test(rfp.solicitation_number)
+        ? rfp.solicitation_number
+        : `RFP ${rfp.solicitation_number}`
+      : engagement,
     ADDENDA: numbered.length
       ? `acknowledges receipt of ${numbered.length === 1 ? "Addendum" : "Addenda"} ${numbered.join(", ")}.`
       : "confirms that no addenda had been issued at the time of submission.",
@@ -297,14 +306,26 @@ export function proposalFileName(
   rfp: Pick<RfpRow, "title" | "client_agency"> & { solicitation_number?: string | null },
 ): string {
   const clean = (s: string) => s.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim();
-  // Agency and solicitation number first, because that is how a submission is
-  // referred to in every email about it. The old name led with the full title
-  // and ran past eighty characters, so it was truncated everywhere it appeared
-  // and every proposal looked like every other one in a list.
-  const parts = [
-    "Caravann Proposal",
-    clean(rfp.client_agency),
-    rfp.solicitation_number ? clean(rfp.solicitation_number) : null,
-  ].filter(Boolean);
-  return parts.join(" - ");
+
+  // Khaled's convention, not a nicer one.
+  //
+  // This had been rewritten to "Caravann Proposal - Agency - Number" because
+  // the real names run long and get truncated in a file list. That is a true
+  // observation and it was not mine to act on: the SOW fixes the format, every
+  // submission he has already filed uses it, and a bid desk that renames his
+  // documents to suit itself makes his own archive inconsistent. The length
+  // problem is solved by capping the engagement, which is the part that runs
+  // away, rather than by reordering the name.
+  const agency = clean(rfp.client_agency ?? "");
+
+  // Titles frequently lead with the agency, which would otherwise appear twice
+  // in a row: "East Bay Joint Powers Authority - Executive Team
+  // Facilitation_East Bay Joint Powers Authority_Caravann Consulting".
+  const escaped = agency.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const engagement = clean(
+    (rfp.title ?? "").replace(new RegExp(`^\\s*${escaped}\\s*[-\u2010-\u2015:]\\s*`, "i"), ""),
+  );
+
+  const capped = engagement.length > 60 ? `${engagement.slice(0, 57).trimEnd()}...` : engagement;
+  return [capped, agency, "Caravann Consulting"].filter(Boolean).join("_");
 }
