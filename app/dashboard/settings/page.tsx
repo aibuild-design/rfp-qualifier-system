@@ -1,246 +1,164 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { OrgProfileForm } from "@/components/settings/OrgProfileForm";
-import { SectorExperienceEditor } from "@/components/settings/SectorExperienceEditor";
-import { TeamRosterEditor } from "@/components/settings/TeamRosterEditor";
-import { ScoringSettingsForm } from "@/components/settings/ScoringSettingsForm";
-import { ProfileConfirmation } from "@/components/settings/ProfileConfirmation";
+import { SettingsIndex, type SettingsCard } from "@/components/settings/SettingsIndex";
 import { ConnectionsPanel } from "@/components/settings/ConnectionsPanel";
-import { IntakeFilterEditor } from "@/components/settings/SubjectTermsEditor";
-import { SlackWebhook } from "@/components/settings/SlackWebhook";
-import { PastEngagements } from "@/components/settings/PastEngagements";
-import { StandingDocsManager } from "@/components/settings/StandingDocsManager";
 import { openRouterCredit } from "@/lib/openrouter-credit";
 
-// Everything on this page is Khaled's own occasional editing - the
-// eligibility profile and sector map "confirmed once" (module 3) and the
-// team roster (module 9). Unlike the RFP queue, nothing here is written by
-// n8n, so these editors write straight to Supabase from the browser.
+/**
+ * Settings as a hub.
+ *
+ * Everything used to sit on one page: the eligibility profile, the sector map,
+ * the roster, thresholds, intake terms, standing documents, engagements and the
+ * Slack webhook, stacked. That made adding depth anywhere a cost to everybody,
+ * and the team's biographies competed for scroll with a webhook URL.
+ *
+ * Each card carries two things a menu usually leaves out. What it is used for,
+ * because "is this for the analysis or the proposal" turned out to be the
+ * question nobody could answer from looking. And what is actually filled in, so
+ * the page reads as a list of what to do next rather than a list of names.
+ */
 export default async function SettingsPage() {
   const supabase = await createClient();
 
   const [
-    {
-      data: { user },
-    },
     { data: orgProfile },
     { data: sectors },
     { data: team },
     { data: scoring },
-    { data: scored },
-    { data: health },
-    { data: standingDocs },
     { data: engagements },
+    { data: standingDocs },
+    { count: blocks },
+    { count: knockouts },
+    { data: health },
   ] = await Promise.all([
-    supabase.auth.getUser(),
     supabase.from("org_profile").select("*").eq("id", true).maybeSingle(),
-    supabase.from("sector_experience").select("*").order("sector"),
-    supabase.from("team_members").select("*").order("name"),
+    supabase.from("sector_experience").select("sector, years_experience, engagement_count"),
+    supabase.from("team_members").select("id, responsibilities, bio"),
     supabase.from("scoring_settings").select("*").eq("id", true).maybeSingle(),
-    // Real scores from the live queue, so the threshold preview shows the
-    // effect on actual work rather than on a hypothetical.
-    supabase.from("rfps").select("score_percent").not("score_percent", "is", null),
-    // Evidence for the connections panel. Read from connection_events rather
-    // than from the queue: clearing solicitations is not evidence that Google
-    // stopped working, and deriving it from rfps meant an empty queue reported
-    // three healthy connections as unproven.
+    supabase.from("past_engagements").select("id, reference_name"),
+    supabase.from("standing_documents").select("id"),
+    supabase.from("language_blocks").select("*", { count: "exact", head: true }),
+    supabase.from("hard_knockouts").select("*", { count: "exact", head: true }),
     supabase.from("connection_events").select("kind,last_ok_at,detail"),
-    supabase
-      .from("standing_documents")
-      .select("id, label, file_name, storage_path, expires_on")
-      .order("label"),
-    supabase.from("past_engagements").select("*").order("won", { ascending: false })
   ]);
 
-  const credit = await openRouterCredit(process.env.OPENROUTER_API_KEY);
+  const sectorsFilled = (sectors ?? []).filter((s) => s.years_experience !== null).length;
+  const teamReady = (team ?? []).filter((m) => m.responsibilities && m.bio).length;
+  const withReference = (engagements ?? []).filter((e) => e.reference_name).length;
+  const insuranceMissing = !orgProfile?.insurance_coverage?.trim();
+  const setAsideMissing = (orgProfile?.set_aside_status ?? []).length === 0;
 
-  const byKind = new Map((health ?? []).map((h) => [h.kind, h]));
-  const gmail = byKind.get("gmail");
-  const triage = byKind.get("triage");
-  const drive = byKind.get("drive");
+  const groups: { label: string; cards: SettingsCard[] }[] = [
+    {
+      label: "What Caravann is",
+      cards: [
+        {
+          href: "/dashboard/settings/profile",
+          title: "Eligibility profile",
+          blurb: "Used for analysis. The gate checks every requirement against these.",
+          status: insuranceMissing || setAsideMissing
+            ? `${[insuranceMissing && "insurance", setAsideMissing && "set-aside status"].filter(Boolean).join(" and ")} not recorded`
+            : orgProfile?.profile_confirmed
+              ? "Complete and confirmed"
+              : "Complete, not yet confirmed",
+          attention: insuranceMissing || setAsideMissing || !orgProfile?.profile_confirmed,
+        },
+        {
+          href: "/dashboard/settings/sectors",
+          title: "Sector experience",
+          blurb: "Used for analysis. Two of the five scoring dimensions.",
+          status: `${sectorsFilled} of ${(sectors ?? []).length} sectors have numbers`,
+          attention: sectorsFilled < (sectors ?? []).length,
+        },
+        {
+          href: "/dashboard/settings/team",
+          title: "Team roster",
+          blurb: "Used for both. Suggests who staffs a bid, and names them in the proposal.",
+          status: `${teamReady} of ${(team ?? []).length} have the detail a proposal needs`,
+          attention: teamReady < (team ?? []).length,
+        },
+      ],
+    },
+    {
+      label: "What the proposal is built from",
+      cards: [
+        {
+          href: "/dashboard/library",
+          title: "Approved language",
+          blurb: "Used for the proposal. Every drafted section starts here.",
+          status: `${blocks ?? 0} blocks on file`,
+          attention: (blocks ?? 0) < 20,
+        },
+        {
+          href: "/dashboard/settings/engagements",
+          title: "Work you can cite",
+          blurb: "Used for the proposal. Past performance is written from these.",
+          status: (engagements ?? []).length === 0
+            ? "Nothing on file"
+            : `${(engagements ?? []).length} engagements, ${withReference} with a reference`,
+          attention: (engagements ?? []).length === 0 || withReference === 0,
+        },
+        {
+          href: "/dashboard/settings/documents",
+          title: "Attach to every submission",
+          blurb: "Used for the proposal. Uploaded into every bid folder.",
+          status: (standingDocs ?? []).length === 0
+            ? "Nothing uploaded"
+            : `${(standingDocs ?? []).length} documents`,
+          attention: (standingDocs ?? []).length === 0,
+        },
+      ],
+    },
+    {
+      label: "How it behaves",
+      cards: [
+        {
+          href: "/dashboard/settings/scoring",
+          title: "How the desk decides",
+          blurb: "Used for analysis. Turns a score into a verdict.",
+          status: `Go at ${scoring?.go_threshold ?? 70}%, maybe at ${scoring?.maybe_threshold ?? 60}%, ${knockouts ?? 0} dealbreakers`,
+          attention: (knockouts ?? 0) === 0,
+        },
+        {
+          href: "/dashboard/settings/intake",
+          title: "Which emails get triaged",
+          blurb: "Used for intake. Nothing downstream runs without this.",
+          status: `${(scoring?.email_subject_terms ?? []).length} terms, body matching ${scoring?.intake_match_body ? "on" : "off"}`,
+          attention: (scoring?.email_subject_terms ?? []).length === 0,
+        },
+        {
+          href: "/dashboard/settings/notifications",
+          title: "Where verdicts are sent",
+          blurb: "Used for notification. Does not affect any verdict.",
+          status: scoring?.slack_webhook_url ? "Posting to Slack" : "Nothing set up",
+          attention: !scoring?.slack_webhook_url,
+        },
+      ],
+    },
+  ];
 
-  const scoreSample = (scored ?? [])
-    .map((r) => r.score_percent)
-    .filter((s): s is number => typeof s === "number");
+  const last = (kind: string) => (health ?? []).find((h) => h.kind === kind);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-semibold text-rfp-ink">Settings</h1>
-        <p className="mt-1 text-sm text-rfp-ink-secondary">
-          What Caravann is, and how cautious the desk should be.
-        </p>
+    <div className="mx-auto max-w-4xl">
+      <h1 className="font-display text-2xl font-semibold text-rfp-ink">Settings</h1>
+      <p className="mt-1 text-sm text-rfp-ink-secondary">
+        What Caravann is, what the proposal is built from, and how the desk behaves.
+      </p>
+
+      <div className="mt-6">
+        <SettingsIndex groups={groups} />
       </div>
-
-      <div className="rounded-xl border border-rfp-border bg-rfp-surface p-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">Account</p>
-        <p className="mt-1.5 text-sm text-rfp-ink">{user?.email}</p>
-      </div>
-
-      {/* Two kinds of setting, and conflating them is why this screen was
-          confusing. The first part is facts about Caravann - there is a right
-          answer, the desk cannot work without it, and it is filled in once.
-          The second is judgement - no right answer, only Khaled's preference,
-          and worth revisiting as he learns what the desk gets wrong.
-
-          Facts come first because tuning thresholds against placeholder data is
-          wasted effort. */}
-      <section className="mt-10">
-        <div className="border-b border-rfp-border pb-3">
-          <h2 className="font-display text-lg font-semibold text-rfp-ink">1 · About Caravann</h2>
-          <p className="mt-1 text-sm leading-relaxed text-rfp-ink-secondary">
-            Unconfirmed facts make every verdict provisional.
-          </p>
-        </div>
-
-        <div className="mt-6">
-          <h3 className="font-display text-sm font-semibold text-rfp-ink">Eligibility profile</h3>
-          <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
-            What the gate checks a solicitation against.
-          </p>
-          <div className="mt-3">
-            {orgProfile ? (
-              <OrgProfileForm initial={orgProfile} />
-            ) : (
-              <p className="rounded-xl border border-dashed border-rfp-border-strong bg-rfp-surface p-5 text-sm text-rfp-ink-muted">
-                Org profile row missing - run the migration to seed it.
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <h3 className="font-display text-sm font-semibold text-rfp-ink">Sector experience map</h3>
-          <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
-            Years and engagements per sector. A sector left at zero will rule out work.
-          </p>
-          <div className="mt-3">
-            <SectorExperienceEditor initial={sectors ?? []} />
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <h3 className="font-display text-sm font-semibold text-rfp-ink">Team roster</h3>
-          <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
-            Who team match recommends from. Every assignment is yours to confirm.
-          </p>
-          <div className="mt-3">
-            <TeamRosterEditor initial={team ?? []} />
-          </div>
-          {/* Names, rates and bandwidth are enough to rank somebody against a
-              solicitation. Responsibilities and a biography are what let the
-              desk write them into a submission, and those need more room than a
-              table row. */}
-          <Link
-            href="/dashboard/settings/team"
-            className="press mt-3 flex items-center justify-between rounded-xl border border-rfp-border bg-rfp-surface px-5 py-4 hover:bg-rfp-surface-sunken"
-          >
-            <span>
-              <span className="block text-sm font-medium text-rfp-ink">
-                Detail for proposals
-              </span>
-              <span className="mt-0.5 block text-xs text-rfp-ink-muted">
-                {(team ?? []).filter((m) => m.responsibilities && m.bio).length} of{" "}
-                {team?.length ?? 0} have responsibilities and a biography on file
-              </span>
-            </span>
-            <span className="shrink-0 text-sm font-semibold text-rfp-gold">Open &rarr;</span>
-          </Link>
-        </div>
-
-        <div className="mt-8">
-          {orgProfile && (
-            <ProfileConfirmation
-              initial={orgProfile}
-              sectorsMissingCounts={(sectors ?? [])
-                .filter((x) => x.years_experience === null || x.engagement_count === null)
-                .map((x) => x.sector)}
-              teamCount={(team ?? []).length}
-            />
-          )}
-        </div>
-      </section>
-
-      <section className="mt-12 mb-4">
-        <div className="border-b border-rfp-border pb-3">
-          <h2 className="font-display text-lg font-semibold text-rfp-ink">2 · How the desk decides</h2>
-          <p className="mt-1 text-sm leading-relaxed text-rfp-ink-secondary">
-            Change it as you see what the desk gets wrong.
-          </p>
-        </div>
-
-        <div className="mt-6">
-          <h3 className="font-display text-sm font-semibold text-rfp-ink">Scoring and thresholds</h3>
-          <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
-            Where the go/no-go line sits, and what each dimension is worth.
-          </p>
-          <div className="mt-3">
-            {scoring ? (
-              <ScoringSettingsForm initial={scoring} scoreSample={scoreSample} />
-            ) : (
-              <p className="rounded-xl border border-dashed border-rfp-border-strong bg-rfp-surface p-5 text-sm text-rfp-ink-muted">
-                Scoring settings row missing - run <code>npm run migrate</code>.
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="font-display text-sm font-semibold text-rfp-ink">Which emails get triaged</h2>
-        <p className="mt-0.5 text-xs text-rfp-ink-muted">
-          An email matching none of these is never read.
-        </p>
-        <div className="mt-3">
-          <IntakeFilterEditor
-            initialTerms={scoring?.email_subject_terms ?? []}
-            initialIgnore={scoring?.email_ignore_terms ?? []}
-            initialMatchBody={scoring?.intake_match_body ?? true}
-          />
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="font-display text-sm font-semibold text-rfp-ink">Attach to every submission</h2>
-        <p className="mt-0.5 text-xs text-rfp-ink-muted">
-          Files that go out with every bid. They appear on every solicitation page.
-        </p>
-        <div className="mt-3">
-          <StandingDocsManager initial={standingDocs ?? []} />
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="font-display text-sm font-semibold text-rfp-ink">Work you can cite</h2>
-        <p className="mt-0.5 text-xs text-rfp-ink-muted">
-          Past performance is where most public-agency bids are scored. The desk cites the ones
-          closest to each solicitation.
-        </p>
-        <div className="mt-3">
-          <PastEngagements initial={engagements ?? []} />
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="font-display text-sm font-semibold text-rfp-ink">Where verdicts are sent</h2>
-        <p className="mt-0.5 text-xs text-rfp-ink-muted">
-          Emailed always. Add Slack for both.
-        </p>
-        <div className="mt-3">
-          <SlackWebhook initial={scoring?.slack_webhook_url ?? null} />
-        </div>
-      </section>
 
       <ConnectionsPanel
-        lastEmailAt={gmail?.last_ok_at ?? null}
-        lastMailbox={gmail?.detail ?? null}
-        lastFiledAt={drive?.last_ok_at ?? null}
-        lastFolderUrl={drive?.detail ?? null}
-        lastVerdictAt={triage?.last_ok_at ?? null}
+        lastEmailAt={last("gmail")?.last_ok_at ?? null}
+        lastMailbox={last("gmail")?.detail ?? null}
+        lastFiledAt={last("drive")?.last_ok_at ?? null}
+        lastFolderUrl={last("drive")?.detail ?? null}
+        lastVerdictAt={last("triage")?.last_ok_at ?? null}
         triageConfigured={Boolean(process.env.N8N_BASE_URL && process.env.RFP_INTAKE_API_KEY)}
-        profileConfirmed={orgProfile?.profile_confirmed === true}
-        n8nUrl={process.env.N8N_BASE_URL?.replace(/\/+$/, "") ?? null}
-        credit={credit}
+        profileConfirmed={Boolean(orgProfile?.profile_confirmed)}
+        n8nUrl={process.env.N8N_BASE_URL ?? null}
+        credit={await openRouterCredit(process.env.OPENROUTER_API_KEY)}
       />
     </div>
   );
