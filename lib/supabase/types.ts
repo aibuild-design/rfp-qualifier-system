@@ -466,6 +466,26 @@ export interface Database {
         Relationships: [];
       };
 
+      source_documents: {
+        Row: {
+          id: string;
+          name: string;
+          kind: "proposal" | "solicitation" | "other";
+          /** The extracted text. An archive for re-reading, never prompted. */
+          body: string;
+          characters: number;
+          blocks_taken: number;
+          uploaded_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["source_documents"]["Row"]> & {
+          name: string;
+          body: string;
+          characters: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["source_documents"]["Row"]>;
+        Relationships: [];
+      };
+
       past_engagements: {
         Row: {
           id: string;

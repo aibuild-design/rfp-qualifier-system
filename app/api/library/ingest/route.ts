@@ -178,7 +178,24 @@ export async function POST(req: NextRequest) {
     .filter((b) => b.body?.trim().length > 80)
     .filter((b) => !seen.has(normalise(b.body)));
 
+  // Keep the document, not only what was taken from it. Everything not selected
+  // in this one pass would otherwise be gone, and improving the extraction
+  // later would mean asking for the file again. It is never sent to the model
+  // at draft time; the library is the working extract and this is the archive.
+  const { data: stored } = await supabase
+    .from("source_documents")
+    .insert({
+      name: file.name,
+      kind: "proposal",
+      body: text,
+      characters: text.length,
+      blocks_taken: blocks.length,
+    })
+    .select("id")
+    .maybeSingle();
+
   return NextResponse.json({
+    document_id: stored?.id ?? null,
     source: file.name,
     characters: text.length,
     truncated: text.length > capped.length,
