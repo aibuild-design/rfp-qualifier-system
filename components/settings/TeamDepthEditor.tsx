@@ -41,7 +41,11 @@ export function TeamDepthEditor({ initial }: { initial: TeamMemberRow[] }) {
     <div className="mt-5 space-y-2">
       {rows.map((m) => {
         const isOpen = open === m.id;
-        const ready = Boolean(m.responsibilities && m.bio);
+        // Responsibilities alone are enough for a staffing table, which is
+        // what Caravann's own proposals carry. A biography is a nice addition
+        // and not the thing that blocks a submission.
+        const ready = Boolean(m.responsibilities);
+        const full = Boolean(m.responsibilities && m.bio);
         return (
           <div key={m.id} className="overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
             <button
@@ -54,9 +58,9 @@ export function TeamDepthEditor({ initial }: { initial: TeamMemberRow[] }) {
               {m.rate ? <span className="tabular-nums text-xs text-rfp-ink-muted">${m.rate}/hr</span> : null}
               <span
                 className="ml-auto text-[10px] font-semibold uppercase tracking-widest"
-                style={{ color: ready ? "var(--rfp-good)" : "var(--rfp-warning)" }}
+                style={{ color: full ? "var(--rfp-good)" : ready ? "var(--rfp-ink-muted)" : "var(--rfp-warning)" }}
               >
-                {ready ? "ready for a proposal" : "needs detail"}
+                {full ? "complete" : ready ? "no biography yet" : "needs detail"}
               </span>
             </button>
 

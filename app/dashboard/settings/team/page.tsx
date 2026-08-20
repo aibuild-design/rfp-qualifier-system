@@ -20,7 +20,7 @@ export default async function TeamSettingsPage() {
   const supabase = await createClient();
   const { data: team } = await supabase.from("team_members").select("*").order("name");
 
-  const withDepth = (team ?? []).filter((m) => m.responsibilities || m.bio).length;
+  const withDepth = (team ?? []).filter((m) => m.responsibilities).length;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -31,7 +31,7 @@ export default async function TeamSettingsPage() {
       <div className="mt-4">
         <h1 className="font-display text-2xl font-semibold text-rfp-ink">Team roster</h1>
         <p className="mt-1 text-sm text-rfp-ink-secondary">
-          {team?.length ?? 0} people. {withDepth} have the detail a proposal needs.
+          {team?.length ?? 0} people. {withDepth} can be named in a proposal.
         </p>
         <p className="mt-2 text-xs leading-relaxed text-rfp-ink-muted">
           Name, role and rate are enough to suggest who should staff a bid. Responsibilities and a

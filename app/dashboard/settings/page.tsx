@@ -42,7 +42,10 @@ export default async function SettingsPage() {
   ]);
 
   const sectorsFilled = (sectors ?? []).filter((s) => s.years_experience !== null).length;
-  const teamReady = (team ?? []).filter((m) => m.responsibilities && m.bio).length;
+  // Responsibilities are what a staffing table needs; a biography is an
+  // addition. Counting only the complete ones reported 0 of 13 when every one
+  // of them could already be named in a proposal.
+  const teamReady = (team ?? []).filter((m) => m.responsibilities).length;
   const withReference = (engagements ?? []).filter((e) => e.reference_name).length;
   const insuranceMissing = !orgProfile?.insurance_coverage?.trim();
   const setAsideMissing = (orgProfile?.set_aside_status ?? []).length === 0;
@@ -73,7 +76,7 @@ export default async function SettingsPage() {
           href: "/dashboard/settings/team",
           title: "Team roster",
           blurb: "Used for both. Suggests who staffs a bid, and names them in the proposal.",
-          status: `${teamReady} of ${(team ?? []).length} have the detail a proposal needs`,
+          status: `${teamReady} of ${(team ?? []).length} can be named in a proposal`,
           attention: teamReady < (team ?? []).length,
         },
       ],
