@@ -57,7 +57,56 @@ export type ComposeContext = {
   source: { title: string; body: string; won: boolean }[];
   /** How the agency weights price, so emphasis matches what is scored. */
   costWeight: number | null;
+  /** Engagements Caravann can cite, most relevant to this solicitation first. */
+  engagements: Engagement[];
 };
+
+export type Engagement = {
+  client: string;
+  client_type: string | null;
+  sector: string | null;
+  title: string;
+  started_on: string | null;
+  ended_on: string | null;
+  situation: string | null;
+  what_we_did: string | null;
+  outcome: string | null;
+  reference_name: string | null;
+  reference_title: string | null;
+  reference_contactable: boolean;
+  won: boolean;
+};
+
+/**
+ * Which engagements to put in front of this solicitation.
+ *
+ * Word overlap against the sector, the client type and the title, the same
+ * deterministic approach the team matcher uses. A model choosing its own
+ * examples would pick the most impressive rather than the most relevant, and
+ * an evaluator scoring past performance is asking whether you have done *this*,
+ * not whether you have done something large.
+ *
+ * Won work sorts first at equal relevance, because a bid that was submitted and
+ * lost is weaker evidence than work actually delivered.
+ */
+export function rankEngagements(all: Engagement[], solicitation: string, limit = 3): Engagement[] {
+  const words = new Set(
+    solicitation.toLowerCase().match(/[a-z]{4,}/g) ?? [],
+  );
+  const scored = all.map((e) => {
+    const hay = [e.sector, e.client_type, e.title, e.situation, e.what_we_did]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    let score = 0;
+    for (const w of words) if (hay.includes(w)) score += 1;
+    return { e, score };
+  });
+  return scored
+    .sort((a, b) => b.score - a.score || Number(b.e.won) - Number(a.e.won))
+    .slice(0, limit)
+    .map((x) => x.e);
+}
 
 /** Which sections are written per client, and what each one has to do. */
 export const ADAPTIVE_SECTIONS: Record<string, { brief: string; shape: string }> = {
@@ -135,6 +184,25 @@ export function composePrompt(section: string, c: ComposeContext): string {
       ? "CARAVANN'S OWN APPROVED LANGUAGE FOR THIS SECTION. These are facts the firm has already published and stands behind, so you may state them. Anything not here is not a fact you have:"
       : "",
     ...c.source.map((b) => `--- ${b.title}${b.won ? " (a win)" : ""} ---\n${b.body}`),
+    "",
+    c.engagements.length
+      ? "ENGAGEMENTS CARAVANN CAN CITE, most relevant to this solicitation first. These are records of real work: use the dates, the client and the outcome exactly as given, and say for each what it demonstrates here. Do not describe practice areas in the abstract while these exist:"
+      : "",
+    ...c.engagements.map((e) =>
+      [
+        `--- ${e.client}${e.client_type ? ` (${e.client_type})` : ""}${e.won ? "" : " [proposed, not confirmed as delivered]"} ---`,
+        `Engagement: ${e.title}`,
+        e.started_on ? `Ran: ${e.started_on}${e.ended_on ? ` to ${e.ended_on}` : ""}` : "",
+        e.situation ? `Their situation: ${e.situation}` : "",
+        e.what_we_did ? `What Caravann did: ${e.what_we_did}` : "",
+        e.outcome ? `Outcome: ${e.outcome}` : "",
+        e.reference_name && e.reference_contactable
+          ? `Reference: ${e.reference_name}${e.reference_title ? `, ${e.reference_title}` : ""}`
+          : "Reference: none recorded, so do not offer one",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    ),
     "",
     c.costWeight !== null
       ? `PRICE IS WORTH ${c.costWeight}% OF THE EVALUATION. Weight the depth of this section accordingly: where price carries little, the approach and the team are what decide it.`

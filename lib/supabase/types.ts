@@ -459,6 +459,35 @@ export interface Database {
         Relationships: [];
       };
 
+      past_engagements: {
+        Row: {
+          id: string;
+          client: string;
+          client_type: string | null;
+          sector: string | null;
+          title: string;
+          started_on: string | null;
+          ended_on: string | null;
+          contract_value: number | null;
+          situation: string | null;
+          what_we_did: string | null;
+          outcome: string | null;
+          reference_name: string | null;
+          reference_title: string | null;
+          reference_email: string | null;
+          reference_phone: string | null;
+          reference_contactable: boolean;
+          won: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["past_engagements"]["Row"]> & {
+          client: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["past_engagements"]["Row"]>;
+        Relationships: [];
+      };
+
       language_blocks: {
         Row: {
           id: string;

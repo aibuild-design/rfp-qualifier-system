@@ -7,6 +7,7 @@ import { ProfileConfirmation } from "@/components/settings/ProfileConfirmation";
 import { ConnectionsPanel } from "@/components/settings/ConnectionsPanel";
 import { IntakeFilterEditor } from "@/components/settings/SubjectTermsEditor";
 import { SlackWebhook } from "@/components/settings/SlackWebhook";
+import { PastEngagements } from "@/components/settings/PastEngagements";
 import { StandingDocsManager } from "@/components/settings/StandingDocsManager";
 import { openRouterCredit } from "@/lib/openrouter-credit";
 
@@ -28,6 +29,7 @@ export default async function SettingsPage() {
     { data: scored },
     { data: health },
     { data: standingDocs },
+    { data: engagements },
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from("org_profile").select("*").eq("id", true).maybeSingle(),
@@ -46,6 +48,7 @@ export default async function SettingsPage() {
       .from("standing_documents")
       .select("id, label, file_name, storage_path, expires_on")
       .order("label"),
+    supabase.from("past_engagements").select("*").order("won", { ascending: false })
   ]);
 
   const credit = await openRouterCredit(process.env.OPENROUTER_API_KEY);
@@ -184,6 +187,17 @@ export default async function SettingsPage() {
         </p>
         <div className="mt-3">
           <StandingDocsManager initial={standingDocs ?? []} />
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-display text-sm font-semibold text-rfp-ink">Work you can cite</h2>
+        <p className="mt-0.5 text-xs text-rfp-ink-muted">
+          Past performance is where most public-agency bids are scored. The desk cites the ones
+          closest to each solicitation.
+        </p>
+        <div className="mt-3">
+          <PastEngagements initial={engagements ?? []} />
         </div>
       </section>
 

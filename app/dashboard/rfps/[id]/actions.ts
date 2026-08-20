@@ -8,7 +8,7 @@ import { caravannTemplate } from "@/lib/template-store";
 import { fillTemplate } from "@/lib/docx-fill";
 import { proposalFileName } from "@/lib/proposal";
 import { tailorPrompt, vetTailored } from "@/lib/tailor";
-import { ADAPTIVE_SECTIONS, cleanComposed, composePrompt, vetComposed } from "@/lib/compose";
+import { ADAPTIVE_SECTIONS, cleanComposed, composePrompt, rankEngagements, vetComposed } from "@/lib/compose";
 import { assembleDraft, DEFAULT_SECTIONS } from "@/lib/proposal";
 import { recommendTeam } from "@/lib/team-match";
 
@@ -645,7 +645,7 @@ async function composeAdaptiveSections(
   // Past Performance talked about "lines of practice".
   const { data: library } = await supabase.from("language_blocks").select("section_type, title, body, won");
 
-  const [{ data: checks }, { data: rules }, { data: gaps }, { data: assigned }, { data: roster }, { data: profile }] =
+  const [{ data: checks }, { data: rules }, { data: gaps }, { data: assigned }, { data: roster }, { data: profile }, { data: engagements }] =
     await Promise.all([
       supabase.from("rfp_disqualifier_checks").select("requirement_text").eq("rfp_id", rfpId),
       supabase.from("rfp_compliance_items").select("label, detail").eq("rfp_id", rfpId),
@@ -653,6 +653,7 @@ async function composeAdaptiveSections(
       supabase.from("rfp_team_assignments").select("team_member_id").eq("rfp_id", rfpId).eq("status", "confirmed"),
       supabase.from("team_members").select("id, name, role"),
       supabase.from("org_profile").select("capabilities").eq("id", true).maybeSingle(),
+      supabase.from("past_engagements").select("*"),
     ]);
 
   const byId = new Map((roster ?? []).map((m) => [m.id, m]));
@@ -683,6 +684,12 @@ async function composeAdaptiveSections(
     dueDate: rfp.due_at?.slice(0, 10) ?? null,
     budget: rfp.budget_amount,
     costWeight: rfp.cost_weight_percent ?? null,
+    // Chosen by overlap with this solicitation rather than left to the model,
+    // which would pick the most impressive rather than the most relevant.
+    engagements: rankEngagements(
+      engagements ?? [],
+      [rfp.title, rfp.project_type, rfp.client_agency].filter(Boolean).join(" "),
+    ),
   };
 
   // In parallel. Four sequential model calls is most of a minute of somebody

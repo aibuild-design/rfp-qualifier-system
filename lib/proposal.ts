@@ -122,6 +122,58 @@ export type AssembledSection = {
  * needs the Word template and real winning proposals, which this build does
  * not have.
  */
+/**
+ * What to leave in a section nothing could fill.
+ *
+ * "No approved language on file for this section" tells a writer that something
+ * is missing and nothing about what belongs there. A skeleton does both: it
+ * names the fields the section needs, so filling it is a matter of answering
+ * questions rather than starting at a blank page, and what gets written back
+ * into the library afterwards has the right shape.
+ *
+ * Bracketed prompts, so anything left unfilled is obvious in the Word document
+ * rather than reading as finished prose. The library was carrying instructions
+ * like this inside its own blocks once, which is how they ended up submitted;
+ * these live here instead, and only ever appear where there is no real text.
+ */
+const TEMPLATES: Record<string, string> = {
+  past_performance: [
+    "[Client name and type of organisation]",
+    "The situation: [what the client was facing when Caravann was brought in]",
+    "What Caravann did: [the engagement, its phases, and over what period]",
+    "What it produced: [the deliverables the client was left holding]",
+    "Why it is relevant here: [what this demonstrates for the current solicitation]",
+    "Reference: [name, title, telephone, email, and whether they may be contacted]",
+    "",
+    "[Repeat for each relevant engagement. Agencies usually ask for three. Lead with the closest in scope, not the largest.]",
+  ].join("\n"),
+
+  representations: [
+    "[State each representation the solicitation requires. Typical items:]",
+    "- Organisation type and place of incorporation",
+    "- Tax identification number and W-9 status",
+    "- Debarment and suspension status",
+    "- Conflict of interest disclosure",
+    "- Equal opportunity and non-discrimination compliance",
+    "- Any small business or set-aside classification claimed",
+    "",
+    "[This is a legal attestation. It is signed, and it must be answered by Caravann rather than drafted for it.]",
+  ].join("\n"),
+
+  product_samples: [
+    "[Most facilitation and consulting solicitations do not require product samples.",
+    "If this one does not, state that plainly, for example:",
+    "Not applicable. Caravann Consulting provides professional consulting services and does not supply products.",
+    "",
+    "If the solicitation does ask for work samples, list what is being provided and where it is attached.]",
+  ].join("\n"),
+
+  price: [
+    "[Describe how the rates were built and what is included.",
+    "The cost figures themselves belong in the separate cost proposal the solicitation asks for.]",
+  ].join("\n"),
+};
+
 export function assembleDraft(
   rfp: Pick<RfpRow, "title" | "client_agency" | "project_type" | "due_at" | "solicitation_number">,
   blocks: LanguageBlockRow[],
@@ -154,12 +206,15 @@ export function assembleDraft(
     const available = rankBlocks(byType.get(s.section_type) ?? []);
 
     if (available.length === 0) {
+      const template = TEMPLATES[s.section_type] ?? null;
       return {
         ...s,
-        body: null,
+        body: template,
         status: "needs_input" as const,
         source_block_ids: [],
-        notes: "No approved language on file for this section - needs writing by hand.",
+        notes: template
+          ? "A skeleton to fill in. Nothing here is submitted text."
+          : "No approved language on file for this section - needs writing by hand.",
       };
     }
 
