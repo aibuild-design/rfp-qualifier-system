@@ -127,10 +127,23 @@ console.log("\nTeam match");
   check("every recommendation carries a reason", recs.every((r) => r.match_reason.length > 0));
   check("scores are 0-100", recs.every((r) => r.match_score >= 0 && r.match_score <= 100));
 
-  // Generic words appear in every requirement and every roster entry; without
-  // stopword filtering everyone ties and the ranking conveys nothing.
+  // Generic words appear in every requirement and every roster entry, so after
+  // stopword filtering "Must have experience providing services" carries no
+  // significant term at all. Nobody matches it, and the honest answer is to
+  // recommend nobody.
+  //
+  // This used to assert that a ranking came back regardless. That was written
+  // before recommendTeam started withholding zero-score recommendations, and
+  // the behaviour it was guarding is the one that caused the bug: on a
+  // solicitation whose only extracted requirement was the gate reporting it
+  // could not read the document, everyone tied at zero and the first three
+  // names alphabetically were presented as the team.
   const generic = recommendTeam(members, [{ requirement_text: "Must have experience providing services", is_required: true }]);
-  check("generic requirement text does not make everyone score alike", new Set(generic.map((r) => r.match_score)).size >= 1);
+  check(
+    "a requirement with no significant terms recommends nobody, not everybody",
+    generic.length === 0,
+    `got ${generic.length}`
+  );
 
   const atCapacity = recommendTeam(
     [{ ...members[0], bandwidth: "full" }],
@@ -139,7 +152,10 @@ console.log("\nTeam match");
   check("someone at capacity still surfaces, scored lower", atCapacity.length === 1 && atCapacity[0].match_score < 100, String(atCapacity[0]?.match_score));
 
   check("empty roster returns nothing rather than throwing", recommendTeam([], checks).length === 0);
-  check("no extracted requirements still returns people", recommendTeam(members, []).length > 0);
+  // Same reasoning: nothing extracted means nothing to rank on. A panel that
+  // says it has nothing to go on is actionable - get the real document - where
+  // three arbitrary names are not.
+  check("nothing extracted recommends nobody", recommendTeam(members, []).length === 0);
 }
 
 console.log("\nTimestamp coercion");

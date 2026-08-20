@@ -19,7 +19,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
-import { CARAVANN_CONTEXT, FIXTURES } from "../n8n/fixtures/solicitations.mjs";
+import { FIXTURES } from "../n8n/fixtures/solicitations.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
@@ -53,9 +53,26 @@ function runCodeNode(jsCode, { input, nodes }) {
   return new Function("$input", "$", `"use strict";\n${jsCode}`)($input, $);
 }
 
-async function triage(fixture) {
+async function triage(fixture, context) {
   const wf = JSON.parse(await readFile(join(HERE, "..", "n8n", "rfp-intake-triage.json"), "utf8"));
   const byName = Object.fromEntries(wf.nodes.map((n) => [n.name, n]));
+
+  // Node names, kept in step with the workflow. Both of these had drifted: the
+  // OpenRouter node was renamed to use an em dash, and "Shape intake payload"
+  // became "Reconcile triage runs" when the workflow started reading each
+  // solicitation several times and taking the median. A missing name here
+  // surfaces as `Cannot read properties of undefined (reading 'parameters')`,
+  // which says nothing about which node moved, so they are looked up by name
+  // with a real error when one is gone.
+  const node = (name) => {
+    const found = byName[name];
+    if (!found) {
+      throw new Error(
+        `Workflow node "${name}" not found. Present: ${Object.keys(byName).join(", ")}`,
+      );
+    }
+    return found;
+  };
 
   const config = {
     json: {
@@ -69,12 +86,21 @@ async function triage(fixture) {
     },
   };
 
-  const promptOut = runCodeNode(byName["Build triage prompt"].parameters.jsCode, {
+  const promptOut = runCodeNode(node("Build triage prompt").parameters.jsCode, {
     input: { json: {} },
-    nodes: { Config: config, "Load triage context": { json: CARAVANN_CONTEXT } },
+    // The live context, not the checked-in snapshot.
+    //
+    // This used to inject CARAVANN_CONTEXT, a fixture written months ago, and
+    // the two had drifted badly: no insurance, no governing-body experience,
+    // no set-aside, four of seven sectors. So the run scored a profile nobody
+    // has, and reported "insurance cannot be confirmed" about a firm whose
+    // insurance is on file. n8n reads GET /api/rfps/context; so does this now,
+    // which is the difference between testing the pipeline and testing a
+    // photograph of it.
+    nodes: { Config: config, "Load triage context": { json: context } },
   });
 
-  const expr = byName["OpenRouter - triage"].parameters.jsonBody
+  const expr = node("OpenRouter — triage").parameters.jsonBody
     .replace(/^=\{\{/, "")
     .replace(/\}\}$/, "");
   const requestBody = JSON.parse(new Function("$json", `return (${expr});`)(promptOut[0].json));
@@ -89,7 +115,7 @@ async function triage(fixture) {
   });
   if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${(await res.text()).slice(0, 300)}`);
 
-  const shaped = runCodeNode(byName["Shape intake payload"].parameters.jsCode, {
+  const shaped = runCodeNode(node("Reconcile triage runs").parameters.jsCode, {
     input: { json: await res.json() },
     nodes: { "Build triage prompt": promptOut[0] },
   });
@@ -148,8 +174,17 @@ async function main() {
   // ── 3. triage → intake → Supabase ─────────────────────────────────────────
   const fixture = FIXTURES.find((f) => f.name.startsWith("transit"));
   console.log(`\n▸ Triage + intake - ${fixture.name}`);
-  const body = await triage(fixture);
-  assert(["go", "no_go", "maybe"].includes(body.status), `triage returned a verdict (${body.status})`);
+  const body = await triage(fixture, ctx);
+  // Triage no longer decides. It returns a rubric and the desk scores it, so
+  // changing a threshold or adding a dealbreaker re-scores every bid without
+  // re-reading a single document. This assertion used to look for body.status
+  // and failed once that moved into the app, which read as a broken pipeline
+  // when it was a deliberately relocated decision.
+  assert(
+    Array.isArray(body.score_rubrics) && body.score_rubrics.length > 0,
+    `triage returned a scorable rubric (${body.score_rubrics?.length ?? 0} read(s))`,
+  );
+  assert(!("status" in body), "triage does not hand the desk a verdict to rubber-stamp");
 
   const first = await postIntake(body);
   assert(first.status === 200, `intake accepted (${first.status})`, JSON.stringify(first.json).slice(0, 200));
@@ -161,7 +196,15 @@ async function main() {
   const { data: rfp } = await supabase.from("rfps").select("*").eq("id", rfpId).single();
   assert(Boolean(rfp), "rfps row exists");
   assert(rfp?.external_id === PREFIX + fixture.external_id, "external_id round-tripped");
-  assert(rfp?.status === body.status, `status persisted (${rfp?.status})`);
+  assert(
+    rfp?.status === fixture.expect.status,
+    `desk reached the expected verdict (${rfp?.status}, expected ${fixture.expect.status})`,
+    rfp?.verdict_why_not ?? "",
+  );
+  assert(
+    Number(rfp?.score_percent) >= fixture.expect.minScore,
+    `score clears the fixture's bar (${rfp?.score_percent}% >= ${fixture.expect.minScore}%)`,
+  );
   assert(rfp?.budget_source === "rfp" && Number(rfp?.budget_amount) === 185000, "budget read from RFP, not guessed");
   assert(rfp?.due_at !== null, "due date parsed and stored");
 
@@ -177,6 +220,9 @@ async function main() {
 
   // ── 5. idempotency - the addendum re-triage case ──────────────────────────
   console.log("\n▸ Re-post same external_id (addendum re-triage)");
+  // score_percent is deliberately NOT honoured from the payload: the desk
+  // derives it, so a caller cannot post itself a passing grade. The field is
+  // still sent here to prove that.
   const second = await postIntake({ ...body, score_percent: 71, verdict_why: "rescored after addendum" });
   assert(second.status === 200, `second post accepted (${second.status})`);
   assert(second.json.id === rfpId, "same row updated, not duplicated");
@@ -187,8 +233,16 @@ async function main() {
     .eq("external_id", PREFIX + fixture.external_id);
   assert(rfpCount === 1, `exactly one rfps row for that external_id (${rfpCount})`);
 
-  const { data: rescored } = await supabase.from("rfps").select("score_percent").eq("id", rfpId).single();
-  assert(Number(rescored?.score_percent) === 71, "updated fields took effect");
+  const { data: rescored } = await supabase
+    .from("rfps")
+    .select("score_percent, verdict_why")
+    .eq("id", rfpId)
+    .single();
+  assert(rescored?.verdict_why === "rescored after addendum", "updated fields took effect");
+  assert(
+    Number(rescored?.score_percent) !== 71,
+    `score came from the rubric, not the caller (${rescored?.score_percent}%)`,
+  );
 
   const { count: gapCount } = await supabase
     .from("rfp_gap_items")

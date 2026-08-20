@@ -207,11 +207,38 @@ export function decideVerdict(
 
   const failed = checks.filter((c) => c.result === "fail");
 
+  // A shortfall you can cure before award is not a closed bid.
+  //
+  // OBTAINABLE was consulted for "unclear" and not for "fail", which is a
+  // distinction the world does not make: an endorsement raising General
+  // Liability from $1M to $2M per occurrence fixes the requirement whether the
+  // profile was silent about the limit or recorded one that was too low. Only
+  // the second was closing bids.
+  //
+  // The solicitations Khaled actually pursues say so themselves. Clackamas
+  // County #2026-25, asked directly about its insurance requirement, answered
+  // that "insurance requirements will be finalized during contract
+  // negotiations"; asked whether the Oregon Business Registry number was
+  // needed at submission, it answered "this is a requirement at time of
+  // contract execution". These are conditions of award, not of bidding, and a
+  // desk that treats them as eligibility gates rules out the work it exists to
+  // find.
+  //
+  // It caps at maybe rather than passing silently, because somebody does have
+  // to raise the coverage before signing, and the compliance checklist is
+  // where that gets tracked. A dealbreaker Khaled set himself still wins: the
+  // knockout check above runs first and covers fail and unclear alike.
+  const curable = failed.filter(
+    (c) => c.is_required === true && OBTAINABLE.test(c.requirement_text ?? ""),
+  );
+
   // "Preferred but not met" costs score; it never closes the door on its own -
   // unless Khaled has said otherwise for his own firm.
-  const blocking = failed.filter(
-    (c) => c.is_required === true || c.is_hard_knockout === true || thresholds.preferredIsFatal === true
-  );
+  const blocking = failed
+    .filter((c) => !OBTAINABLE.test(c.requirement_text ?? ""))
+    .filter(
+      (c) => c.is_required === true || c.is_hard_knockout === true || thresholds.preferredIsFatal === true
+    );
   if (blocking.length > 0) {
     const first = blocking[0].requirement_text?.trim();
     return {
@@ -219,6 +246,19 @@ export function decideVerdict(
       reason: `Fails ${blocking.length} mandatory requirement${blocking.length > 1 ? "s" : ""}${
         first ? `, starting with: ${truncate(first, 120)}` : ""
       }.`,
+    };
+  }
+
+  if (curable.length > 0) {
+    const list = curable
+      .map((c) => c.requirement_text?.trim())
+      .filter(Boolean)
+      .map((text) => truncate(text as string, 90));
+    return {
+      status: "maybe",
+      reason:
+        `Fails ${curable.length} mandatory requirement${curable.length > 1 ? "s" : ""} that can be met before award ` +
+        `rather than before bidding: ${list.join("; ")}. Worth pursuing if that is arranged, and it is on the compliance checklist.`,
     };
   }
 

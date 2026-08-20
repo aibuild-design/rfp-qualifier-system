@@ -39,6 +39,16 @@ export type ComposeContext = {
   rules: string[];
   /** Where Caravann is genuinely thin, so the text never oversells. */
   gaps: string[];
+  /**
+   * What the addenda changed, in the agency's own words.
+   *
+   * Only the fact that an amendment existed used to reach here: its number
+   * turned up in the acknowledgement and its title in the amendments table,
+   * while the text of it went unread. An addendum is where a page limit moves,
+   * a deadline shifts or a scope item is struck, so a draft written without it
+   * answers a document the agency has already replaced.
+   */
+  amendments?: string[];
   /** People Khaled has actually confirmed, with everything a proposal needs. */
   team: {
     name: string;
@@ -50,6 +60,19 @@ export type ComposeContext = {
   }[];
   /** What the firm does, from the profile. Grounds the plan in real practice. */
   capabilities: string[];
+  /**
+   * What the firm explicitly does NOT have, from the profile's capability flags.
+   *
+   * These are stored as their own boolean columns and were never passed here,
+   * so the composer knew only what Caravann can do and nothing about what it
+   * cannot. Asked for a bilingual facilitator by an amendment, it invented
+   * "Caravann's bilingual associate facilitator", scheduled two sessions
+   * around them and listed them in the participant roster beside two real
+   * people - while the risk section of the same draft correctly said no named
+   * person was that facilitator. A capability the profile denies has to reach
+   * the prompt as a constraint, not be absent from it.
+   */
+  cannot?: string[];
   dueDate: string | null;
   budget: number | null;
   /**
@@ -149,7 +172,8 @@ export const ADAPTIVE_SECTIONS: Record<string, { brief: string; shape: string }>
   introduction: {
     brief:
       "Open with what this agency will be left holding at the end, not with who Caravann is. One short paragraph of firm framing may follow, drawn from the source material.",
-    shape: "Two paragraphs. Outcome first, firm second.",
+    shape:
+      "Two paragraphs, and the first must begin with the words \"By the end of this engagement\" followed by what the agency will hold: the deliverables, the decisions and the capability it keeps afterwards. That opening is not a stylistic preference. An evaluator reads the first line of every proposal in the stack and most of them open by introducing the firm, which tells them nothing they cannot get from the cover page.",
   },
 };
 
@@ -239,6 +263,16 @@ export function composePrompt(section: string, c: ComposeContext): string {
     c.gaps.length ? "WHERE CARAVANN IS THIN ON THIS BID. Never paper over these and never claim around them:" : "",
     ...c.gaps.map((g) => `- ${g}`),
     "",
+    c.cannot?.length
+      ? "WHAT CARAVANN DOES NOT HAVE. These are recorded facts about the firm. Never state or imply that Caravann provides any of them, never name a person as providing one, and never schedule work around one. If the solicitation requires it, say plainly that it is not currently held and what Caravann would do about it:"
+      : "",
+    ...(c.cannot ?? []).map((x) => `- ${x}`),
+    "",
+    c.amendments?.length
+      ? "AMENDMENTS THE AGENCY HAS ISSUED. These supersede the original solicitation wherever they conflict with anything above. Write to the amended document:"
+      : "",
+    ...(c.amendments ?? []).map((a) => `- ${a}`),
+    "",
     "Return only the section text.",
   ]
     .filter((l) => l !== "")
@@ -313,9 +347,37 @@ export function vetComposed(
   grounded = "",
   /** Which section this is, so its required parts can be checked. */
   sectionType?: string,
+  /** Capabilities the profile records the firm as not having. */
+  cannot: readonly string[] = [],
 ): { ok: true } | { ok: false; reason: string } {
   const trimmed = text.trim();
   if (trimmed.length < 200) return { ok: false, reason: "came back too short to be a section" };
+
+  // A capability the profile denies, asserted as though the firm had it.
+  //
+  // Telling the model is not enough on its own: the same draft that disclosed
+  // "none of the personnel named is that bilingual facilitator" in its risk
+  // section had already written "Caravann's bilingual associate facilitator
+  // leads a structured input session" into its scope. The disclosure and the
+  // claim were both generated, and only one of them was true.
+  //
+  // Naming it as Caravann's own, or putting a person behind it, is the line.
+  // Saying the requirement exists and is not currently met is exactly what the
+  // section should do, so those readings have to survive.
+  for (const lack of cannot) {
+    const word = lack.split(/\s+/)[0].replace(/[^A-Za-z-]/g, "");
+    if (word.length < 4) continue;
+    const claim = new RegExp(
+      `(Caravann(?:'s)?|our|its|the)\\s+(?:[a-z]+\\s+){0,3}${word}\\w*\\s+(?:associate\\s+)?(?:facilitator|consultant|staff|team|capability|specialist|lead)`,
+      "i",
+    );
+    if (claim.test(trimmed)) {
+      return {
+        ok: false,
+        reason: `claims a "${lack}" capability the profile records Caravann as not having`,
+      };
+    }
+  }
 
   // Structure is deterministic even where content is not. Two builds of the
   // same bid produced 5,806 and 4,469 words, and the shorter one had quietly

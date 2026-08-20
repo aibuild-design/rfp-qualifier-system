@@ -5,12 +5,26 @@ import { requireUser, safeError, type ActionResult } from "@/lib/auth";
 import type { QuestionLane, RfpRow } from "@/lib/supabase/types";
 import { attachStandingDocuments, fileProposal, folderIdFrom, moveToLane } from "@/lib/drive";
 import { caravannTemplate } from "@/lib/template-store";
-import { fillTemplate } from "@/lib/docx-fill";
+import { assembleProposalDocx } from "@/lib/proposal-document";
 import { proposalFileName } from "@/lib/proposal";
 import { tailorPrompt, vetTailored } from "@/lib/tailor";
 import { ADAPTIVE_SECTIONS, cleanComposed, composePrompt, rankEngagements, vetComposed } from "@/lib/compose";
 import { assembleDraft, DEFAULT_SECTIONS } from "@/lib/proposal";
 import { recommendTeam } from "@/lib/team-match";
+
+/**
+ * Truncate, and say so.
+ *
+ * A silent `.slice()` on the requirements is the difference between a proposal
+ * that answers the solicitation and one that answers most of it, and there is
+ * no way to tell them apart by reading the output.
+ */
+function capped(values: string[], limit: number, label: string): string[] {
+  if (values.length > limit) {
+    console.warn(`[compose] ${values.length - limit} of ${values.length} ${label} did not fit the prompt (cap ${limit}).`);
+  }
+  return values.slice(0, limit);
+}
 
 // Server actions rather than API routes: these are user-initiated from the
 // dashboard, so they run under the caller's own session and stay subject to
@@ -107,11 +121,6 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
         .from("rfp_proposal_sections")
         .select("heading,body,tailored_body")
         .eq("rfp_id", rfpId);
-      const body = Object.fromEntries(
-        (current ?? [])
-          .map((r) => [r.heading, r.tailored_body ?? r.body] as const)
-          .filter(([, text]) => Boolean(text)) as [string, string][],
-      );
       // Only the real template. A document that does not match Caravann's own
       // furniture is not worth putting in the bid folder under its name.
       if (template) {
@@ -123,25 +132,22 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
           .eq("id", true)
           .maybeSingle();
 
-        const { buffer } = await fillTemplate(template, {
-          title: rfp.title,
-          solicitationNumber: rfp.solicitation_number ?? "",
-          dueDate: rfp.due_at ?? "",
-          agencyName: rfp.client_agency,
-          sections: body,
-          firm: {
-            legalName: firm?.legal_name,
-            address: firm?.address,
-            pointOfContact: firm?.point_of_contact,
-            telephone: firm?.telephone,
-            email: firm?.email,
-            website: firm?.website,
-            cageCode: firm?.cage_code,
-            uei: firm?.uei,
-            duns: firm?.duns,
-            taxEin: firm?.tax_ein,
-          },
+        const { data: engagements } = await supabase.from("past_engagements").select("*");
+        const { data: addenda } = await supabase
+          .from("rfp_related_documents")
+          .select("title, sequence, received_at")
+          .eq("rfp_id", rfpId)
+          .eq("kind", "addendum")
+          .order("sequence");
+
+        const buffer = await assembleProposalDocx({
+          rfp,
+          sections: current ?? [],
+          engagements: engagements ?? [],
+          addenda: addenda ?? [],
+          firm: firm ?? null,
         });
+        if (!buffer) throw new Error("template unavailable");
         const docUrl = await fileProposal(folderId, `${proposalFileName(rfp)}.docx`, buffer);
         if (docUrl) await supabase.from("rfps").update({ proposal_doc_url: docUrl }).eq("id", rfpId);
 
@@ -582,7 +588,16 @@ export async function tailorSection(rfpId: string, sectionId: string): Promise<A
       }),
       signal: AbortSignal.timeout(60000),
     });
-    if (!res.ok) return { error: `OpenRouter refused the request (${res.status}).` };
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      if (res.status === 402 || /insufficient credits/i.test(detail)) {
+        return {
+          error:
+            "OpenRouter is out of credit, so nothing can be drafted or triaged until the account is topped up at openrouter.ai/settings/credits.",
+        };
+      }
+      return { error: `OpenRouter refused the request (${res.status}).` };
+    }
     const json = await res.json();
     reply = String(json?.choices?.[0]?.message?.content ?? "").trim();
   } catch {
@@ -665,15 +680,51 @@ async function composeAdaptiveSections(
   // Past Performance talked about "lines of practice".
   const { data: library } = await supabase.from("language_blocks").select("section_type, title, body, won");
 
-  const [{ data: checks }, { data: rules }, { data: gaps }, { data: assigned }, { data: roster }, { data: profile }, { data: engagements }] =
+  // Ordered, and `is_required` carried.
+  //
+  // These three feed the prompt through a `.slice(0, N)` further down, and
+  // none of them had an ORDER BY. Postgres does not promise row order without
+  // one, so on a solicitation with more requirements than the cap the composer
+  // saw an arbitrary subset - and could see a *different* arbitrary subset on
+  // the next build of the same bid. Nothing logged the drop, so the first
+  // symptom would have been two drafts of one proposal disagreeing about what
+  // the RFP asks for.
+  //
+  // `is_required` was being dropped on the way in, which left the composer
+  // unable to tell "shall carry $2,000,000 insurance" from "it is preferred
+  // that the team include a local consultant". It now comes through and sorts
+  // first, so if anything is cut it is a preference rather than a mandate.
+  const [{ data: checks }, { data: rules }, { data: gaps }, { data: assigned }, { data: roster }, { data: profile }, { data: engagements }, { data: amendments }] =
     await Promise.all([
-      supabase.from("rfp_disqualifier_checks").select("requirement_text").eq("rfp_id", rfpId),
-      supabase.from("rfp_compliance_items").select("label, detail").eq("rfp_id", rfpId),
-      supabase.from("rfp_gap_items").select("description").eq("rfp_id", rfpId),
+      supabase
+        .from("rfp_disqualifier_checks")
+        .select("requirement_text, is_required")
+        .eq("rfp_id", rfpId)
+        .order("is_required", { ascending: false })
+        .order("requirement_text"),
+      supabase
+        .from("rfp_compliance_items")
+        .select("label, detail")
+        .eq("rfp_id", rfpId)
+        .order("label"),
+      supabase.from("rfp_gap_items").select("description").eq("rfp_id", rfpId).order("description"),
       supabase.from("rfp_team_assignments").select("team_member_id").eq("rfp_id", rfpId).eq("status", "confirmed"),
       supabase.from("team_members").select("id, name, role, responsibilities, bio, credentials, years_experience"),
-      supabase.from("org_profile").select("capabilities").eq("id", true).maybeSingle(),
+      supabase
+        .from("org_profile")
+        .select("capabilities, bilingual_staff, media_production_capable, pr_capable")
+        .eq("id", true)
+        .maybeSingle(),
       supabase.from("past_engagements").select("*"),
+      // What the addenda actually changed, not merely that they exist. An
+      // amendment routinely moves a page limit, a deadline or a scope item,
+      // and the draft was being written against the original document.
+      supabase
+        .from("rfp_related_documents")
+        .select("title, sequence, body")
+        .eq("rfp_id", rfpId)
+        .eq("kind", "addendum")
+        .order("sequence"),
     ]);
 
   const byId = new Map((roster ?? []).map((m) => [m.id, m]));
@@ -689,25 +740,61 @@ async function composeAdaptiveSections(
       years_experience: m.years_experience,
     }));
 
+  // Capped, and the cap is about leaving room for the answer.
+  //
+  // Ingesting a proposal put twenty-two technical blocks in the library, all of
+  // which were then fed into the prompt: 24,857 characters of input, the
+  // response truncated after its first heading, and the section fell back to a
+  // stitch of those same twenty-two blocks. More source material produced a
+  // worse section.
+  //
+  // The composer needs enough of Caravann's voice to write in it, not the
+  // entire library. Wins first, then longest, because a substantial block shows
+  // more of how the firm writes than a one-line one.
+  const SOURCE_PER_SECTION = 6;
   const forSection = (type: string) =>
     (library ?? [])
       .filter((b) => b.section_type === type)
-      // Wins first, so the strongest evidence is the first thing read.
-      .sort((a, b) => Number(b.won) - Number(a.won))
+      .sort((a, b) => Number(b.won) - Number(a.won) || (b.body?.length ?? 0) - (a.body?.length ?? 0))
+      .slice(0, SOURCE_PER_SECTION)
       .map((b) => ({ title: b.title, body: b.body, won: Boolean(b.won) }));
 
   const base = {
     agency: rfp.client_agency,
     title: rfp.title,
     solicitationNumber: rfp.solicitation_number,
-    requirements: (checks ?? []).map((c) => c.requirement_text).filter(Boolean).slice(0, 14),
-    rules: (rules ?? []).map((r) => [r.label, r.detail].filter(Boolean).join(": ")).filter(Boolean).slice(0, 12),
-    gaps: (gaps ?? []).map((g) => g.description).filter(Boolean).slice(0, 8),
+    // Marked, so a mandate reads as one, and counted, so a cap that bites says
+    // so in the build log instead of quietly shortening the RFP.
+    requirements: capped(
+      (checks ?? [])
+        .filter((c) => c.requirement_text)
+        .map((c) => `${c.is_required ? "[required] " : "[preferred] "}${c.requirement_text}`),
+      14,
+      "requirements",
+    ),
+    rules: capped(
+      (rules ?? []).map((r) => [r.label, r.detail].filter(Boolean).join(": ")).filter(Boolean),
+      12,
+      "compliance rules",
+    ),
+    gaps: capped((gaps ?? []).map((g) => g.description).filter(Boolean) as string[], 8, "gaps"),
+    amendments: (amendments ?? [])
+      .filter((a) => a.body)
+      .map((a) => `${a.title ?? `Addendum ${a.sequence ?? ""}`.trim()}: ${a.body}`),
     team,
     capabilities: [
       ...(profile?.capabilities?.subject_areas ?? []),
       ...(profile?.capabilities?.key_capabilities ?? []),
     ].slice(0, 14),
+    // The negatives, which the composer was never given. Only flags recorded
+    // as false are sent: an unanswered flag is not a denial, and telling the
+    // model Caravann lacks something nobody has said either way about would
+    // be inventing a limitation instead of an ability.
+    cannot: [
+      profile?.bilingual_staff === false ? "bilingual English and Spanish delivery" : null,
+      profile?.media_production_capable === false ? "media production" : null,
+      profile?.pr_capable === false ? "public relations and communications" : null,
+    ].filter((x): x is string => Boolean(x)),
     dueDate: rfp.due_at?.slice(0, 10) ?? null,
     budget: rfp.budget_amount,
     costWeight: rfp.cost_weight_percent ?? null,
@@ -726,6 +813,23 @@ async function composeAdaptiveSections(
       try {
         const source = forSection(s.section_type);
         const context = { ...base, source };
+
+        // Two attempts, the second told what was wrong with the first.
+        //
+        // A rejection used to mean the section silently fell back to a stitch
+        // of library blocks. That is a heavy price for one correctable
+        // sentence: Scope was rejected for naming a bilingual facilitator the
+        // firm does not have and dropped from about 1,400 written words to 287
+        // stitched ones, losing the phase plan, the deliverables and the level
+        // of effort along with the bad clause. The guard was right and the
+        // proposal still got worse.
+        //
+        // One retry, because the failures worth recovering from are the ones
+        // where the model wrote something good and overstepped in a line of
+        // it. If it oversteps twice the stitch is the honest answer.
+        let text = "";
+        let lastReason = "";
+        for (let attempt = 0; attempt < 2; attempt++) {
         const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -735,10 +839,17 @@ async function composeAdaptiveSections(
             // Enough room for the longest section. Without it the technical
             // description is truncated mid-sentence, and a proposal that stops
             // halfway through its own risk register is worse than a short one.
-            max_tokens: 8000,
+            // The technical section is the longest thing composed, and its
+            // four required parts do not fit in eight thousand.
+            max_tokens: s.section_type === "technical_description" ? 12000 : 8000,
             messages: [
               { role: "system", content: composePrompt(s.section_type, context) },
-              { role: "user", content: `Draft the ${s.section_type} section.` },
+              {
+                role: "user",
+                content: lastReason
+                  ? `Draft the ${s.section_type} section again. The previous attempt was rejected because it ${lastReason}. Fix that specifically and change nothing else about the approach.`
+                  : `Draft the ${s.section_type} section.`,
+              },
             ],
           }),
           // Three minutes, not ninety seconds. Asking for a 3,000 word section
@@ -747,14 +858,46 @@ async function composeAdaptiveSections(
           // that mattered most was the only one guaranteed to fail.
           signal: AbortSignal.timeout(180000),
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          // Say which failure this was, because they are not the same problem.
+          //
+          // Every non-OK response used to return here, so the section fell back
+          // to a stitch of library blocks and the draft came out quietly
+          // shorter with nothing anywhere saying why. Running out of credit is
+          // the case that matters: it fails every section of every proposal
+          // until somebody tops the account up, and it looked identical to the
+          // model simply having an opinion about one section.
+          const detail = await res.text().catch(() => "");
+          if (res.status === 402 || /insufficient credits/i.test(detail)) {
+            console.error(
+              `[compose ${rfpId}] OpenRouter is out of credit - ${s.section_type} and every other written section will fall back to the library until the account is topped up. https://openrouter.ai/settings/credits`,
+            );
+          } else {
+            console.error(`[compose ${rfpId}] ${s.section_type} failed: OpenRouter ${res.status} ${detail.slice(0, 200)}`);
+          }
+          return;
+        }
         const json = await res.json();
         const raw = String(json?.choices?.[0]?.message?.content ?? "").trim();
-        const text = cleanComposed(raw, s.heading);
+        text = cleanComposed(raw, s.heading);
         const grounded = source.map((b) => b.body).join(" ");
-        const verdict = vetComposed(text, team.map((m) => m.name), grounded, s.section_type);
-        if (verdict.ok) out.set(s.section_type, text);
-        else console.info(`[compose ${rfpId}] ${s.section_type} rejected: ${verdict.reason}`);
+        const verdict = vetComposed(
+          text,
+          team.map((m) => m.name),
+          grounded,
+          s.section_type,
+          base.cannot,
+        );
+        if (verdict.ok) {
+          out.set(s.section_type, text);
+          if (attempt > 0) console.info(`[compose ${rfpId}] ${s.section_type} passed on retry.`);
+          return;
+        }
+        lastReason = verdict.reason;
+        console.info(
+          `[compose ${rfpId}] ${s.section_type} rejected (attempt ${attempt + 1}): ${verdict.reason}`,
+        );
+        }
       } catch {
         /* the stitched version stands */
       }
