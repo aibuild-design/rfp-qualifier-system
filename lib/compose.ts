@@ -132,7 +132,7 @@ export const ADAPTIVE_SECTIONS: Record<string, { brief: string; shape: string }>
     brief:
       "The method, in full. How the work is actually done, why it is sequenced that way, how progress is measured, and the risks this particular engagement carries, stated plainly including the political ones. This is the section that wins or loses the bid on approach, so it should be the longest.",
     shape:
-      "Four parts, each with a plain heading on its own line.\n\nMethodology: how each phase is actually run. Named techniques, what happens in a session, how findings are synthesised, how disagreement is handled.\n\nSequencing Rationale: why this order and not another, in terms of this agency's situation.\n\nMeasurement: how progress and success are tracked. Where the solicitation asks for performance measures or KPIs, describe how they are developed, who owns them, how they are monitored and reported, and what happens when one is missed.\n\nKey Risks and Challenges: six to nine numbered risks. Each names the specific condition in this agency's situation that causes it, why it matters for this engagement, and how the approach handles it. Include the uncomfortable ones: governance ambiguity, competing authority, history between parties, availability of executives. Aim for 2,500 to 3,500 words across all four parts.",
+      "Four parts. Every one of them is required and each must appear under its exact heading on its own line, in this order: Methodology, Sequencing Rationale, Measurement, Key Risks and Challenges. A section missing one of these is incomplete, whatever its length. Do not merge them, do not rename them, and do not drop the last two because the first two ran long.\n\nMethodology: how each phase is actually run. Named techniques, what happens in a session, how findings are synthesised, how disagreement is handled.\n\nSequencing Rationale: why this order and not another, in terms of this agency's situation.\n\nMeasurement: how progress and success are tracked, including the reporting cadence, who receives what and how often. Where the solicitation asks for performance measures or KPIs, describe how they are developed, who owns them, how they are monitored and reported, and what happens when one is missed.\n\nKey Risks and Challenges: six to nine numbered risks. Each names the specific condition in this agency's situation that causes it, why it matters for this engagement, and how the approach handles it. Include the uncomfortable ones: governance ambiguity, competing authority, history between parties, availability of executives. Aim for 2,500 to 3,500 words across all four parts.",
   },
   past_performance: {
     brief:
@@ -301,14 +301,31 @@ export function cleanComposed(text: string, heading: string): string {
   );
 }
 
+/** Headings a section must contain, checked rather than requested. */
+const REQUIRED_HEADINGS: Record<string, string[]> = {
+  technical_description: ["Methodology", "Sequencing Rationale", "Measurement", "Key Risks and Challenges"],
+};
+
 export function vetComposed(
   text: string,
   allowedNames: string[],
   /** Caravann's own approved language, whose claims are already published. */
   grounded = "",
+  /** Which section this is, so its required parts can be checked. */
+  sectionType?: string,
 ): { ok: true } | { ok: false; reason: string } {
   const trimmed = text.trim();
   if (trimmed.length < 200) return { ok: false, reason: "came back too short to be a section" };
+
+  // Structure is deterministic even where content is not. Two builds of the
+  // same bid produced 5,806 and 4,469 words, and the shorter one had quietly
+  // dropped Measurement and the risk register: a proposal missing its risk
+  // section is incomplete however well the rest reads.
+  const required = REQUIRED_HEADINGS[sectionType ?? ""] ?? [];
+  const absent = required.filter((h) => !new RegExp(`^\\s*${h}\\b`, "im").test(trimmed));
+  if (absent.length) {
+    return { ok: false, reason: `is missing required part${absent.length > 1 ? "s" : ""}: ${absent.join(", ")}` };
+  }
 
   const source = grounded.toLowerCase();
   for (const re of PAST_CLAIM) {

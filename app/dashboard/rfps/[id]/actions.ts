@@ -752,7 +752,7 @@ async function composeAdaptiveSections(
         const raw = String(json?.choices?.[0]?.message?.content ?? "").trim();
         const text = cleanComposed(raw, s.heading);
         const grounded = source.map((b) => b.body).join(" ");
-        const verdict = vetComposed(text, team.map((m) => m.name), grounded);
+        const verdict = vetComposed(text, team.map((m) => m.name), grounded, s.section_type);
         if (verdict.ok) out.set(s.section_type, text);
         else console.info(`[compose ${rfpId}] ${s.section_type} rejected: ${verdict.reason}`);
       } catch {
