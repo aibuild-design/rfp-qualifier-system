@@ -31,6 +31,13 @@ export async function POST(req: NextRequest) {
 
   const form = await req.formData();
   const file = form.get("file");
+  // What the document is, which changes what is worth pulling out of it. A past
+  // proposal is mostly reusable language with prior work mentioned in passing;
+  // a case study is the opposite, and reading one with the other's instructions
+  // returns almost nothing. The SamTrans proposal yielded thirty-two passages
+  // and zero engagements, which was correct for a proposal and would be a
+  // failure for a case study.
+  const kind = String(form.get("kind") ?? "proposal") as "proposal" | "case_study";
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Attach a proposal file." }, { status: 400 });
   }
@@ -54,7 +61,13 @@ export async function POST(req: NextRequest) {
   const capped = text.slice(0, 60_000);
 
   const system = [
-    "You are reading a consulting proposal a firm has already submitted, to pull out material it can reuse.",
+    kind === "case_study"
+      ? "You are reading a case study or capability document describing work a consulting firm has delivered."
+      : "You are reading a consulting proposal a firm has already submitted, to pull out material it can reuse.",
+    "",
+    kind === "case_study"
+      ? "ENGAGEMENTS are the point here. Pull out every distinct piece of client work described, with as much of the client, the situation, what was done and the result as the document gives. Blocks are secondary: take a passage only if it is genuinely reusable wording rather than a description of one job."
+      : "BLOCKS are the point here. Engagements are secondary: take them only where the document describes work the firm did previously, never the engagement being bid for.",
     "",
     "Return two things.",
     "",
@@ -186,7 +199,7 @@ export async function POST(req: NextRequest) {
     .from("source_documents")
     .insert({
       name: file.name,
-      kind: "proposal",
+      kind: kind === "case_study" ? "other" : "proposal",
       body: text,
       characters: text.length,
       blocks_taken: blocks.length,

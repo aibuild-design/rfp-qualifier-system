@@ -47,6 +47,11 @@ export default async function SettingsPage() {
   // of them could already be named in a proposal.
   const teamReady = (team ?? []).filter((m) => m.responsibilities).length;
   const withReference = (engagements ?? []).filter((e) => e.reference_name).length;
+  const companyMissing = [
+    orgProfile?.legal_name, orgProfile?.address, orgProfile?.point_of_contact,
+    orgProfile?.telephone, orgProfile?.email, orgProfile?.website,
+    orgProfile?.cage_code, orgProfile?.uei, orgProfile?.duns, orgProfile?.tax_ein,
+  ].filter((v) => !v).length;
   const insuranceMissing = !orgProfile?.insurance_coverage?.trim();
   const setAsideMissing = (orgProfile?.set_aside_status ?? []).length === 0;
 
@@ -64,6 +69,13 @@ export default async function SettingsPage() {
               ? "Complete and confirmed"
               : "Complete, not yet confirmed",
           attention: insuranceMissing || setAsideMissing || !orgProfile?.profile_confirmed,
+        },
+        {
+          href: "/dashboard/settings/company",
+          title: "Company details",
+          blurb: "Used for the proposal. The cover page of every draft.",
+          status: companyMissing === 0 ? "Complete" : `${companyMissing} fields empty`,
+          attention: companyMissing > 0,
         },
         {
           href: "/dashboard/settings/sectors",

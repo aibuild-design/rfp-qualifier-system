@@ -28,7 +28,12 @@ type Engagement = {
  * nobody checked is how a stray paragraph from somebody else's template ends up
  * in a submission, and everything drafted afterwards inherits it.
  */
-export function LearnFromProposal() {
+export function LearnFromProposal({
+  kind = "proposal",
+}: {
+  /** What is being uploaded, which changes what is worth pulling out. */
+  kind?: "proposal" | "case_study";
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -47,6 +52,7 @@ export function LearnFromProposal() {
     try {
       const fd = new FormData();
       fd.append("file", file);
+      fd.append("kind", kind);
       const res = await fetch("/api/library/ingest", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok) {
@@ -108,9 +114,19 @@ export function LearnFromProposal() {
   return (
     <div className="rounded-xl border border-rfp-border bg-rfp-surface p-5">
       <p className="text-sm text-rfp-ink-secondary">
-        Upload a proposal Caravann has already submitted. The desk reads out the passages worth
-        reusing and any prior work it describes, in Caravann&rsquo;s own words. Nothing is saved
-        until you tick it.
+        {kind === "case_study" ? (
+          <>
+            Upload a case study, capability statement or project summary. The desk reads out the
+            engagements it describes so they can be cited on future bids. Nothing is saved until
+            you tick it.
+          </>
+        ) : (
+          <>
+            Upload a proposal Caravann has already submitted. The desk reads out the passages worth
+            reusing and any prior work it describes, in Caravann&rsquo;s own words. Nothing is saved
+            until you tick it.
+          </>
+        )}
       </p>
 
       <label className="mt-3 inline-flex">
@@ -125,7 +141,7 @@ export function LearnFromProposal() {
           }}
         />
         <span className={`${buttonClass} cursor-pointer`}>
-          {busy ? "Reading it…" : "Choose a proposal"}
+          {busy ? "Reading it…" : kind === "case_study" ? "Choose a case study" : "Choose a proposal"}
         </span>
       </label>
 
@@ -142,6 +158,26 @@ export function LearnFromProposal() {
       )}
 
       {saved && <p className="mt-3 text-sm font-medium text-rfp-good">{saved}</p>}
+
+      {engagements.length > 0 && blocks.length === 0 && (
+        <div className="mt-4 border-t border-rfp-border pt-4">
+          <p className="text-sm font-semibold text-rfp-ink">
+            {engagements.length} engagement{engagements.length === 1 ? "" : "s"} from {source}
+          </p>
+          <ul className="mt-2 space-y-2">
+            {engagements.map((e, i) => (
+              <li key={i} className="rounded-lg border border-rfp-border bg-rfp-surface-sunken px-4 py-3">
+                <p className="text-sm font-medium text-rfp-ink">{e.client}</p>
+                <p className="mt-0.5 text-xs text-rfp-ink-secondary">{e.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-rfp-ink-muted">{e.outcome}</p>
+              </li>
+            ))}
+          </ul>
+          <button type="button" onClick={() => void keep()} className={`${buttonClass} mt-4`}>
+            Keep {engagements.length} engagement{engagements.length === 1 ? "" : "s"}
+          </button>
+        </div>
+      )}
 
       {blocks.length > 0 && (
         <div className="mt-4 border-t border-rfp-border pt-4">

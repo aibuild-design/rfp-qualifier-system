@@ -36,6 +36,27 @@ export type TemplateValues = {
   agencyPocPhone?: string;
   agencyPocEmail?: string;
   /**
+   * The firm's own cover-page details.
+   *
+   * These were hardcoded here. They appear on the front of every submission, so
+   * a change of office meant a code change, and nobody outside the repository
+   * could check what was being sent out under their name. Passed in now, with
+   * the previous values as fallbacks so an unconfigured database still produces
+   * a correct document.
+   */
+  firm?: {
+    legalName?: string | null;
+    address?: string | null;
+    pointOfContact?: string | null;
+    telephone?: string | null;
+    email?: string | null;
+    website?: string | null;
+    cageCode?: string | null;
+    uei?: string | null;
+    duns?: string | null;
+    taxEin?: string | null;
+  };
+  /**
    * Drafted prose, keyed by the template's own heading text. Each section in
    * the template carries a boilerplate lead sentence and then a bracketed
    * instruction to whoever is writing it - "[Insert brief introduction
@@ -94,16 +115,16 @@ function substitutions(v: TemplateValues): [string, string][] {
     // above. So the field is not missing, it is obsolete - and saying that is
     // accurate rather than invented, and reads as deliberate to an evaluator
     // where a bracketed placeholder reads as unfinished.
-    ["[Insert Offeror Name]", COMPANY],
-    ["[Insert Offeror Address]", "2008 Ninth St, Berkeley, CA 94701"],
-    ["[Insert Offeror Point of Contact:]", "Khaled El-Sawaf"],
-    ["[Insert Offeror Telephone]", "510-224-0070"],
-    ["[Insert Offeror Email]", "khaled@caravann.co"],
-    ["[Insert Offeror Website]", "https://www.caravann.co"],
-    ["[Insert Offeror CAGE Code]", "9NV03"],
-    ["[Insert Offeror UEI#]", "HSV8KJY684V5"],
-    ["[Insert Offeror DUNS#]", "N/A - replaced by UEI (April 2022)"],
-    ["[Insert Offeror TAX EIN#]", "92-1867651"],
+    ["[Insert Offeror Name]", esc(v.firm?.legalName || COMPANY)],
+    ["[Insert Offeror Address]", esc(v.firm?.address || "2008 Ninth St, Berkeley, CA 94701")],
+    ["[Insert Offeror Point of Contact:]", esc(v.firm?.pointOfContact || "Khaled El-Sawaf")],
+    ["[Insert Offeror Telephone]", esc(v.firm?.telephone || "510-224-0070")],
+    ["[Insert Offeror Email]", esc(v.firm?.email || "khaled@caravann.co")],
+    ["[Insert Offeror Website]", esc(v.firm?.website || "https://www.caravann.co")],
+    ["[Insert Offeror CAGE Code]", esc(v.firm?.cageCode || "9NV03")],
+    ["[Insert Offeror UEI#]", esc(v.firm?.uei || "HSV8KJY684V5")],
+    ["[Insert Offeror DUNS#]", esc(v.firm?.duns || "N/A - replaced by UEI (April 2022)")],
+    ["[Insert Offeror TAX EIN#]", esc(v.firm?.taxEin || "92-1867651")],
     ["[Insert Agency Name]", esc(keep(v.agencyName, "[Insert Agency Name]"))],
     ["[Insert Agency Address]", esc(keep(v.agencyAddress, "[Insert Agency Address]"))],
     ["[Insert Agency POC Telephone]", esc(keep(v.agencyPocPhone, "[Insert Agency POC Telephone]"))],

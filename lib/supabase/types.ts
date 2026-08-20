@@ -73,6 +73,17 @@ export interface Database {
           governing_body_experience: string | null;
           /** Ticked on the settings screen once a human has checked this
            *  against reality. Until then every verdict is stored provisional. */
+          /** Cover-page details, on every submission. */
+          legal_name: string | null;
+          address: string | null;
+          point_of_contact: string | null;
+          telephone: string | null;
+          email: string | null;
+          website: string | null;
+          cage_code: string | null;
+          uei: string | null;
+          duns: string | null;
+          tax_ein: string | null;
           profile_confirmed: boolean;
           updated_at: string;
         };

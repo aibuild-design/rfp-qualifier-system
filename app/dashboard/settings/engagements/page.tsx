@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { SettingsShell } from "@/components/settings/SettingsShell";
 import { PastEngagements } from "@/components/settings/PastEngagements";
+import { LearnFromProposal } from "@/components/settings/LearnFromProposal";
 
 export default async function Page() {
   const supabase = await createClient();
@@ -15,6 +16,17 @@ export default async function Page() {
         Used for the proposal. Past performance is written from these.
       </p>
       <PastEngagements initial={engagements ?? []} />
+
+      {/* Typing an engagement in is fine for one. A folder of case studies is
+          why the table was empty. */}
+      <div className="mt-8">
+        <h2 className="font-display text-sm font-semibold text-rfp-ink">
+          Read them out of a case study
+        </h2>
+        <div className="mt-3">
+          <LearnFromProposal kind="case_study" />
+        </div>
+      </div>
     </SettingsShell>
   );
 }

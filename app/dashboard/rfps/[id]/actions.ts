@@ -115,12 +115,32 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
       // Only the real template. A document that does not match Caravann's own
       // furniture is not worth putting in the bid folder under its name.
       if (template) {
+        // The firm's own cover-page details, read from the profile rather than
+        // from a constant in the template filler.
+        const { data: firm } = await supabase
+          .from("org_profile")
+          .select("legal_name, address, point_of_contact, telephone, email, website, cage_code, uei, duns, tax_ein")
+          .eq("id", true)
+          .maybeSingle();
+
         const { buffer } = await fillTemplate(template, {
           title: rfp.title,
           solicitationNumber: rfp.solicitation_number ?? "",
           dueDate: rfp.due_at ?? "",
           agencyName: rfp.client_agency,
           sections: body,
+          firm: {
+            legalName: firm?.legal_name,
+            address: firm?.address,
+            pointOfContact: firm?.point_of_contact,
+            telephone: firm?.telephone,
+            email: firm?.email,
+            website: firm?.website,
+            cageCode: firm?.cage_code,
+            uei: firm?.uei,
+            duns: firm?.duns,
+            taxEin: firm?.tax_ein,
+          },
         });
         const docUrl = await fileProposal(folderId, `${proposalFileName(rfp)}.docx`, buffer);
         if (docUrl) await supabase.from("rfps").update({ proposal_doc_url: docUrl }).eq("id", rfpId);
