@@ -123,7 +123,7 @@ export type AssembledSection = {
  * not have.
  */
 export function assembleDraft(
-  rfp: Pick<RfpRow, "title" | "client_agency" | "project_type" | "due_at">,
+  rfp: Pick<RfpRow, "title" | "client_agency" | "project_type" | "due_at" | "solicitation_number">,
   blocks: LanguageBlockRow[],
   sections: readonly {
     section_type: string;
@@ -187,7 +187,7 @@ export function assembleDraft(
  *  so a human sees what still needs filling. */
 export function fillPlaceholders(
   text: string,
-  rfp: Pick<RfpRow, "title" | "client_agency" | "project_type" | "due_at">,
+  rfp: Pick<RfpRow, "title" | "client_agency" | "project_type" | "due_at" | "solicitation_number">,
   /** Addenda attached to this bid, newest first. */
   addenda: { kind: string; sequence: number | null }[] = []
 ): string {
@@ -214,9 +214,13 @@ export function fillPlaceholders(
     .sort((a, b) => a - b);
 
   const values: Record<string, string> = {
+    // Khaled's own phrasing, from the SamTrans submission: "...for San Mateo
+    // County Transit District's RFP 27-S-S-003 and acknowledges receipt of
+    // Addendum 1."
+    SOLICITATION: rfp.solicitation_number ? `RFP ${rfp.solicitation_number}` : engagement,
     ADDENDA: numbered.length
-      ? `Receipt is acknowledged of ${numbered.length === 1 ? "Addendum" : "Addenda"} ${numbered.join(", ")}.`
-      : "No addenda had been issued at the time of submission.",
+      ? `acknowledges receipt of ${numbered.length === 1 ? "Addendum" : "Addenda"} ${numbered.join(", ")}.`
+      : "confirms that no addenda had been issued at the time of submission.",
     ENGAGEMENT: engagement,
     CLIENT: client,
     PROJECT_TYPE: rfp.project_type ?? "the engagement",

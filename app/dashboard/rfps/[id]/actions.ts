@@ -698,12 +698,20 @@ async function composeAdaptiveSections(
           body: JSON.stringify({
             model: "anthropic/claude-sonnet-5",
             temperature: 0,
+            // Enough room for the longest section. Without it the technical
+            // description is truncated mid-sentence, and a proposal that stops
+            // halfway through its own risk register is worse than a short one.
+            max_tokens: 8000,
             messages: [
               { role: "system", content: composePrompt(s.section_type, context) },
               { role: "user", content: `Draft the ${s.section_type} section.` },
             ],
           }),
-          signal: AbortSignal.timeout(90000),
+          // Three minutes, not ninety seconds. Asking for a 3,000 word section
+          // and then timing out at ninety seconds silently dropped the longest
+          // and most important section back to the library stitch: the request
+          // that mattered most was the only one guaranteed to fail.
+          signal: AbortSignal.timeout(180000),
         });
         if (!res.ok) return;
         const json = await res.json();

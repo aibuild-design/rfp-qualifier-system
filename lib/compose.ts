@@ -63,25 +63,26 @@ export type ComposeContext = {
 export const ADAPTIVE_SECTIONS: Record<string, { brief: string; shape: string }> = {
   background: {
     brief:
-      "Show that Caravann understands this agency's situation specifically: what it is trying to resolve, and why it matters now. Draw only on what the solicitation states.",
-    shape: "Two or three paragraphs. No headings, no bullets.",
+      "Show that Caravann understands this agency's situation specifically: what it is trying to resolve, why it matters now, what constraints it is operating under, and what a good outcome would change. Draw only on what the solicitation states, and be concrete about it rather than restating the scope back.",
+    shape: "Four to six paragraphs, 500 to 800 words. No headings, no bullets.",
   },
   scope: {
     brief:
-      "State the outcome the engagement produces, then the phased plan to get there. Lead with what will be different afterwards, not with who Caravann is.",
+      "State the outcome the engagement produces, then the phased plan to get there, then the timeline. Lead with what will be different afterwards, not with who Caravann is. Depth is the point: an evaluator should be able to see the whole engagement from this section without asking a question.",
     shape:
-      "A short outcome paragraph, then phases as:\nPhase 1: Name\nPurpose: one sentence\nKey Activities:\n- activity\nOutputs:\n- output\n\nThree to five phases, each mapped to tasks the solicitation actually names.",
+      "A short outcome paragraph. Then four or five phases as:\n\nPhase 1: Name\nPurpose: one sentence on why the phase exists\nKey Activities:\n- six to nine specific activities, each naming who is involved and what is produced\nOutputs:\n- three to five named deliverables\n\nThen a timeline: for each phase, the timeframe, the sessions or meetings expected, who participates, and the expected time commitment asked of the agency's own people. Aim for 1,200 to 1,800 words.",
   },
   technical_description: {
     brief:
-      "The method. How the work is actually done, the sequencing rationale, and the risks this particular engagement carries, stated plainly including political ones.",
+      "The method, in full. How the work is actually done, why it is sequenced that way, how progress is measured, and the risks this particular engagement carries, stated plainly including the political ones. This is the section that wins or loses the bid on approach, so it should be the longest.",
     shape:
-      "Method paragraphs, then a 'Key Risks and Challenges' list where each risk names the specific condition in this agency's situation that causes it and how facilitation handles it.",
+      "Four parts, each with a plain heading on its own line.\n\nMethodology: how each phase is actually run. Named techniques, what happens in a session, how findings are synthesised, how disagreement is handled.\n\nSequencing Rationale: why this order and not another, in terms of this agency's situation.\n\nMeasurement: how progress and success are tracked. Where the solicitation asks for performance measures or KPIs, describe how they are developed, who owns them, how they are monitored and reported, and what happens when one is missed.\n\nKey Risks and Challenges: six to nine numbered risks. Each names the specific condition in this agency's situation that causes it, why it matters for this engagement, and how the approach handles it. Include the uncomfortable ones: governance ambiguity, competing authority, history between parties, availability of executives. Aim for 2,500 to 3,500 words across all four parts.",
   },
   past_performance: {
     brief:
       "Name the actual engagements in the source material below and say what each demonstrates for this solicitation. Lead with any marked as won. If the source does not evidence work close to this scope, say plainly what is comparable and do not stretch it. Never describe practice areas in the abstract when a real engagement is available.",
-    shape: "One short paragraph per engagement, named.",
+    shape:
+      "Two or three paragraphs per engagement: what the client's situation was, what Caravann did, what it produced, and what it demonstrates for this solicitation specifically. 400 to 700 words.",
   },
   introduction: {
     brief:
@@ -107,6 +108,8 @@ export function composePrompt(section: string, c: ComposeContext): string {
     "You MUST NOT assert anything about Caravann's past or its credentials that is not given below. No engagement counts, no client names, no years of experience, no certifications, no staff who are not listed. Anything of that kind will be rejected automatically and the section discarded.",
     "",
     "Never invent a fact about the agency either. Everything you say about their situation must trace to the requirements below.",
+    "",
+    "Write to the length asked for. A public agency evaluator is scoring against a rubric and a thin section scores thin; specificity is what earns the points, so prefer a named activity over a general claim every time.",
     "",
     "Plain, direct, specific. No marketing register, no phrases like leverage, robust, seamless or cutting-edge. Never use an em dash or an en dash.",
     "",

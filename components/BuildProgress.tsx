@@ -20,9 +20,9 @@ import { useEffect, useState } from "react";
  */
 const STAGES = [
   { at: 0, label: "Reading the approved-language library" },
-  { at: 1200, label: "Assembling fourteen sections" },
-  { at: 3000, label: "Filling Caravann's template" },
-  { at: 6000, label: "Uploading to Drive as a Google Doc" },
+  { at: 1500, label: "Writing the sections for this solicitation" },
+  { at: 60000, label: "Filling Caravann's template" },
+  { at: 90000, label: "Uploading to Drive as a Google Doc" },
 ] as const;
 
 export function BuildProgress({ running }: { running: boolean }) {
@@ -74,8 +74,8 @@ export function BuildProgress({ running }: { running: boolean }) {
       </div>
 
       <p className="mt-2 text-xs leading-relaxed text-rfp-ink-muted">
-        You can leave this page. The draft finishes on the server and will be here when you come
-        back.
+        Writing takes a minute or two. You can leave this page: the draft finishes on the server
+        and will be here when you come back.
       </p>
     </div>
   );
