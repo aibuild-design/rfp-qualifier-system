@@ -5,6 +5,8 @@ import { LanguageLibrary } from "@/components/LanguageLibrary";
 // holding it here instead is a deliberate simplification for the skeletal
 // build - the shape (blocks per section, winners weighted above boilerplate)
 // is the part that matters and transfers either way.
+import { LearnFromProposal } from "@/components/settings/LearnFromProposal";
+
 export default async function LibraryPage() {
   const supabase = await createClient();
   const { data: blocks } = await supabase
@@ -20,6 +22,16 @@ export default async function LibraryPage() {
         <p className="mt-1 text-sm text-rfp-ink-secondary">
           What drafts are built from. Text Caravann has already used and stands behind.
         </p>
+      </div>
+
+      {/* The library is the ceiling on every draft, and typing it out by hand is
+          why it held twelve blocks. One of Caravann's own proposals yields
+          twenty-one in a pass. */}
+      <div className="mt-6">
+        <h2 className="font-display text-sm font-semibold text-rfp-ink">Learn from a past proposal</h2>
+        <div className="mt-3">
+          <LearnFromProposal />
+        </div>
       </div>
       <p className="mb-6 text-xs leading-relaxed text-rfp-ink-muted">
         Winning blocks rank highest, locked boilerplate is copied verbatim, and a section with
