@@ -5,13 +5,23 @@ export type RfpStatus = RfpRow["status"];
 
 // Verdict → color + label. "pending" means triage hasn't run/finished yet -
 // distinct from "maybe" (triage ran, result was genuinely ambiguous).
-// Hex literals (not CSS vars) so components can append alpha, e.g. `${color}1a`
-// for a tinted background - must match the --rfp-* values in globals.css.
+//
+// These were hex literals, so components could append alpha as `${color}1a`,
+// with a comment saying they must match the --rfp-* values in globals.css.
+// They stopped matching. globals.css darkens its status colours for light mode
+// and lightens them for dark, and these copies did neither, so every verdict
+// badge rendered the same colour on both themes: "Maybe" came out at 2.52:1 on
+// white, which is barely legible, and "Go" sat under 4.5:1 on both.
+//
+// Pointing at the variables means the badge follows the theme and there is only
+// one place to change a status colour. The one caller that appended alpha now
+// uses color-mix, which works with a variable and did not exist when this was
+// written.
 export const VERDICT_META: Record<RfpStatus, { label: string; color: string }> = {
-  go: { label: "Go", color: "#1b8a5a" },
-  maybe: { label: "Maybe", color: "#d9962c" },
-  no_go: { label: "No-go", color: "#c23b3b" },
-  pending: { label: "Pending triage", color: "#8f8d84" },
+  go: { label: "Go", color: "var(--rfp-good)" },
+  maybe: { label: "Maybe", color: "var(--rfp-warning)" },
+  no_go: { label: "No-go", color: "var(--rfp-critical)" },
+  pending: { label: "Pending triage", color: "var(--rfp-neutral)" },
 };
 
 /** ISO timestamp N days from now. Lives here rather than inline in a page so

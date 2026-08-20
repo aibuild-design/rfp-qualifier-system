@@ -29,47 +29,39 @@ export default async function OverviewPage() {
   // - worth saying out loud rather than letting it look live.
   const triageConfigured = Boolean(process.env.N8N_BASE_URL && process.env.RFP_INTAKE_API_KEY);
 
-  const { data: scoring } = await supabase
-    .from("scoring_settings")
-    .select("*")
-    .eq("id", true)
-    .maybeSingle();
-  const windows = deadlineWindowsFrom(scoring);
-
+  // One wave. This page used to take two, and fourteen queries to do it.
+  //
+  // Six of them were counts on rfps: every bid, then go, then no-go, then
+  // pending, then demo, then filed. Six network round trips to ask one table
+  // six questions about the same rows. One projection answers all six.
+  //
+  // The second wave existed because the open-compliance count filtered on
+  // `now + warningDays`, and the window is stored in scoring_settings, so that
+  // read had to finish before the batch could be issued. Fetching the due
+  // dates instead of a count removes the dependency: the window is applied
+  // here rather than in Postgres, and scoring_settings joins the batch. The
+  // projection is narrow and bounded to items that are incomplete and actually
+  // carry a date, which is the only set that can ever be counted.
   const [
-    { count: totalCount },
-    { count: goCount },
-    { count: noGoCount },
-    { count: pendingCount },
-    { count: dueThisWeekCount },
+    { data: allRfps },
+    { data: openCompliance },
     { count: sectorCount },
     { count: libraryCount },
     { count: rosterCount },
-    { count: demoCount },
-    { count: filedCount },
     { data: health },
     { data: orgProfile },
     { data: recent },
+    { data: scoring },
   ] = await Promise.all([
-    // Every solicitation, counted directly. This used to be go + no-go +
-    // pending added together, which silently excluded maybe - the single most
-    // common verdict - so a queue holding one maybe reported that nothing had
-    // been read at all.
-    supabase.from("rfps").select("*", { count: "exact", head: true }),
-    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "go"),
-    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "no_go"),
-    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("rfps").select("status, is_demo, filing_status"),
     supabase
       .from("rfp_compliance_items")
-      .select("*", { count: "exact", head: true })
+      .select("due_at")
       .eq("is_complete", false)
-      .not("due_at", "is", null)
-      .lte("due_at", isoDaysFromNow(windows.warningDays)),
+      .not("due_at", "is", null),
     supabase.from("sector_experience").select("*", { count: "exact", head: true }),
     supabase.from("language_blocks").select("*", { count: "exact", head: true }),
     supabase.from("team_members").select("*", { count: "exact", head: true }).eq("active", true),
-    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("is_demo", true),
-    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("filing_status", "filed"),
     // Whether Drive works is a fact about Drive, not about how many bids
     // happen to be sitting in the queue. Clearing the queue used to make the
     // overview announce that Google Drive still needed authorising.
@@ -80,7 +72,30 @@ export default async function OverviewPage() {
       .select("id,title,client_agency,status,score_percent,due_at,verdict_set_at,is_demo")
       .order("verdict_set_at", { ascending: false, nullsFirst: false })
       .limit(6),
+    supabase.from("scoring_settings").select("*").eq("id", true).maybeSingle(),
   ]);
+
+  const windows = deadlineWindowsFrom(scoring);
+
+  // Every solicitation, counted directly. This used to be go + no-go + pending
+  // added together, which silently excluded maybe - the single most common
+  // verdict - so a queue holding one maybe reported that nothing had been read
+  // at all.
+  const rfpRows = allRfps ?? [];
+  const countWhere = (keep: (r: (typeof rfpRows)[number]) => boolean) =>
+    rfpRows.reduce((n, r) => (keep(r) ? n + 1 : n), 0);
+  const totalCount = rfpRows.length;
+  const goCount = countWhere((r) => r.status === "go");
+  const noGoCount = countWhere((r) => r.status === "no_go");
+  const pendingCount = countWhere((r) => r.status === "pending");
+  const demoCount = countWhere((r) => r.is_demo);
+  const filedCount = countWhere((r) => r.filing_status === "filed");
+
+  const warningCutoff = isoDaysFromNow(windows.warningDays);
+  const dueThisWeekCount = (openCompliance ?? []).reduce(
+    (n, c) => (c.due_at && c.due_at <= warningCutoff ? n + 1 : n),
+    0,
+  );
 
   const profileReady = (sectorCount ?? 0) > 0;
   const libraryReady = (libraryCount ?? 0) > 0;

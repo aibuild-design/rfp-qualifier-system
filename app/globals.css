@@ -38,9 +38,13 @@
      deadline badges don't visually blend with the brand accent) */
   --rfp-good: #146b45;
   --rfp-warning: #8a5a12;
-  --rfp-serious: #d97a3a;
+  /* #d97a3a scored 3.09:1 on white, which is below the 4.5 a badge label
+     needs. Darkened to sit alongside --rfp-warning rather than beside the
+     dark-mode orange it was copied from. */
+  --rfp-serious: #a04d18;
   --rfp-critical: #c23b3b;
-  --rfp-neutral: #8f8d84;
+  /* Likewise #8f8d84, at 3.1:1, for the "Pending triage" badge. */
+  --rfp-neutral: #6d6b63;
 
   --background: var(--rfp-page);
   --foreground: var(--rfp-ink);

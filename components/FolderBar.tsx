@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createFolder, renameFolder, deleteFolder } from "@/app/dashboard/folders/actions";
 import type { FolderRow } from "@/lib/supabase/types";
@@ -23,12 +23,19 @@ export function FolderBar({
   folders,
   counts,
   active,
-  unfiled,
+  resetCount,
+  viewActive,
+  leading,
 }: {
   folders: FolderRow[];
   counts: Record<string, number>;
   active: string | null;
-  unfiled: number;
+  /** What "All" would show: both filters cleared. */
+  resetCount: number;
+  /** Whether a verdict is selected, so "All" is not highlighted while one is. */
+  viewActive: boolean;
+  /** The verdict chips, rendered inside this row instead of a second one. */
+  leading?: React.ReactNode;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -43,7 +50,14 @@ export function FolderBar({
   const go = (folderId: string | null) => {
     const params = new URLSearchParams(window.location.search);
     if (folderId) params.set("folder", folderId);
-    else params.delete("folder");
+    else {
+      // "All" is the one control that clears everything. There were two of
+      // them, one per filter row, sitting directly above each other and
+      // looking identical; a single reset is what people expect from a chip
+      // labelled All, and it removes the duplicate.
+      params.delete("folder");
+      params.delete("view");
+    }
     // A menu belongs to the folder that opened it.
     setMenuOpen(false);
     router.push(`/dashboard${params.toString() ? `?${params}` : ""}`);
@@ -53,7 +67,7 @@ export function FolderBar({
     setError(null);
     start(async () => {
       const res = await createFolder(newName);
-      if (!res.ok) return setError(res.error ?? "Could not create that folder");
+      if (!res.ok) return setError(res.error ?? "Could not create that section");
       setNewName("");
       setCreating(false);
       router.refresh();
@@ -65,7 +79,7 @@ export function FolderBar({
     setError(null);
     start(async () => {
       const res = await renameFolder(renaming.id, renaming.name);
-      if (!res.ok) return setError(res.error ?? "Could not rename that folder");
+      if (!res.ok) return setError(res.error ?? "Could not rename that section");
       setRenaming(null);
       router.refresh();
     });
@@ -76,7 +90,7 @@ export function FolderBar({
     setError(null);
     start(async () => {
       const res = await deleteFolder(deleting.id, typed);
-      if (!res.ok) return setError(res.error ?? "Could not delete that folder");
+      if (!res.ok) return setError(res.error ?? "Could not delete that section");
       setDeleting(null);
       setTyped("");
       if (active === deleting.id) go(null);
@@ -95,11 +109,14 @@ export function FolderBar({
     <div className="mt-6">
       {/* Scrolls sideways rather than wrapping: a folder row that grows to three
           lines pushes the queue off the screen, and the queue is the point. */}
-      <div className="flex flex-wrap gap-2 pb-1">
-        <button onClick={() => go(null)} className={chip(active === null)}>
+      <div className="flex flex-wrap items-center gap-2 pb-1">
+        <button onClick={() => go(null)} className={chip(active === null && !viewActive)}>
           All
-          <span className="tabular text-xs opacity-60">{unfiled + Object.values(counts).reduce((a, b) => a + b, 0)}</span>
+          <span className="tabular text-xs opacity-60">{resetCount}</span>
         </button>
+
+        {/* The verdict chips, in this row rather than a second one below it. */}
+        {leading}
 
         {folders.map((f) => (
           <button key={f.id} onClick={() => go(f.id)} className={chip(active === f.id)}>
@@ -112,7 +129,7 @@ export function FolderBar({
           <button
             onClick={() => setMenuOpen((v) => !v)}
             aria-expanded={menuOpen}
-            aria-label="Manage this folder"
+            aria-label="Manage this section"
             className="press inline-flex min-h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-rfp-border text-sm text-rfp-ink-muted hover:bg-rfp-surface-sunken hover:text-rfp-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
           >
             &#183;&#183;&#183;
@@ -124,7 +141,7 @@ export function FolderBar({
           className="press inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-rfp-border-strong px-3 text-sm font-medium text-rfp-ink-muted hover:bg-rfp-surface-sunken hover:text-rfp-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
         >
           <PlusIcon className="h-3.5 w-3.5" />
-          New folder
+          New section
         </button>
       </div>
 
@@ -156,7 +173,7 @@ export function FolderBar({
       )}
 
       {creating && (
-        <Panel title="New folder" onCancel={() => { setCreating(false); setError(null); }}>
+        <Panel title="New section" onCancel={() => { setCreating(false); setError(null); }}>
           <input
             autoFocus
             value={newName}
@@ -178,7 +195,7 @@ export function FolderBar({
       )}
 
       {renaming && (
-        <Panel title="Rename folder" onCancel={() => { setRenaming(null); setError(null); }}>
+        <Panel title="Rename section" onCancel={() => { setRenaming(null); setError(null); }}>
           <input
             autoFocus
             value={renaming.name}
@@ -227,7 +244,7 @@ export function FolderBar({
               disabled={pending || typed.trim().toLowerCase() !== "delete"}
               className={`${buttonClass} !bg-rfp-critical hover:!opacity-90`}
             >
-              {pending ? "Deleting…" : "Delete folder"}
+              {pending ? "Deleting…" : "Delete section"}
             </button>
             <button onClick={() => { setDeleting(null); setTyped(""); setError(null); }} className={buttonSecondaryClass}>
               Cancel

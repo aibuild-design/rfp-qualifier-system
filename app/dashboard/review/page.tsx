@@ -11,8 +11,20 @@ import { loadBidSignals } from "@/lib/preference-loader";
 export default async function ReviewPage() {
   const supabase = await createClient();
 
-  const [{ data: pending }, { data: resolved }, { data: rules }, { data: decided }, { data: scoring }] =
-    await Promise.all([
+  // The behavioural signals go out with everything else rather than after it.
+  //
+  // They were awaited on their own line below, after this batch had already
+  // resolved, and loadBidSignals is itself two dependent waves: the recent
+  // bids, then four grouped counts keyed to their ids. That made three waves
+  // in sequence on the slowest page in the app, about 270ms each against a
+  // remote Postgres, and none of it needed the others. This batch does not
+  // depend on the signals and the signals do not depend on this batch, so the
+  // only thing the sequence was buying was latency.
+  const [
+    [{ data: pending }, { data: resolved }, { data: rules }, { data: decided }, { data: scoring }],
+    signals,
+  ] = await Promise.all([
+    Promise.all([
     supabase.from("rfp_edge_cases").select("*").eq("status", "pending").order("created_at"),
     supabase
       .from("rfp_edge_cases")
@@ -30,6 +42,8 @@ export default async function ReviewPage() {
       .order("human_verdict_at", { ascending: false })
       .limit(100),
     supabase.from("scoring_settings").select("go_threshold").eq("id", true).maybeSingle(),
+    ]),
+    loadBidSignals(supabase),
   ]);
 
   const calibration = calibrate(
@@ -47,7 +61,7 @@ export default async function ReviewPage() {
     scoring?.go_threshold ?? 70,
   );
 
-  const preferences = learnPreferences(await loadBidSignals(supabase));
+  const preferences = learnPreferences(signals);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -62,7 +76,12 @@ export default async function ReviewPage() {
           whether the desk's judgement is worth reviewing at all. */}
       <CalibrationPanel calibration={calibration} preferences={preferences} />
 
-      <h2 className="font-display text-sm font-semibold text-rfp-ink">
+      {/* mt-8 like every other section heading on this page. Without it this
+          one sat flush against the card above while keeping the 12px gap to its
+          own list, so it read as the end of the previous section rather than
+          the start of this one. A heading has to be nearer what it labels than
+          what it follows. */}
+      <h2 className="mt-8 font-display text-sm font-semibold text-rfp-ink">
         Waiting on you{pending?.length ? ` (${pending.length})` : ""}
       </h2>
       <div className="mt-3">
@@ -70,7 +89,7 @@ export default async function ReviewPage() {
       </div>
 
       <h2 className="mt-8 font-display text-sm font-semibold text-rfp-ink">Portal rules</h2>
-      <p className="mt-0.5 text-xs text-rfp-ink-muted">
+      <p className="mt-1 text-xs text-rfp-ink-muted">
         Taught once, applied to that portal&rsquo;s compliance checklist every time after.
       </p>
       <div className="mt-3">

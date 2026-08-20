@@ -16,53 +16,68 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) {
+  // getClaims, not getUser, and it is worth saying why.
+  //
+  // getUser sends a request to the Auth server on every call. Measured against
+  // this project: 211ms, paid on every dashboard page before a single query
+  // starts, which was most of the ~490ms floor on a cold load. getClaims
+  // verifies the access token's signature locally with WebCrypto against the
+  // project's JWKS, which is cached: 1ms.
+  //
+  // It is not the unsafe shortcut. getSession would be, because it reads the
+  // cookie and trusts it. getClaims checks the signature and the expiry
+  // cryptographically, which is what this needs to answer: is there a real,
+  // unexpired session, or do we send them to the login page.
+  //
+  // The one thing it cannot see is a user deleted or banned server-side since
+  // their token was issued. That matters less than it sounds here: every query
+  // on every page still runs under RLS with that same token, so a revoked user
+  // reaches an empty database rather than someone else's bids. The write paths
+  // in lib/auth.ts keep getUser.
+  const { data: claims } = await supabase.auth.getClaims();
+
+  if (!claims) {
     redirect("/login");
   }
+
+  const userEmail = typeof claims.claims.email === "string" ? claims.claims.email : null;
 
   // Numbers for the rail: nav badges plus the "needs attention" block. All are
   // `head: true`, so Postgres returns a count and no rows, and they go out
   // together rather than in sequence - this is the layout, so the cost is paid
   // on every single dashboard page.
-  const [
-    { count: queueCount },
-    { count: reviewCount },
-    { count: pendingCount },
-    { count: dueSoonCount },
-    { count: acceptedCount },
-  ] = await Promise.all([
-    supabase.from("rfps").select("*", { count: "exact", head: true }).neq("status", "no_go"),
+  // Three of these five asked the same table three questions: everything not
+  // ruled out, everything still pending, everything Khaled has accepted. Three
+  // round trips for three filters over the same rows, paid on every dashboard
+  // page because this is the layout. One narrow projection answers all three.
+  const [{ data: statuses }, { count: reviewCount }, { count: dueSoonCount }] = await Promise.all([
+    supabase.from("rfps").select("status, human_verdict"),
     supabase
       .from("rfp_edge_cases")
       .select("*", { count: "exact", head: true })
       .eq("status", "pending"),
-    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "pending"),
     supabase
       .from("rfp_compliance_items")
       .select("*", { count: "exact", head: true })
       .eq("is_complete", false)
       .not("due_at", "is", null)
       .lte("due_at", isoDaysFromNow(7)),
-    // Bids Khaled has accepted. Not the desk's verdict: a proposal exists
-    // because a person said to write one.
-    supabase
-      .from("rfps")
-      .select("*", { count: "exact", head: true })
-      .not("human_verdict", "is", null)
-      .neq("human_verdict", "no_go"),
   ]);
 
+  const rfpRows = statuses ?? [];
   const counts: NavCounts = {
-    queue: queueCount ?? 0,
+    queue: rfpRows.reduce((n, r) => (r.status === "no_go" ? n : n + 1), 0),
     review: reviewCount ?? 0,
-    proposals: acceptedCount ?? 0,
+    // Bids Khaled has accepted. Not the desk's verdict: a proposal exists
+    // because a person said to write one.
+    proposals: rfpRows.reduce(
+      (n, r) => (r.human_verdict && r.human_verdict !== "no_go" ? n + 1 : n),
+      0,
+    ),
   };
   const attention: AttentionCounts = {
-    pendingTriage: pendingCount ?? 0,
+    pendingTriage: rfpRows.reduce((n, r) => (r.status === "pending" ? n + 1 : n), 0),
     dueSoon: dueSoonCount ?? 0,
     review: reviewCount ?? 0,
   };
@@ -80,7 +95,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
        ever gets, so a fixed-height layout using it hides its last rows behind
        the browser's address bar. dvh tracks the real height. */
     <div className="flex h-dvh w-full overflow-hidden bg-rfp-page">
-      <Sidebar userEmail={user.email ?? null} counts={counts} attention={attention} />
+      <Sidebar userEmail={userEmail} counts={counts} attention={attention} />
       {/* min-w-0 is load-bearing: a flex child defaults to min-width:auto and
           refuses to shrink below its content's intrinsic width, which is how a
           wide table makes the whole app scroll sideways on a phone.
@@ -89,7 +104,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           keeps the Topbar pinned to the top of the content rather than to a page
           sliding underneath it. */}
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <Topbar userEmail={user.email ?? null} counts={counts} attention={attention} />
+        <Topbar userEmail={userEmail} counts={counts} attention={attention} />
         {/* Capped and centred. Without a ceiling the queue stretched to 2240px on a
             2560 monitor, so a table row ran the full width of the glass and the
             eye had to travel from a title on the far left to a due date on the

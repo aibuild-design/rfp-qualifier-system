@@ -30,7 +30,7 @@ export function MoveToFolder({
 
   return (
     <label className={`inline-flex items-center gap-1.5 ${className ?? ""}`}>
-      <span className="sr-only">Folder</span>
+      <span className="sr-only">Section</span>
       <select
         value={current ?? ""}
         disabled={pending}
@@ -43,7 +43,7 @@ export function MoveToFolder({
         }}
         // Stops a click on the select from also opening the row it sits in.
         onClick={(e) => e.stopPropagation()}
-        className="press min-h-11 max-w-[10rem] truncate rounded-lg border border-rfp-border bg-rfp-surface px-2 text-xs text-rfp-ink-secondary focus:border-rfp-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold disabled:opacity-50 sm:min-h-0 sm:py-1"
+        className="press min-h-11 w-full max-w-full truncate rounded-lg border border-rfp-border bg-rfp-surface px-2 text-xs text-rfp-ink-secondary focus:border-rfp-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold disabled:opacity-50 sm:min-h-0 sm:py-1"
       >
         <option value="">Unfiled</option>
         {folders.map((f) => (

@@ -47,7 +47,7 @@ export function CalibrationPanel({
   return (
     <section className="mt-8">
       <h2 className="font-display text-sm font-semibold text-rfp-ink">Is the desk any good?</h2>
-      <p className="mt-0.5 text-xs leading-relaxed text-rfp-ink-muted">
+      <p className="mt-1 text-xs leading-relaxed text-rfp-ink-muted">
         Measured against your own calls, which is the only evidence there is. Nothing here
         changes until you say so.
       </p>

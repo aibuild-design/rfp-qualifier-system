@@ -26,17 +26,25 @@ export function QueueFilter({
   counts,
   active,
   sortByDeadline,
+  folder,
 }: {
   counts: { all: number; go: number; maybe: number; no_go: number; pending: number };
   active: string | null;
   sortByDeadline: boolean;
+  /** Carried through so picking a verdict does not silently drop the section. */
+  folder?: string | null;
 }) {
   const sort = sortByDeadline ? "sort=deadline" : "";
-  const href = (view: string | null) =>
-    `/dashboard${[view ? `view=${view}` : "", sort].filter(Boolean).length ? "?" : ""}${[view ? `view=${view}` : "", sort].filter(Boolean).join("&")}`;
+  // The section used to be dropped here: clicking a verdict rebuilt the URL
+  // from `view` and `sort` alone, so a section selection survived clicking a
+  // section chip but not a verdict one. The two filters narrow the same queue,
+  // so both have to survive either click.
+  const href = (view: string | null) => {
+    const q = [view ? `view=${view}` : "", folder ? `folder=${folder}` : "", sort].filter(Boolean);
+    return `/dashboard${q.length ? `?${q.join("&")}` : ""}`;
+  };
 
   const options: { key: string | null; label: string; n: number; tone?: string }[] = [
-    { key: null, label: "All", n: counts.all },
     { key: "go", label: "Go", n: counts.go, tone: "var(--rfp-good)" },
     { key: "maybe", label: "Maybe", n: counts.maybe, tone: "var(--rfp-warning)" },
     { key: "no-go", label: "No-go", n: counts.no_go, tone: "var(--rfp-critical)" },
@@ -44,7 +52,7 @@ export function QueueFilter({
   ];
 
   return (
-    <div className="mt-3 inline-flex flex-wrap overflow-hidden rounded-lg border border-rfp-border bg-rfp-surface">
+    <div className="inline-flex flex-wrap overflow-hidden rounded-lg border border-rfp-border bg-rfp-surface">
       {options.map((o, i) => {
         const on = (o.key ?? null) === active;
         return (

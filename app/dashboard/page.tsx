@@ -8,6 +8,8 @@ import { FolderBar } from "@/components/FolderBar";
 import { MoveToFolder } from "@/components/MoveToFolder";
 import { ProfileIncompleteBanner, ProvisionalTag } from "@/components/ProfileIncompleteBanner";
 import { DemoBanner, DemoTag } from "@/components/DemoBanner";
+import { CreditBanner } from "@/components/CreditBanner";
+import { openRouterCredit } from "@/lib/openrouter-credit";
 import { daysUntil, deadlineColor, deadlineWindowsFrom, formatBudget, formatDate } from "@/lib/rfp";
 
 // The RFP queue - this *is* the dashboard per the SOW ("a simple dashboard
@@ -26,7 +28,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   const sortByDeadline = params.sort === "deadline";
 
   const VIEW_TITLES: Record<string, { title: string; blurb: string }> = {
-    "no-go": { title: "No-go folder", blurb: "Ruled out, kept - nothing here is deleted." },
+    "no-go": { title: "No-go section", blurb: "Ruled out, kept - nothing here is deleted." },
     go: { title: "Qualified", blurb: "Cleared every mandatory requirement and scored above the go mark." },
     pending: { title: "Awaiting a verdict", blurb: "Triage has not returned yet." },
     due: { title: "Due soon", blurb: "Open compliance items inside the warning window." },
@@ -37,16 +39,6 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   };
 
   const supabase = await createClient();
-
-  // Read first and alone: the "due soon" count below is defined by the window,
-  // so it cannot be fetched in the same batch as the thing that defines it.
-  // One indexed single-row lookup.
-  const { data: scoring } = await supabase
-    .from("scoring_settings")
-    .select("deadline_warning_days,deadline_critical_days,go_threshold")
-    .eq("id", true)
-    .maybeSingle();
-  const windows = deadlineWindowsFrom(scoring);
 
   const baseQuery = folder
     ? supabase.from("rfps").select("*").eq("folder_id", folder)
@@ -60,49 +52,99 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           ? baseQuery.eq("status", "pending")
           : baseQuery.neq("status", "no_go");
 
-  // None of these depend on each other, so they go out together. Run in
-  // sequence this page paid six round trips to Supabase before rendering a
-  // single row; the counts are `head: true`, so they return a number and no
-  // rows.
+  // One wave, six queries. This page used to issue twelve across two waves: an
+  // indexed lookup for the deadline windows on its own, and then eleven
+  // together, of which *seven* were different questions about the same table.
+  //
+  // Five were `count` queries on rfps, one per status, beside a sixth that
+  // selected every folder_id and a seventh that counted demo rows. Each is a
+  // separate network round trip to answer something the rows already know, on
+  // a page that fetches those rows anyway. One narrow projection over rfps
+  // replaces all seven, and the counting happens in a single pass below.
+  //
+  // The deadline windows joined the batch too. The comment justifying their
+  // solo read said the due-soon count depends on them, which is true, but that
+  // count is computed from rows in memory further down: nothing in this batch
+  // needs the windows in order to be *issued*, only to be interpreted.
   const [
     { data: rfps },
-    { count: totalCount },
-    { count: goCount },
-    { count: maybeCount },
-    { count: noGoCount },
-    { count: pendingCount },
+    { data: everyRfp },
     { count: sectorCount },
     { data: orgProfile },
     { data: folders },
-    { data: allFolderIds },
-    { count: demoCount },
+    { data: scoring },
+    credit,
   ] = await Promise.all([
     sortByDeadline
       ? listQuery.order("due_at", { ascending: true, nullsFirst: false })
       : listQuery.order("score_percent", { ascending: false, nullsFirst: false }),
-    supabase.from("rfps").select("*", { count: "exact", head: true }),
-    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "go"),
-    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "maybe"),
-    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "no_go"),
-    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("rfps").select("status, folder_id, is_demo"),
     supabase.from("sector_experience").select("*", { count: "exact", head: true }),
     supabase.from("org_profile").select("profile_confirmed").eq("id", true).maybeSingle(),
     supabase.from("rfp_folders").select("*").order("sort_order").order("name"),
-    supabase.from("rfps").select("folder_id"),
-    supabase.from("rfps").select("*", { count: "exact", head: true }).eq("is_demo", true),
+    supabase
+      .from("scoring_settings")
+      .select("deadline_warning_days,deadline_critical_days,go_threshold")
+      .eq("id", true)
+      .maybeSingle(),
+    // Cached for five minutes inside the helper, so this costs one call per
+    // five minutes rather than one per page load.
+    openRouterCredit(process.env.OPENROUTER_API_KEY),
   ]);
+
+  const windows = deadlineWindowsFrom(scoring);
+
+  // Every number the filter chips show, from one pass over the projection above
+  // rather than one round trip each.
+  //
+  // The two rows of chips narrow the same queue together, so each row counts
+  // what clicking it would show *with the other row left as it is*. They used
+  // to count the whole table independently, which reads as a bug the moment
+  // the two disagree: selecting No-go emptied the queue while "All sections"
+  // still said 2, so the highlighted chip claimed rows the page was not
+  // showing. A facet count has to answer "how many if I click this", not "how
+  // many exist".
+  const all = everyRfp ?? [];
+  const demoCount = all.reduce((n, r) => (r.is_demo ? n + 1 : n), 0);
+
+  const inSection = (r: { folder_id: string | null }) => !folder || r.folder_id === folder;
+  // Mirrors listQuery above: no view means everything except no-go, which is
+  // why "All verdicts" is not simply the row count.
+  const inView = (r: { status: string }) =>
+    view === "no-go"
+      ? r.status === "no_go"
+      : view === "go"
+        ? r.status === "go"
+        : view === "pending"
+          ? r.status === "pending"
+          : r.status !== "no_go";
+
+  // Section chips, counted inside the verdict that is currently selected.
+  const forSections = all.filter(inView);
+  const folderCounts: Record<string, number> = {};
+  for (const r of forSections) {
+    if (r.folder_id) folderCounts[r.folder_id] = (folderCounts[r.folder_id] ?? 0) + 1;
+  }
+  // "All" resets both filters, so it counts the default view across every
+  // section rather than whatever is currently narrowed.
+  const resetCount = all.reduce((n, r) => (r.status === "no_go" ? n : n + 1), 0);
+
+  // Verdict chips, counted inside the section that is currently selected.
+  const forVerdicts = all.filter(inSection);
+  const byStatus = (status: string) =>
+    forVerdicts.reduce((n, r) => (r.status === status ? n + 1 : n), 0);
+  const totalCount = forVerdicts.reduce((n, r) => (r.status === "no_go" ? n : n + 1), 0);
+  const goCount = byStatus("go");
+  const maybeCount = byStatus("maybe");
+  const noGoCount = byStatus("no_go");
+  const pendingCount = byStatus("pending");
 
   const rows = rfps ?? [];
 
-  // One pass over the id list rather than a count query per folder, which would
-  // be one round trip per chip on the busiest page in the app.
-  const folderCounts: Record<string, number> = {};
-  for (const r of allFolderIds ?? []) {
-    if (r.folder_id) folderCounts[r.folder_id] = (folderCounts[r.folder_id] ?? 0) + 1;
-  }
 
   return (
     <div className="mx-auto max-w-6xl">
+      <CreditBanner credit={credit} />
       <DemoBanner count={demoCount ?? 0} />
       {!sectorCount ? (
         <ProfileIncompleteBanner reason="no-sectors" />
@@ -157,19 +199,22 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         folders={folders ?? []}
         counts={folderCounts}
         active={folder}
-        unfiled={(allFolderIds ?? []).filter((r) => !r.folder_id).length}
-      />
-
-      <QueueFilter
-        counts={{
-          all: totalCount ?? 0,
-          go: goCount ?? 0,
-          maybe: maybeCount ?? 0,
-          no_go: noGoCount ?? 0,
-          pending: pendingCount ?? 0,
-        }}
-        active={view ?? null}
-        sortByDeadline={sortByDeadline}
+        resetCount={resetCount}
+        viewActive={Boolean(view)}
+        leading={
+          <QueueFilter
+            counts={{
+              all: totalCount ?? 0,
+              go: goCount ?? 0,
+              maybe: maybeCount ?? 0,
+              no_go: noGoCount ?? 0,
+              pending: pendingCount ?? 0,
+            }}
+            active={view ?? null}
+            sortByDeadline={sortByDeadline}
+            folder={folder}
+          />
+        }
       />
 
       <div className="mt-6 overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
@@ -279,16 +324,25 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
               })}
             </ul>
 
-            <table className="hidden w-full text-left text-sm md:table">
+            {/*
+              Fixed layout with declared widths. Under automatic layout the six
+              short columns claimed space on content that cannot wrap - a
+              dollar amount, two dates, a select - and the one column that
+              *should* absorb the slack was the one that got squeezed: the
+              title wrapped to six lines in a 200px column while Budget and Due
+              sat half empty. The title is what people scan, so it gets the
+              room and everything else is sized to its content.
+            */}
+            <table className="hidden w-full table-fixed text-left text-sm md:table">
               <thead>
                 <tr className="border-b border-rfp-border text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">
-                  <th scope="col" className="px-5 py-3">RFP</th>
-                  <th scope="col" className="px-5 py-3">Verdict</th>
-                  <th scope="col" className="px-5 py-3">Score</th>
-                  <th scope="col" className="px-5 py-3">Budget</th>
-                  <th scope="col" className="hidden px-5 py-3 lg:table-cell">Folder</th>
-                  <th scope="col" className="hidden px-5 py-3 sm:table-cell">Arrived</th>
-                  <th scope="col" className="px-5 py-3">Due</th>
+                  <th scope="col" className="w-[32%] px-4 py-3">RFP</th>
+                  <th scope="col" className="w-[10%] px-4 py-3">Verdict</th>
+                  <th scope="col" className="w-[10%] px-4 py-3">Score</th>
+                  <th scope="col" className="w-[11%] px-4 py-3">Budget</th>
+                  <th scope="col" className="hidden w-[13%] px-4 py-3 lg:table-cell">Section</th>
+                  <th scope="col" className="hidden w-[12%] px-4 py-3 sm:table-cell">Arrived</th>
+                  <th scope="col" className="w-[12%] px-4 py-3">Due</th>
                 </tr>
               </thead>
               <tbody className="rise-stagger">

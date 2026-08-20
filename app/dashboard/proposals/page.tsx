@@ -21,31 +21,31 @@ import { formatDate, daysUntil } from "@/lib/rfp";
 export default async function ProposalsPage() {
   const supabase = await createClient();
 
-  const { data: bids } = await supabase
-    .from("rfps")
-    .select("id,title,client_agency,status,human_verdict,score_percent,due_at,drive_folder_url,proposal_doc_url,filing_status")
-    .not("human_verdict", "is", null)
-    .neq("human_verdict", "no_go")
-    .order("due_at", { ascending: true, nullsFirst: false });
-
-  const ids = (bids ?? []).map((b) => b.id);
-
+  // One wave. The three below used to wait on the bids query purely to filter
+  // by its ids, which cost a whole round trip to save rows that barely exist:
+  // a proposal section is only ever written for a bid somebody accepted, and
+  // those are exactly the bids listed here. Both projections are two columns
+  // wide, and the stitching below reads them through a Map keyed by rfp_id, so
+  // a row for a bid that is not on screen is simply never looked up.
+  //
   // Fetched flat and stitched, the same as the bid page: the hand-written
   // Database types carry no relationship metadata, so an embedded select
   // resolves to `never`.
-  const [{ data: sections }, { data: assignments }, { data: roster }] = await Promise.all([
-    ids.length
-      ? supabase.from("rfp_proposal_sections").select("rfp_id,status").in("rfp_id", ids)
-      : Promise.resolve({ data: [] as { rfp_id: string; status: string }[] }),
-    ids.length
-      ? supabase
-          .from("rfp_team_assignments")
-          .select("rfp_id,team_member_id")
-          .in("rfp_id", ids)
-          .eq("status", "confirmed")
-      : Promise.resolve({ data: [] as { rfp_id: string; team_member_id: string }[] }),
-    supabase.from("team_members").select("id,name"),
-  ]);
+  const [{ data: bids }, { data: sections }, { data: assignments }, { data: roster }] =
+    await Promise.all([
+      supabase
+        .from("rfps")
+        .select("id,title,client_agency,status,human_verdict,score_percent,due_at,drive_folder_url,proposal_doc_url,filing_status")
+        .not("human_verdict", "is", null)
+        .neq("human_verdict", "no_go")
+        .order("due_at", { ascending: true, nullsFirst: false }),
+      supabase.from("rfp_proposal_sections").select("rfp_id,status"),
+      supabase
+        .from("rfp_team_assignments")
+        .select("rfp_id,team_member_id")
+        .eq("status", "confirmed"),
+      supabase.from("team_members").select("id,name"),
+    ]);
 
   const nameOf = new Map((roster ?? []).map((m) => [m.id, m.name]));
   const teamFor = new Map<string, string[]>();

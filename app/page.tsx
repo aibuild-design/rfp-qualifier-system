@@ -9,9 +9,10 @@ export default async function RootPage() {
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Local JWT verification rather than a round trip to the Auth server, for
+  // the reasons written out in app/dashboard/layout.tsx. This route decides one
+  // thing: which page to send you to.
+  const { data: claims } = await supabase.auth.getClaims();
 
-  redirect(user ? "/dashboard" : "/login");
+  redirect(claims ? "/dashboard" : "/login");
 }
