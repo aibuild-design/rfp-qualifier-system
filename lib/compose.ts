@@ -45,6 +45,18 @@ export type ComposeContext = {
   capabilities: string[];
   dueDate: string | null;
   budget: number | null;
+  /**
+   * Caravann's own approved language for this section.
+   *
+   * Composing without it produced a Past Performance section describing
+   * practice areas in the abstract while a real, named, won engagement sat in
+   * the library unread. Supplied as source material rather than as text to
+   * paste: the section should draw its facts from here and write them for this
+   * solicitation.
+   */
+  source: { title: string; body: string; won: boolean }[];
+  /** How the agency weights price, so emphasis matches what is scored. */
+  costWeight: number | null;
 };
 
 /** Which sections are written per client, and what each one has to do. */
@@ -68,8 +80,13 @@ export const ADAPTIVE_SECTIONS: Record<string, { brief: string; shape: string }>
   },
   past_performance: {
     brief:
-      "Relevant prior work only. If the approved language does not evidence work close to this scope, say what is comparable and do not stretch it.",
-    shape: "Short paragraphs, one per engagement.",
+      "Name the actual engagements in the source material below and say what each demonstrates for this solicitation. Lead with any marked as won. If the source does not evidence work close to this scope, say plainly what is comparable and do not stretch it. Never describe practice areas in the abstract when a real engagement is available.",
+    shape: "One short paragraph per engagement, named.",
+  },
+  introduction: {
+    brief:
+      "Open with what this agency will be left holding at the end, not with who Caravann is. One short paragraph of firm framing may follow, drawn from the source material.",
+    shape: "Two paragraphs. Outcome first, firm second.",
   },
 };
 
@@ -93,6 +110,9 @@ export function composePrompt(section: string, c: ComposeContext): string {
     "",
     "Plain, direct, specific. No marketing register, no phrases like leverage, robust, seamless or cutting-edge. Never use an em dash or an en dash.",
     "",
+    "Plain prose only. No markdown: no # headings, no ** bold, no backticks. This text goes straight into a Word document and any markup will be printed literally.",
+    "Do not repeat the section title. Do not label an engagement as won or as anything else: which bids the firm won is internal.",
+    "",
     `AGENCY: ${c.agency}`,
     `ENGAGEMENT: ${c.title}`,
     c.solicitationNumber ? `SOLICITATION: ${c.solicitationNumber}` : "",
@@ -107,6 +127,15 @@ export function composePrompt(section: string, c: ComposeContext): string {
     "",
     "WHAT CARAVANN DOES. Ground the method in these practices:",
     ...c.capabilities.map((k) => `- ${k}`),
+    "",
+    c.source.length
+      ? "CARAVANN'S OWN APPROVED LANGUAGE FOR THIS SECTION. These are facts the firm has already published and stands behind, so you may state them. Anything not here is not a fact you have:"
+      : "",
+    ...c.source.map((b) => `--- ${b.title}${b.won ? " (a win)" : ""} ---\n${b.body}`),
+    "",
+    c.costWeight !== null
+      ? `PRICE IS WORTH ${c.costWeight}% OF THE EVALUATION. Weight the depth of this section accordingly: where price carries little, the approach and the team are what decide it.`
+      : "",
     "",
     "PEOPLE CONFIRMED ON THIS BID. Name only these:",
     team,
@@ -142,16 +171,59 @@ const PAST_CLAIM = [
   /\bour\s+(?:award|awards|accolades)\b/i,
 ];
 
+/**
+ * Strip anything that would print literally in Word.
+ *
+ * The model returned "# Past Performance" and "**UCSF Institute — Won**",
+ * which the .docx would render exactly as typed, including the em dash and an
+ * internal note about which bids the firm won. Asked for in the prompt and
+ * enforced here, because a prompt is a request and this ships to an agency.
+ */
+export function cleanComposed(text: string, heading: string): string {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return (
+    text
+      // Markup first, so a dash inside a bold run is handled as prose after.
+      .replace(/^#{1,6}\s+.*$/gm, "")
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/`{1,3}/g, "")
+      // Internal notes about which bids were won. Not for an agency to read.
+      .replace(/\s*\((?:a )?win\)/gi, "")
+      .replace(/\s*[,-]?\s*\bwon\b\s*$/gim, "")
+      // Dashes. A dash at the end of a line was a label separator and leaves
+      // nothing worth punctuating; one mid-sentence is a parenthetical comma.
+      .replace(/\s*[\u2014\u2013]\s*$/gm, "")
+      .replace(/\s*[\u2014\u2013]\s*/g, ", ")
+      .replace(new RegExp(`^\\s*${escaped}\\s*$`, "gim"), "")
+      // Tidy what the substitutions leave behind.
+      .replace(/,\s*,/g, ",")
+      .replace(/\s+,/g, ",")
+      .replace(/,\s*$/gm, "")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
+}
+
 export function vetComposed(
   text: string,
   allowedNames: string[],
+  /** Caravann's own approved language, whose claims are already published. */
+  grounded = "",
 ): { ok: true } | { ok: false; reason: string } {
   const trimmed = text.trim();
   if (trimmed.length < 200) return { ok: false, reason: "came back too short to be a section" };
 
+  const source = grounded.toLowerCase();
   for (const re of PAST_CLAIM) {
     const m = trimmed.match(re);
-    if (m) return { ok: false, reason: `claims past experience that was not supplied: "${m[0]}"` };
+    if (!m) continue;
+    // A claim the firm already publishes is not an invention. Repeating "a
+    // needs assessment for UCSF IGHS" from its own library is the section
+    // doing its job; the guard exists for claims with no source at all.
+    const words = m[0].toLowerCase().split(/\W+/).filter((w) => w.length > 3);
+    const backed = words.length > 0 && words.every((w) => source.includes(w));
+    if (!backed) return { ok: false, reason: `claims past experience that was not supplied: "${m[0]}"` };
   }
 
   // People. Naming somebody who is not on the bid is the failure that would

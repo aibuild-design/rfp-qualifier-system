@@ -8,7 +8,7 @@ import { caravannTemplate } from "@/lib/template-store";
 import { fillTemplate } from "@/lib/docx-fill";
 import { proposalFileName } from "@/lib/proposal";
 import { tailorPrompt, vetTailored } from "@/lib/tailor";
-import { ADAPTIVE_SECTIONS, composePrompt, vetComposed } from "@/lib/compose";
+import { ADAPTIVE_SECTIONS, cleanComposed, composePrompt, vetComposed } from "@/lib/compose";
 import { assembleDraft, DEFAULT_SECTIONS } from "@/lib/proposal";
 import { recommendTeam } from "@/lib/team-match";
 
@@ -629,7 +629,7 @@ async function composeAdaptiveSections(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   rfpId: string,
   rfp: RfpRow,
-  sections: { section_type: string }[],
+  sections: { section_type: string; heading: string }[],
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   const key = process.env.OPENROUTER_API_KEY;
@@ -637,6 +637,12 @@ async function composeAdaptiveSections(
 
   const wanted = sections.filter((s) => s.section_type in ADAPTIVE_SECTIONS);
   if (wanted.length === 0) return out;
+
+  // Caravann's own language, so a composed section can state facts the firm
+  // already publishes rather than describing its practice areas in the
+  // abstract. A real won engagement was sitting unread in the library while
+  // Past Performance talked about "lines of practice".
+  const { data: library } = await supabase.from("language_blocks").select("section_type, title, body, won");
 
   const [{ data: checks }, { data: rules }, { data: gaps }, { data: assigned }, { data: roster }, { data: profile }] =
     await Promise.all([
@@ -654,7 +660,14 @@ async function composeAdaptiveSections(
     .filter((m): m is NonNullable<typeof m> => Boolean(m))
     .map((m) => ({ name: m.name, role: m.role }));
 
-  const context = {
+  const forSection = (type: string) =>
+    (library ?? [])
+      .filter((b) => b.section_type === type)
+      // Wins first, so the strongest evidence is the first thing read.
+      .sort((a, b) => Number(b.won) - Number(a.won))
+      .map((b) => ({ title: b.title, body: b.body, won: Boolean(b.won) }));
+
+  const base = {
     agency: rfp.client_agency,
     title: rfp.title,
     solicitationNumber: rfp.solicitation_number,
@@ -668,6 +681,7 @@ async function composeAdaptiveSections(
     ].slice(0, 14),
     dueDate: rfp.due_at?.slice(0, 10) ?? null,
     budget: rfp.budget_amount,
+    costWeight: rfp.cost_weight_percent ?? null,
   };
 
   // In parallel. Four sequential model calls is most of a minute of somebody
@@ -675,6 +689,8 @@ async function composeAdaptiveSections(
   await Promise.all(
     wanted.map(async (s) => {
       try {
+        const source = forSection(s.section_type);
+        const context = { ...base, source };
         const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -690,8 +706,10 @@ async function composeAdaptiveSections(
         });
         if (!res.ok) return;
         const json = await res.json();
-        const text = String(json?.choices?.[0]?.message?.content ?? "").trim();
-        const verdict = vetComposed(text, team.map((m) => m.name));
+        const raw = String(json?.choices?.[0]?.message?.content ?? "").trim();
+        const text = cleanComposed(raw, s.heading);
+        const grounded = source.map((b) => b.body).join(" ");
+        const verdict = vetComposed(text, team.map((m) => m.name), grounded);
         if (verdict.ok) out.set(s.section_type, text);
         else console.info(`[compose ${rfpId}] ${s.section_type} rejected: ${verdict.reason}`);
       } catch {
