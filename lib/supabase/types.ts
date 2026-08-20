@@ -137,6 +137,13 @@ export interface Database {
           /** Work this person wants. Breaks ties between equally qualified,
            *  equally available people. */
           interests: string[];
+          /** What this person does on an engagement, for the staffing table. */
+          responsibilities: string | null;
+          /** A short biography for the proposal. */
+          bio: string | null;
+          /** Degrees, certifications and licences. */
+          credentials: string | null;
+          years_experience: number | null;
           bandwidth: Bandwidth;
           active: boolean;
           created_at: string;

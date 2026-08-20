@@ -39,8 +39,15 @@ export type ComposeContext = {
   rules: string[];
   /** Where Caravann is genuinely thin, so the text never oversells. */
   gaps: string[];
-  /** People Khaled has actually confirmed, with their real roles. */
-  team: { name: string; role: string | null }[];
+  /** People Khaled has actually confirmed, with everything a proposal needs. */
+  team: {
+    name: string;
+    role: string | null;
+    responsibilities: string | null;
+    bio: string | null;
+    credentials: string | null;
+    years_experience: number | null;
+  }[];
   /** What the firm does, from the profile. Grounds the plan in real practice. */
   capabilities: string[];
   dueDate: string | null;
@@ -133,6 +140,12 @@ export const ADAPTIVE_SECTIONS: Record<string, { brief: string; shape: string }>
     shape:
       "Two or three paragraphs per engagement: what the client's situation was, what Caravann did, what it produced, and what it demonstrates for this solicitation specifically. 400 to 700 words.",
   },
+  team_structure: {
+    brief:
+      "Who does the work and what each person is accountable for. Only the people confirmed below, using their recorded responsibilities and background. Where somebody has no responsibilities recorded, describe their role from what is given and do not invent duties.",
+    shape:
+      "A short paragraph on how the team is structured, then one entry per person as:\n\nName, Role\nResponsibilities: what they are accountable for on this engagement\nBackground: two or three sentences\n\nThen a paragraph on how the team's availability is managed across the engagement.",
+  },
   introduction: {
     brief:
       "Open with what this agency will be left holding at the end, not with who Caravann is. One short paragraph of firm framing may follow, drawn from the source material.",
@@ -143,7 +156,19 @@ export const ADAPTIVE_SECTIONS: Record<string, { brief: string; shape: string }>
 export function composePrompt(section: string, c: ComposeContext): string {
   const spec = ADAPTIVE_SECTIONS[section];
   const team = c.team.length
-    ? c.team.map((m) => `- ${m.name}${m.role ? `, ${m.role}` : ""}`).join("\n")
+    ? c.team
+        .map((m) =>
+          [
+            `- ${m.name}${m.role ? `, ${m.role}` : ""}`,
+            m.responsibilities ? `  Responsibilities: ${m.responsibilities}` : "",
+            m.bio ? `  Background: ${m.bio}` : "",
+            m.credentials ? `  Credentials: ${m.credentials}` : "",
+            m.years_experience ? `  Years of experience: ${m.years_experience}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        )
+        .join("\n")
     : "(nobody confirmed yet, so do not name individuals)";
 
   return [

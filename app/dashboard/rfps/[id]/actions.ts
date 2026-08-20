@@ -651,7 +651,7 @@ async function composeAdaptiveSections(
       supabase.from("rfp_compliance_items").select("label, detail").eq("rfp_id", rfpId),
       supabase.from("rfp_gap_items").select("description").eq("rfp_id", rfpId),
       supabase.from("rfp_team_assignments").select("team_member_id").eq("rfp_id", rfpId).eq("status", "confirmed"),
-      supabase.from("team_members").select("id, name, role"),
+      supabase.from("team_members").select("id, name, role, responsibilities, bio, credentials, years_experience"),
       supabase.from("org_profile").select("capabilities").eq("id", true).maybeSingle(),
       supabase.from("past_engagements").select("*"),
     ]);
@@ -660,7 +660,14 @@ async function composeAdaptiveSections(
   const team = (assigned ?? [])
     .map((a) => byId.get(a.team_member_id))
     .filter((m): m is NonNullable<typeof m> => Boolean(m))
-    .map((m) => ({ name: m.name, role: m.role }));
+    .map((m) => ({
+      name: m.name,
+      role: m.role,
+      responsibilities: m.responsibilities,
+      bio: m.bio,
+      credentials: m.credentials,
+      years_experience: m.years_experience,
+    }));
 
   const forSection = (type: string) =>
     (library ?? [])

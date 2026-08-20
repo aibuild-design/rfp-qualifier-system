@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { OrgProfileForm } from "@/components/settings/OrgProfileForm";
 import { SectorExperienceEditor } from "@/components/settings/SectorExperienceEditor";
@@ -126,6 +127,25 @@ export default async function SettingsPage() {
           <div className="mt-3">
             <TeamRosterEditor initial={team ?? []} />
           </div>
+          {/* Names, rates and bandwidth are enough to rank somebody against a
+              solicitation. Responsibilities and a biography are what let the
+              desk write them into a submission, and those need more room than a
+              table row. */}
+          <Link
+            href="/dashboard/settings/team"
+            className="press mt-3 flex items-center justify-between rounded-xl border border-rfp-border bg-rfp-surface px-5 py-4 hover:bg-rfp-surface-sunken"
+          >
+            <span>
+              <span className="block text-sm font-medium text-rfp-ink">
+                Detail for proposals
+              </span>
+              <span className="mt-0.5 block text-xs text-rfp-ink-muted">
+                {(team ?? []).filter((m) => m.responsibilities && m.bio).length} of{" "}
+                {team?.length ?? 0} have responsibilities and a biography on file
+              </span>
+            </span>
+            <span className="shrink-0 text-sm font-semibold text-rfp-gold">Open &rarr;</span>
+          </Link>
         </div>
 
         <div className="mt-8">
