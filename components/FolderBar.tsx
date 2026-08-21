@@ -118,12 +118,25 @@ export function FolderBar({
         {/* The verdict chips, in this row rather than a second one below it. */}
         {leading}
 
-        {folders.map((f) => (
-          <button key={f.id} onClick={() => go(f.id)} className={chip(active === f.id)}>
-            {f.name}
-            <span className="tabular text-xs opacity-60">{counts[f.id] ?? 0}</span>
-          </button>
-        ))}
+        {/* Only sections that contain something.
+            
+            Three system sections ship empty and stayed empty, so the filter row
+            was half full of chips whose only possible result was an empty list:
+            "To decide 0", "Waiting on the agency 0", "Archive 0" took more width
+            than every verdict filter combined and none of them could do
+            anything. A filter that cannot change what you see is furniture.
+            
+            The selected one always shows, even at zero, or clicking a section
+            and landing on an empty list would make the chip you just used
+            disappear. */}
+        {folders
+          .filter((f) => (counts[f.id] ?? 0) > 0 || active === f.id)
+          .map((f) => (
+            <button key={f.id} onClick={() => go(f.id)} className={chip(active === f.id)}>
+              {f.name}
+              <span className="tabular text-xs opacity-60">{counts[f.id] ?? 0}</span>
+            </button>
+          ))}
 
         {active && (
           <button
