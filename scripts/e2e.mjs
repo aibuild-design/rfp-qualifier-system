@@ -33,6 +33,39 @@ async function loadEnv() {
   }
 }
 
+/**
+ * The same two-account rule the app uses, in a form a plain script can run.
+ *
+ * These scripts read OPENROUTER_API_KEY directly, so emptying that slot in
+ * favour of the backup broke both of them with a 401 that says "Missing
+ * Authentication header" - which sounds like a bug in the request rather than
+ * an unset variable. lib/openrouter.ts is TypeScript behind the @/ alias and
+ * will not import here, so the order is repeated rather than shared.
+ */
+function openRouterKeys() {
+  return [process.env.OPENROUTER_API_KEY, process.env.OPENROUTER_API_KEY_BACKUP].filter(
+    (k) => k && k.length > 0,
+  );
+}
+
+async function openRouterChat(body) {
+  const keys = openRouterKeys();
+  if (keys.length === 0) throw new Error("No OpenRouter account is configured.");
+  let last = "";
+  for (const key of keys) {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) return res;
+    last = await res.text().catch(() => "");
+    if (res.status === 402 || /insufficient credits/i.test(last)) continue;
+    throw new Error(`OpenRouter ${res.status}: ${last.slice(0, 300)}`);
+  }
+  throw new Error(`Every OpenRouter account refused: ${last.slice(0, 300)}`);
+}
+
 let passed = 0;
 let failed = 0;
 function assert(cond, label, detail = "") {
@@ -105,15 +138,7 @@ async function triage(fixture, context) {
     .replace(/\}\}$/, "");
   const requestBody = JSON.parse(new Function("$json", `return (${expr});`)(promptOut[0].json));
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  });
-  if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const res = await openRouterChat(requestBody);
 
   const shaped = runCodeNode(node("Reconcile triage runs").parameters.jsCode, {
     input: { json: await res.json() },

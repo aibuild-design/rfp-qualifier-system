@@ -20,6 +20,22 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKFLOW = join(HERE, "rfp-intake-triage.json");
 
 // ── env ──────────────────────────────────────────────────────────────────────
+
+/**
+ * The same two-account rule the app uses, in a form a plain script can run.
+ *
+ * These scripts read OPENROUTER_API_KEY directly, so emptying that slot in
+ * favour of the backup broke both of them with a 401 that says "Missing
+ * Authentication header" - which sounds like a bug in the request rather than
+ * an unset variable. lib/openrouter.ts is TypeScript behind the @/ alias and
+ * will not import here, so the order is repeated rather than shared.
+ */
+function openRouterKeys() {
+  return [process.env.OPENROUTER_API_KEY, process.env.OPENROUTER_API_KEY_BACKUP].filter(
+    (k) => k && k.length > 0,
+  );
+}
+
 async function loadEnv() {
   try {
     const raw = await readFile(join(HERE, "..", ".env.local"), "utf8");
@@ -150,7 +166,7 @@ async function runFixture(code, fixture) {
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      Authorization: `Bearer ${openRouterKeys()[0]}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(requestBody),
@@ -171,8 +187,8 @@ async function runFixture(code, fixture) {
 
 async function main() {
   await loadEnv();
-  if (!process.env.OPENROUTER_API_KEY) {
-    console.error("OPENROUTER_API_KEY not set (expected in .env.local)");
+  if (openRouterKeys().length === 0) {
+    console.error("No OpenRouter account configured (OPENROUTER_API_KEY or OPENROUTER_API_KEY_BACKUP in .env.local)");
     process.exit(1);
   }
 
