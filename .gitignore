@@ -54,3 +54,9 @@ next-env.d.ts
 
 # Client-facing guide - kept local, not in the public repo
 guide/
+
+# Caravann's own documents: the solicitations Khaled wants to bid, his
+# submitted proposal, and the notes taken from them. This repository is
+# public. His proposal is the firm's competitive work product and the
+# solicitations are his pipeline; neither belongs in a public git history.
+reference/
