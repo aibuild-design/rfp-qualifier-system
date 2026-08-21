@@ -125,6 +125,12 @@ function substitutions(v: TemplateValues): [string, string][] {
   const keep = (value: string | undefined, placeholder: string) => value?.trim() || placeholder;
   return [
     ["[Insert Company Name]", COMPANY],
+    // The cover's conditional remit-to line, which asks for an address only if
+    // it differs from the mailing address above. Caravann's does not, so it
+    // stood in the finished document as red instruction text, reading like an
+    // unfilled field on a proposal that was otherwise complete. Answering the
+    // condition is what the line is for.
+    ["\u201cRemit to\u201d address, if different than mailing address above", "Remit to: same as the address above."],
     // Not a bracketed placeholder - the template writes the blank as a run of
     // underscores, so it needs its own substitution or the finished document
     // reads "for solicitation________".
@@ -569,6 +575,11 @@ function injectSections(
 
   let written = 0;
   let currentHeading: string | null = null;
+  /** Headings that received a draft, so leftover instructions under them can
+   *  be cleared. `wanted` cannot answer this: an entry is deleted the moment
+   *  it is used, so the paragraph after the one just filled looks like a
+   *  heading nobody wrote for. */
+  const filled = new Set<string>();
   /** Content paragraphs seen under each heading so far, so the second one can
    *  be identified without relying on how it is punctuated. */
   const seenUnder = new Map<string, number>();
@@ -581,6 +592,21 @@ function injectSections(
 
     const body = wanted.get(currentHeading);
     const text = textOf(p);
+
+    // Instructions still standing under a heading that has already been
+    // written are template guidance, not content. Terms and Conditions carries
+    // a second, conditional one - "If the offer is not submitted on SF 1449,
+    // include a statement specifying the extent of agreement" - which is about
+    // a federal form and has nothing to do with a Virginia town's RFP. It rode
+    // into the finished document in red, reading like an unfilled field on a
+    // proposal that was otherwise complete.
+    //
+    // Only red is cleared. Black text under these headings is Caravann's own
+    // lead sentence and stays.
+    if (!body && text && filled.has(currentHeading)) {
+      const isInstruction = /<w:color\s+w:val="(?:ff0000|c00000)"/i.test(p);
+      return isInstruction ? p.replace(/(<w:t[^>]*>)[^<]*(<\/w:t>)/g, "$1$2") : p;
+    }
     if (!body || !text) return p;
 
     // The first paragraph under a heading is Caravann's own lead sentence and
@@ -593,9 +619,12 @@ function injectSections(
     // ("A technical description of the items being offered..."), and a
     // bracket test silently skipped it.
     seenUnder.set(currentHeading, (seenUnder.get(currentHeading) ?? 0) + 1);
-    if (seenUnder.get(currentHeading) !== 2) return p;
+    const nth = seenUnder.get(currentHeading) ?? 0;
+
+    if (nth !== 2) return p;
 
     wanted.delete(currentHeading);
+    filled.add(currentHeading);
     written++;
 
     // One Word paragraph per line of drafted prose. Blank lines are dropped

@@ -162,7 +162,22 @@ export async function assembleProposalDocx(inputs: ProposalInputs): Promise<Buff
     sections: body,
     pastPerformance: referenceBlocks(engagements, `${rfp.title} ${rfp.client_agency}`),
     amendments,
-    appendices: APPENDIX_BODIES,
+    // What was actually written for this bid wins over the generic line.
+    //
+    // Appendix headings ship with no instruction paragraph under them, so
+    // injectSections has nothing to replace and skips them, and the constant
+    // below filled the gap. That was right while nothing wrote appendix
+    // content; it is wrong the moment something does, because the drafted text
+    // was being silently discarded in favour of a sentence about attaching
+    // documents.
+    appendices: {
+      ...APPENDIX_BODIES,
+      ...Object.fromEntries(
+        sections
+          .filter((x) => /^Appendix\b/i.test(x.heading) && (x.tailored_body ?? x.body)?.trim())
+          .map((x) => [x.heading, (x.tailored_body ?? x.body) as string]),
+      ),
+    },
     firm: {
       legalName: firm?.legal_name,
       address: firm?.address,
