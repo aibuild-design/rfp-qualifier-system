@@ -35,7 +35,7 @@ const FIELDS: { key: Field; label: string; hint?: string }[] = [
 export function CompanyDetails({ initial }: { initial: OrgProfileRow }) {
   // An EIN is not a thing to discover is wrong after submitting, which is also
   // the reason it is not written the moment focus leaves the field.
-  const { value: row, setValue: setRow, dirty, saving, error, justSaved, commit, discard } =
+  const { value: row, setValue: setRow, dirty, saving, error, justSaved, commit, discard, guard } =
     useSavedForm<OrgProfileRow>(initial, async (next) => {
       const patch: Record<string, string | null> = {};
       for (const f of FIELDS) patch[f.key] = (next[f.key] as string | null) || null;
@@ -80,6 +80,7 @@ export function CompanyDetails({ initial }: { initial: OrgProfileRow }) {
         justSaved={justSaved}
         onSave={() => void commit()}
         onDiscard={discard}
+        guard={guard}
       />
     </div>
   );

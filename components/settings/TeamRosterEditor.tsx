@@ -13,7 +13,7 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
   // Edits to a row are held until Save. Adding and removing stay immediate:
   // those are already explicit button presses, and a Save button for "I pressed
   // Add" would be a second confirmation of something already confirmed.
-  const { value: rows, setValue: setRows, dirty, saving, error: saveError, justSaved, commit, discard } =
+  const { value: rows, setValue: setRows, dirty, saving, error: saveError, justSaved, commit, discard, guard } =
     useSavedForm(initial, async (next) => {
       const before = new Map(initial.map((r) => [r.id, r]));
       const supabase = createClient();
@@ -156,6 +156,7 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
         justSaved={justSaved}
         onSave={() => void commit()}
         onDiscard={discard}
+        guard={guard}
       />
     </div>
     </>

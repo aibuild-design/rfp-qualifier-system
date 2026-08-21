@@ -17,7 +17,7 @@ import { SaveBar } from "@/components/settings/SaveBar";
  * set up can never be the reason a verdict reaches nobody.
  */
 export function SlackWebhook({ initial }: { initial: string | null }) {
-  const { value: url, setValue: setUrl, dirty, saving, error, justSaved, commit, discard } =
+  const { value: url, setValue: setUrl, dirty, saving, error, justSaved, commit, discard, guard } =
     useSavedForm<string>(initial ?? "", async (next) => {
       const { error: failure } = await createClient()
         .from("scoring_settings")
@@ -56,6 +56,7 @@ export function SlackWebhook({ initial }: { initial: string | null }) {
         justSaved={justSaved}
         onSave={() => void commit()}
         onDiscard={discard}
+        guard={guard}
       />
 
       <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">

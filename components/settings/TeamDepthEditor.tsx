@@ -22,7 +22,7 @@ export function TeamDepthEditor({ initial }: { initial: TeamMemberRow[] }) {
   // A biography is the longest thing anybody types into this system and it was
   // being written the moment focus left the box. Held as a draft of the whole
   // roster instead, and on Save only the rows that actually changed are sent.
-  const { value: rows, setValue: setRows, dirty, saving, error, justSaved, commit, discard } =
+  const { value: rows, setValue: setRows, dirty, saving, error, justSaved, commit, discard, guard } =
     useSavedForm<TeamMemberRow[]>(initial, async (next) => {
       const before = new Map(initial.map((r) => [r.id, r]));
       const supabase = createClient();
@@ -158,6 +158,7 @@ export function TeamDepthEditor({ initial }: { initial: TeamMemberRow[] }) {
         justSaved={justSaved}
         onSave={() => void commit()}
         onDiscard={discard}
+        guard={guard}
       />
     </div>
   );

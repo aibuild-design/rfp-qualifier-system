@@ -12,7 +12,7 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
   // insurance limit alone can move a bid - and saving them the instant focus
   // left the field meant a half-typed number became the live one with nobody
   // having agreed to it.
-  const { value: profile, setValue: setProfile, dirty, saving, error, justSaved, commit, discard } =
+  const { value: profile, setValue: setProfile, dirty, saving, error, justSaved, commit, discard, guard } =
     useSavedForm<OrgProfileRow>(initial, async (next) => {
       const { error: failure } = await createClient()
         .from("org_profile")
@@ -134,6 +134,7 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
         justSaved={justSaved}
         onSave={() => void commit()}
         onDiscard={discard}
+        guard={guard}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 /**
  * A settings form that only writes when somebody says so.
@@ -28,7 +29,7 @@ export function useSavedForm<T>(
   const [justSaved, setJustSaved] = useState(false);
 
   const dirty = JSON.stringify(value) !== JSON.stringify(saved);
-  useUnsavedGuard(dirty);
+  const guard = useUnsavedGuard(dirty);
 
   const commit = useCallback(async () => {
     if (!dirty || saving) return;
@@ -50,7 +51,7 @@ export function useSavedForm<T>(
     setError(null);
   }, [saved]);
 
-  return { value, setValue, dirty, saving, error, justSaved, commit, discard };
+  return { value, setValue, dirty, saving, error, justSaved, commit, discard, guard };
 }
 
 /**
@@ -66,35 +67,37 @@ export function useSavedForm<T>(
  * in the capture phase, before the router sees it, and only for links that
  * genuinely go somewhere else.
  */
-export function useUnsavedGuard(dirty: boolean): void {
-  // No ref. The effect re-registers whenever `dirty` changes, so the listeners
-  // close over the current value, and writing a ref during render is a React
-  // violation the linter is right to reject.
+export function useUnsavedGuard(dirty: boolean) {
+  const router = useRouter();
+  /** Where the interrupted click was going, and the reason the dialog is up. */
+  const [pending, setPending] = useState<string | null>(null);
+
   useEffect(() => {
     if (!dirty) return;
 
+    // The browser's own dialog, which cannot be styled or reworded in any
+    // current browser. It only fires for closing the tab or reloading, which
+    // is the one exit we do not own.
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
 
+    // Every other exit is ours, so it gets a dialog that looks like the rest of
+    // the app rather than a system alert. Caught in the capture phase, before
+    // Next's router sees the click.
     const onClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
       const link = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
-      if (!link) return;
-      if (link.target === "_blank" || link.hasAttribute("download")) return;
+      if (!link || link.target === "_blank" || link.hasAttribute("download")) return;
 
       const here = window.location.pathname + window.location.search;
       const there = link.getAttribute("href") ?? "";
       if (!there.startsWith("/") || there === here) return;
 
-      const leave = window.confirm(
-        "You have changes that have not been saved. Leave this page and lose them?",
-      );
-      if (!leave) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      e.preventDefault();
+      e.stopPropagation();
+      setPending(there);
     };
 
     window.addEventListener("beforeunload", onBeforeUnload);
@@ -104,4 +107,14 @@ export function useUnsavedGuard(dirty: boolean): void {
       document.removeEventListener("click", onClick, true);
     };
   }, [dirty]);
+
+  return {
+    pending,
+    stay: useCallback(() => setPending(null), []),
+    leave: useCallback(() => {
+      const to = pending;
+      setPending(null);
+      if (to) router.push(to);
+    }, [pending, router]),
+  };
 }

@@ -412,6 +412,10 @@ body {
   }
 }
 
+.dialog-panel {
+  animation: dialog-in var(--dur-base) var(--ease-out) both;
+}
+
 .dialog[open] {
   animation: dialog-in var(--dur-base) var(--ease-out) both;
 }

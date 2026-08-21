@@ -30,7 +30,7 @@ export function ScoringSettingsForm({
 }) {
   // Thresholds decide every verdict, so they are written when somebody presses
   // Save and not when focus happens to leave a number field.
-  const { value: settings, setValue: setSettings, dirty, saving, error, justSaved, commit, discard } =
+  const { value: settings, setValue: setSettings, dirty, saving, error, justSaved, commit, discard, guard } =
     useSavedForm<ScoringSettingsRow>(initial, async (next) => {
       const { error: failure } = await createClient()
         .from("scoring_settings")
@@ -182,6 +182,7 @@ export function ScoringSettingsForm({
           void commit();
         }}
         onDiscard={discard}
+        guard={guard}
       />
     </div>
   );
