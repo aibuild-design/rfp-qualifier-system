@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { WhereTheyComeFrom } from "@/components/WhereTheyComeFrom";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { DemoBanner, DemoTag } from "@/components/DemoBanner";
 import { daysUntil, deadlineColor, deadlineWindowsFrom, formatDate, isoDaysFromNow } from "@/lib/rfp";
@@ -53,7 +54,9 @@ export default async function OverviewPage() {
     { data: recent },
     { data: scoring },
   ] = await Promise.all([
-    supabase.from("rfps").select("status, is_demo, filing_status"),
+    // `source` rides along on a query this page already makes. It has been
+    // recorded on every bid since the first migration and never once shown.
+    supabase.from("rfps").select("status, is_demo, filing_status, source"),
     supabase
       .from("rfp_compliance_items")
       .select("due_at")
@@ -139,6 +142,14 @@ export default async function OverviewPage() {
     { label: "Prepared", live: libraryReady && rosterReady },
     { label: "Filed", live: filingConnected },
   ];
+
+  // Where solicitations actually come from, which is the evidence for whether
+  // this desk needs to go looking for work or only to judge what it is handed.
+  const arrivals = { aggregator: 0, email: 0, manual: 0, portal: 0 };
+  for (const r of allRfps ?? []) {
+    const k = r.source as keyof typeof arrivals | null;
+    if (k && k in arrivals) arrivals[k] += 1;
+  }
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -304,6 +315,8 @@ export default async function OverviewPage() {
           </ul>
         </section>
       )}
+      <WhereTheyComeFrom counts={arrivals} />
+
     </div>
   );
 }
