@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ProposalDraft } from "@/components/ProposalDraft";
 import { StandingDocuments } from "@/components/StandingDocuments";
 import { FilingStatusCard } from "@/components/FilingStatusCard";
+import { ProposalVersions } from "@/components/ProposalVersions";
 import { proposalFileName } from "@/lib/proposal";
 import { formatDate } from "@/lib/rfp";
 
@@ -22,12 +23,23 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: rfp }, { data: sections }, { count: libraryCount }, { data: standingDocs }] =
+  const [
+    { data: rfp },
+    { data: sections },
+    { count: libraryCount },
+    { data: standingDocs },
+    { data: versions },
+  ] =
     await Promise.all([
       supabase.from("rfps").select("*").eq("id", id).maybeSingle(),
       supabase.from("rfp_proposal_sections").select("*").eq("rfp_id", id).order("sort_order"),
       supabase.from("language_blocks").select("*", { count: "exact", head: true }),
       supabase.from("standing_documents").select("id, label, file_name, expires_on").order("label"),
+      supabase
+        .from("proposal_versions")
+        .select("id, version, created_at, word_count, section_count, written_count, doc_url")
+        .eq("rfp_id", id)
+        .order("version", { ascending: false }),
     ]);
 
   if (!rfp) notFound();
@@ -93,6 +105,8 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
         fileName={proposalFileName(rfp)}
         libraryCount={libraryCount ?? 0}
       />
+
+      <ProposalVersions versions={versions ?? []} />
 
       <StandingDocuments docs={standingDocs ?? []} />
 

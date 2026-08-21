@@ -400,6 +400,32 @@ export interface Database {
         Relationships: [];
       };
 
+      proposal_versions: {
+        Row: {
+          id: string;
+          rfp_id: string;
+          /** Monotonic per bid, so "version 3" means something to a person. */
+          version: number;
+          created_at: string;
+          word_count: number;
+          section_count: number;
+          /**
+           * Sections written for this solicitation rather than stitched from
+           * the library. Zero means the build silently fell back.
+           */
+          written_count: number;
+          doc_url: string | null;
+          body: string;
+          note: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["proposal_versions"]["Row"]> & {
+          rfp_id: string;
+          version: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["proposal_versions"]["Row"]>;
+        Relationships: [];
+      };
+
       rfp_related_documents: {
         Row: {
           id: string;

@@ -184,6 +184,56 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
     }
   }
 
+  // Keep this build before the next one replaces it.
+  //
+  // Rebuilding overwrites rfp_proposal_sections and files a fresh Doc, so
+  // until now the previous draft survived only as an orphaned Drive file with
+  // the same name as its replacement. A rebuild after a bad edit could not be
+  // undone and there was no way to see what an amendment had changed.
+  //
+  // After the filing block, so the snapshot carries the Doc this build
+  // produced. Wrapped, and never allowed to fail the build, for the same
+  // reason Drive is not: the sections are already saved and correct, and
+  // failing here would report a broken build that isn't.
+  try {
+    const { data: built } = await supabase
+      .from("rfp_proposal_sections")
+      .select("heading, body, tailored_body, notes")
+      .eq("rfp_id", rfpId)
+      .order("sort_order");
+    const { data: filed } = await supabase
+      .from("rfps")
+      .select("proposal_doc_url")
+      .eq("id", rfpId)
+      .maybeSingle();
+    const sections = built ?? [];
+    const text = sections
+      .map((x) => `${x.heading}\n\n${x.tailored_body ?? x.body ?? ""}`)
+      .join("\n\n");
+    // Monotonic per bid rather than a sequence, because it restarts per rfp
+    // and "version 3" should mean the third build of *this* proposal.
+    const { data: last } = await supabase
+      .from("proposal_versions")
+      .select("version")
+      .eq("rfp_id", rfpId)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    await supabase.from("proposal_versions").insert({
+      rfp_id: rfpId,
+      version: (last?.version ?? 0) + 1,
+      word_count: text.split(/\s+/).filter(Boolean).length,
+      section_count: sections.length,
+      // The number that says whether the build actually composed anything. A
+      // zero here is the silent-fallback signature.
+      written_count: sections.filter((x) => x.notes?.startsWith("Written")).length,
+      doc_url: filed?.proposal_doc_url ?? null,
+      body: text,
+    });
+  } catch (err) {
+    console.error(`[build ${rfpId}] could not record the version:`, (err as Error).message);
+  }
+
   revalidatePath(`/dashboard/rfps/${rfpId}`);
   revalidatePath(`/dashboard/proposals/${rfpId}`);
   return {

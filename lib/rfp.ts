@@ -147,6 +147,20 @@ export function formatDate(iso: string | null): string {
   });
 }
 
+/** When a build happened. The time matters here in a way it does not for a
+ *  deadline: several rebuilds land in one afternoon, and "Aug 21" three times
+ *  over tells you nothing about which is which. */
+export function formatDateTime(iso: string | null): string {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: DISPLAY_TIME_ZONE,
+  });
+}
+
 /** Deadlines carry a time of day that materially changes the answer - "due the
  *  14th" reads very differently from "due 2:00 PM on the 14th". Shown with the
  *  zone abbreviation so it can't be misread. */
