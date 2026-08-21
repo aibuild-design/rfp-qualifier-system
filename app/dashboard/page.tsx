@@ -9,6 +9,7 @@ import { MoveToFolder } from "@/components/MoveToFolder";
 import { ProfileIncompleteBanner, ProvisionalTag } from "@/components/ProfileIncompleteBanner";
 import { DemoBanner, DemoTag } from "@/components/DemoBanner";
 import { CreditBanner } from "@/components/CreditBanner";
+import { QueuePager } from "@/components/QueuePager";
 import { openRouterCredit } from "@/lib/openrouter-credit";
 import { daysUntil, deadlineColor, deadlineWindowsFrom, formatBudget, formatDate } from "@/lib/rfp";
 
@@ -26,6 +27,15 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   const folder = typeof params.folder === "string" ? params.folder : null;
   const showNoGo = view === "no-go";
   const sortByDeadline = params.sort === "deadline";
+
+  // A page of rows rather than all of them.
+  //
+  // The queue fetched and rendered every solicitation that matched, with no
+  // limit anywhere. At nine rows that is invisible; at two hundred it is two
+  // hundred rows of DOM and a payload to match, on the page that has to open
+  // fastest because it is the one that opens every morning.
+  const PER_PAGE = 25;
+  const page = Math.max(1, Number(params.page) || 1);
 
   const VIEW_TITLES: Record<string, { title: string; blurb: string }> = {
     "no-go": { title: "No-go section", blurb: "Ruled out, kept - nothing here is deleted." },
@@ -84,9 +94,10 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     { data: scoring },
     credit,
   ] = await Promise.all([
-    sortByDeadline
+    (sortByDeadline
       ? listQuery.order("due_at", { ascending: true, nullsFirst: false })
-      : listQuery.order("score_percent", { ascending: false, nullsFirst: false }),
+      : listQuery.order("score_percent", { ascending: false, nullsFirst: false })
+    ).range((page - 1) * PER_PAGE, page * PER_PAGE - 1),
     // human_verdict rides along so an accepted bid can be counted out of the
     // queue without a second round trip.
     supabase.from("rfps").select("status, folder_id, is_demo, human_verdict"),
@@ -143,6 +154,11 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   // "All" resets both filters, so it counts the default view across every
   // section rather than whatever is currently narrowed.
   const resetCount = all.reduce((n, r) => (r.status === "no_go" || accepted(r) ? n : n + 1), 0);
+
+  // How many match the current view, so the pager knows where it ends. Counted
+  // from the projection already in memory rather than a second count query.
+  const matching = all.filter((r) => inView(r) && inSection(r)).length;
+  const pageCount = Math.max(1, Math.ceil(matching / PER_PAGE));
 
   // Verdict chips, counted inside the section that is currently selected.
   const forVerdicts = all.filter(inSection);
@@ -416,6 +432,13 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           </>
         )}
       </div>
+
+      <QueuePager
+        page={page}
+        pageCount={pageCount}
+        total={matching}
+        params={{ view, folder, sort: sortByDeadline ? "deadline" : null }}
+      />
     </div>
   );
 }
