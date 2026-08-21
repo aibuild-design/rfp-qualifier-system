@@ -115,36 +115,39 @@ function numberFromEnv(name: string, fallback: number): number {
 }
 
 /**
- * Requirements you satisfy by doing something, not by being something.
+ * The short list of things that get a proposal rejected before anyone reads it.
  *
- * Insurance, references, registrations, bonds and licences are all obtained
- * before submission if you do not already hold them. None of them describes
- * whether a firm can do the work, and none of them should hold a verdict down.
+ * Public procurement keeps two ideas apart and this desk had merged them.
  *
- * They were holding verdicts down. An unclear mandatory requirement capped a
- * bid at "maybe", which was the right rule applied to the wrong set: checked
- * against a live bid, all three of the requirements capping it were **already
- * on that bid's compliance checklist**, one of them under a category literally
- * named "insurance". The same fact was being counted twice, once as a task and
- * once as a doubt about eligibility.
+ * **Responsiveness** is whether the submission is valid: filed on time, through
+ * the right channel, with the required forms, signatures and any certification
+ * the agency demands you already hold. Miss one and the proposal is returned
+ * unopened. Leesburg RFP 100120-FY27-09 spells out its entire rejection list
+ * and every item is this: late, wrong channel, partially uploaded.
  *
- * The scope agrees. Insurance appears in module 6, the compliance checklist. It
- * was never an eligibility gate; that part was added here and is now removed.
+ * **Evaluation** is whether you are any good. The same RFP scores Firm
+ * Experience at 30%, Key Personnel at 30%, Approach at 20%, Price at 20%.
+ * Nothing there rejects anybody. It costs points.
  *
- * A capability gap still caps. "Five years of behavioral health experience" is
- * not something anybody obtains before Friday.
+ * The gate used to read "Must have significant experience... in the
+ * Commonwealth of Virginia", see the word must, and close the bid. Khaled would
+ * bid it - he likes all seven of the solicitations that produced this rule, and
+ * the desk would have told him no on work he actively wants. A desk that
+ * silently narrows the pipeline it exists to widen is worse than no desk,
+ * because nobody sees what it discarded.
  *
- * The list grew when it met a real solicitation. Leesburg RFP 100120-FY27-09
- * asks the offeror to be "authorized to transact business in the Commonwealth
- * of Virginia" and "a registered vendor in eVA" - a filing and a free portal
- * account, both doable in an afternoon. `registrat` matched neither, because
- * the words on the page were "registered" and "authorized", so the desk
- * reported three fatal failures where there was one. The verdict happened to
- * be right for the wrong reason; on a bid whose only gaps were registrations
- * it would have closed a winnable pursuit.
+ * So the default inverted. Nothing blocks unless it is named here or Khaled
+ * marked it a dealbreaker himself. Insurance, registrations and references are
+ * absent on purpose: they are conditions of award, they live on the compliance
+ * checklist in module 6, and the agencies say so themselves - Clackamas, asked
+ * directly, answered that "insurance requirements will be finalized during
+ * contract negotiations" and the business registry is "a requirement at time of
+ * contract execution".
+ *
+ * Experience is absent too. It is the score's job.
  */
-const OBTAINABLE =
-  /insur|liabilit|coverage|indemnif|\bbond(ed|ing)?\b|references?\b|regist(er|ered|ering|ration|ry)|licen[cs]e|certificate of|w-?9|sam\.gov|authori[sz]ed to transact business|vendor (registration|account|portal)|enroll?ment/i;
+const NON_RESPONSIVE =
+  /\bbond(ed|ing|s)?\b|surety|debarr?ed|suspended from (bidding|contracting)|set[- ]aside|\b(dbe|mbe|wbe|sbe|8\(a\))\b|prequalif|must (already )?be certified/i;
 
 export type Decision = {
   status: VerdictStatus;
@@ -214,60 +217,41 @@ export function decideVerdict(
     };
   }
 
-  const failed = checks.filter((c) => c.result === "fail");
-
-  // A shortfall you can cure before award is not a closed bid.
+  // Only a genuinely non-responsive failure closes a bid.
   //
-  // OBTAINABLE was consulted for "unclear" and not for "fail", which is a
-  // distinction the world does not make: an endorsement raising General
-  // Liability from $1M to $2M per occurrence fixes the requirement whether the
-  // profile was silent about the limit or recorded one that was too low. Only
-  // the second was closing bids.
+  // Everything else - a thin sector, a missing registration, an insurance limit
+  // below the stated minimum - is either scored or tracked as a task. Both are
+  // already visible: gaps on the bid page, obligations on the compliance
+  // checklist. Closing the bid as well counted the same fact twice and answered
+  // a question the agency had not asked.
+  // Two ways in, and both mean the same thing: the solicitation itself says
+  // this one is disqualifying.
   //
-  // The solicitations Khaled actually pursues say so themselves. Clackamas
-  // County #2026-25, asked directly about its insurance requirement, answered
-  // that "insurance requirements will be finalized during contract
-  // negotiations"; asked whether the Oregon Business Registry number was
-  // needed at submission, it answered "this is a requirement at time of
-  // contract execution". These are conditions of award, not of bidding, and a
-  // desk that treats them as eligibility gates rules out the work it exists to
-  // find.
+  // `is_hard_knockout` is triage's reading of the document - a requirement
+  // sitting under "Minimum Qualifications" beside language like "proposals not
+  // meeting these will be deemed non-responsive". That is the behavioural
+  // health case the product was built for and it still closes a bid.
   //
-  // It caps at maybe rather than passing silently, because somebody does have
-  // to raise the coverage before signing, and the compliance checklist is
-  // where that gets tracked. A dealbreaker Khaled set himself still wins: the
-  // knockout check above runs first and covers fail and unclear alike.
-  const curable = failed.filter(
-    (c) => c.is_required === true && OBTAINABLE.test(c.requirement_text ?? ""),
+  // The pattern is a safety net under it, for the handful of things that are
+  // disqualifying wherever they appear and that no reading should miss: a bond
+  // Caravann cannot post, a set-aside it does not hold, debarment.
+  //
+  // What is deliberately not here is `is_required` on its own. Every "must" in
+  // a statement of needs was being treated as a gate, and most of them are
+  // scored: Leesburg asks for Virginia experience under a heading that says
+  // must, then weights Firm Experience at 30% and rejects nobody for it.
+  const blocking = checks.filter(
+    (c) =>
+      (c.result === "fail" || c.result === "unclear") &&
+      (c.is_hard_knockout === true || NON_RESPONSIVE.test(c.requirement_text ?? "")),
   );
-
-  // "Preferred but not met" costs score; it never closes the door on its own -
-  // unless Khaled has said otherwise for his own firm.
-  const blocking = failed
-    .filter((c) => !OBTAINABLE.test(c.requirement_text ?? ""))
-    .filter(
-      (c) => c.is_required === true || c.is_hard_knockout === true || thresholds.preferredIsFatal === true
-    );
   if (blocking.length > 0) {
     const first = blocking[0].requirement_text?.trim();
     return {
       status: "no_go",
-      reason: `Fails ${blocking.length} mandatory requirement${blocking.length > 1 ? "s" : ""}${
-        first ? `, starting with: ${truncate(first, 120)}` : ""
+      reason: `Cannot submit a responsive proposal: ${blocking.length} requirement${blocking.length > 1 ? "s" : ""} would have it rejected unopened${
+        first ? `, starting with: ${truncate(first, 110)}` : ""
       }.`,
-    };
-  }
-
-  if (curable.length > 0) {
-    const list = curable
-      .map((c) => c.requirement_text?.trim())
-      .filter(Boolean)
-      .map((text) => truncate(text as string, 90));
-    return {
-      status: "maybe",
-      reason:
-        `Fails ${curable.length} mandatory requirement${curable.length > 1 ? "s" : ""} that can be met before award ` +
-        `rather than before bidding: ${list.join("; ")}. Worth pursuing if that is arranged, and it is on the compliance checklist.`,
     };
   }
 
@@ -287,7 +271,7 @@ export function decideVerdict(
     .filter((c) => c.result === "unclear" && c.is_required === true)
     // Obtainable requirements are tracked on the compliance checklist instead,
     // which is where the scope put them and where they can actually be ticked.
-    .filter((c) => !OBTAINABLE.test(c.requirement_text ?? ""));
+    .filter((c) => NON_RESPONSIVE.test(c.requirement_text ?? ""));
   if (unclear.length > 0) {
     const list = unclear
       .map((c) => c.requirement_text?.trim())
@@ -303,8 +287,26 @@ export function decideVerdict(
   }
 
   const score = Math.round(scorePercent);
-  const softMisses = failed.length;
-  const note = softMisses > 0 ? ` ${softMisses} preferred requirement${softMisses > 1 ? "s" : ""} not met.` : "";
+  // Everything still unmet at this point is scored rather than fatal, so it is
+  // named as context and nothing more. The two kinds are counted separately
+  // because they read differently to the person deciding: a preferred item was
+  // never going to be met, while a stated requirement the agency scores is a
+  // place the proposal has to work harder.
+  const unmet = checks.filter((c) => c.result === "fail");
+  const preferredMisses = unmet.filter((c) => c.is_required === false).length;
+  const statedMisses = unmet.length - preferredMisses;
+  const note =
+    [
+      statedMisses > 0
+        ? `${statedMisses} stated requirement${statedMisses > 1 ? "s" : ""} not met, which the agency scores rather than rejects`
+        : "",
+      preferredMisses > 0
+        ? `${preferredMisses} preferred item${preferredMisses > 1 ? "s" : ""} not met`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
+  const noteText = note ? ` ${note[0].toUpperCase()}${note.slice(1)}.` : "";
 
   // The gate above has already passed, so nothing here is disqualifying - the
   // only question left is degree of fit, and that is exactly the judgement the
@@ -322,17 +324,17 @@ export function decideVerdict(
   }
 
   if (score >= thresholds.go) {
-    return { status: "go", reason: `Clears every mandatory requirement and scores ${score}%.${note}` };
+    return { status: "go", reason: `Clears every mandatory requirement and scores ${score}%.${noteText}` };
   }
   if (score >= thresholds.maybe) {
     return {
       status: "maybe",
-      reason: `Clears every mandatory requirement but scores ${score}%, below the ${thresholds.go}% mark for a clear go.${note}`,
+      reason: `Clears every mandatory requirement but scores ${score}%, below the ${thresholds.go}% mark for a clear go.${noteText}`,
     };
   }
   return {
     status: "no_go",
-    reason: `Scores ${score}%, below the ${thresholds.maybe}% floor - too thin an overlap to be worth the hours.${note}`,
+    reason: `Scores ${score}%, below the ${thresholds.maybe}% floor - too thin an overlap to be worth the hours.${noteText}`,
   };
 }
 

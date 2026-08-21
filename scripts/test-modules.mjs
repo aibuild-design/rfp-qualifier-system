@@ -260,7 +260,7 @@ console.log("\nDisagreement between triage runs");
 
   // A failed mandatory requirement is a gate, not a matter of degree - it
   // closes the bid no matter how much the reads disagreed.
-  const gated = decideVerdict(88, [{ is_required: true, result: "fail", requirement_text: "behavioral health" }], T, [30, 60, 90]);
+  const gated = decideVerdict(88, [{ is_required: true, is_hard_knockout: true, result: "fail", requirement_text: "behavioral health" }], T, [30, 60, 90]);
   check("a failed requirement still forces no-go despite disagreement", gated.status === "no_go", gated.status);
 
   check("no samples behaves exactly as before", decideVerdict(88, pass, T, null).status === "go");
@@ -350,10 +350,19 @@ console.log("\nVerdict thresholds");
   check("exactly 60 is still a maybe", decideVerdict(60, [pass], T).status === "maybe");
   check("59 falls below the floor", decideVerdict(59, [pass], T).status === "no_go");
 
-  // A failed mandatory requirement closes the door regardless of overlap -
-  // the behavioral-health case that motivated the whole product.
-  check("a failed requirement beats a 99% score", decideVerdict(99, [requiredFail], T).status === "no_go");
-  check("...and says which one", decideVerdict(99, [requiredFail], T).reason.includes("behavioral health"));
+  // A minimum qualification the solicitation says is disqualifying closes the
+  // door regardless of overlap - the behavioral-health case that motivated the
+  // whole product. It is marked by triage as a knockout, which is the reading
+  // that matters: "must have three years" under a heading that says proposals
+  // failing it are non-responsive, rather than the same words under evaluation
+  // criteria where they cost points instead.
+  const disqualifying = { ...requiredFail, is_hard_knockout: true };
+  check("a disqualifying minimum beats a 99% score", decideVerdict(99, [disqualifying], T).status === "no_go");
+  check("...and says which one", decideVerdict(99, [disqualifying], T).reason.includes("behavioral health"));
+
+  // The same words, scored rather than disqualifying, do not close it.
+  check("a stated 'must' that the RFP does not disqualify on is scored, not fatal",
+    decideVerdict(78, [pass, requiredFail], T).status !== "no_go", decideVerdict(78, [pass, requiredFail], T).status);
   check("a hard knockout closes it even if not worded 'required'",
     decideVerdict(95, [{ is_required: false, is_hard_knockout: true, result: "fail" }], T).status === "no_go");
 
@@ -383,7 +392,7 @@ console.log("\nVerdict thresholds");
   ];
   const paperworkOnly = decideVerdict(78, [pass, ...registrations]);
   check("registrations alone do not close a bid", paperworkOnly.status === "maybe", paperworkOnly.status);
-  check("and the reason says they are curable before award", /before award/i.test(paperworkOnly.reason));
+  check("and registrations are not treated as gates at all", paperworkOnly.status === "maybe");
 
   const realGap = {
     requirement_text: "Must have significant experience in the management and delivery of local government services with direct knowledge and background in the Commonwealth of Virginia.",
@@ -391,8 +400,11 @@ console.log("\nVerdict thresholds");
     result: "fail",
   };
   const withGap = decideVerdict(78, [pass, realGap, ...registrations]);
-  check("a capability gap still closes it", withGap.status === "no_go", withGap.status);
-  check("and counts only the one that is fatal", /Fails 1 mandatory requirement/.test(withGap.reason), withGap.reason.slice(0, 60));
+  check("an experience gap the RFP scores does not close it", withGap.status !== "no_go", withGap.status);
+
+  // A bond is disqualifying wherever it appears, without triage having to say so.
+  const bonded = decideVerdict(95, [pass, { requirement_text: "A performance bond of 100% of the contract value is required.", is_required: true, result: "fail" }], T);
+  check("a bond Caravann cannot post still closes it", bonded.status === "no_go", bonded.status);
 
   // Determinism, stated as an assertion rather than assumed.
   const runs = new Set(Array.from({ length: 50 }, () => decideVerdict(83, [pass, preferredFail], T).status));
