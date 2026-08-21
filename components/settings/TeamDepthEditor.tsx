@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useSavedForm } from "@/components/settings/useSavedForm";
+import { SaveBar } from "@/components/settings/SaveBar";
 import { createClient } from "@/lib/supabase/client";
 import { fieldClass } from "@/components/ui/form";
 import type { TeamMemberRow } from "@/lib/supabase/types";
@@ -13,28 +15,50 @@ import type { TeamMemberRow } from "@/lib/supabase/types";
  * is no save button to forget.
  */
 export function TeamDepthEditor({ initial }: { initial: TeamMemberRow[] }) {
-  const [rows, setRows] = useState(initial);
   const [open, setOpen] = useState<string | null>(null);
-  const [saved, setSaved] = useState<string | null>(null);
 
   type Field = "role" | "responsibilities" | "bio" | "credentials" | "years_experience";
 
-  // Spelled out rather than a computed key. A `{ [field]: value }` object
-  // widens to a string index signature, which the generated row type rejects,
-  // and widening the payload to satisfy it would lose the check that catches a
-  // misspelled column here.
-  async function patch(id: string, field: Field, value: string | number | null) {
-    setRows(rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
-    const update =
-      field === "role" ? { role: value as string | null }
-      : field === "responsibilities" ? { responsibilities: value as string | null }
-      : field === "bio" ? { bio: value as string | null }
-      : field === "credentials" ? { credentials: value as string | null }
-      : { years_experience: value as number | null };
+  // A biography is the longest thing anybody types into this system and it was
+  // being written the moment focus left the box. Held as a draft of the whole
+  // roster instead, and on Save only the rows that actually changed are sent.
+  const { value: rows, setValue: setRows, dirty, saving, error, justSaved, commit, discard } =
+    useSavedForm<TeamMemberRow[]>(initial, async (next) => {
+      const before = new Map(initial.map((r) => [r.id, r]));
+      const supabase = createClient();
+      for (const r of next) {
+        const was = before.get(r.id);
+        if (
+          was &&
+          was.role === r.role &&
+          was.responsibilities === r.responsibilities &&
+          was.bio === r.bio &&
+          was.credentials === r.credentials &&
+          was.years_experience === r.years_experience
+        ) {
+          continue;
+        }
+        // Spelled out rather than a computed key: a `{ [field]: value }` object
+        // widens to a string index signature, which the generated row type
+        // rejects, and widening the payload to satisfy it would lose the check
+        // that catches a misspelled column here.
+        const { error: failure } = await supabase
+          .from("team_members")
+          .update({
+            role: r.role,
+            responsibilities: r.responsibilities,
+            bio: r.bio,
+            credentials: r.credentials,
+            years_experience: r.years_experience,
+          })
+          .eq("id", r.id);
+        if (failure) return { message: failure.message };
+      }
+      return null;
+    });
 
-    const { error } = await createClient().from("team_members").update(update).eq("id", id);
-    setSaved(error ? `Not saved. ${error.message}` : "Saved");
-    setTimeout(() => setSaved(null), 2000);
+  function patch(id: string, field: Field, value: string | number | null) {
+    setRows(rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   }
 
   return (
@@ -69,8 +93,8 @@ export function TeamDepthEditor({ initial }: { initial: TeamMemberRow[] }) {
                 <label className="block text-sm text-rfp-ink-secondary">
                   Role, as it appears in a proposal
                   <input
-                    defaultValue={m.role ?? ""}
-                    onBlur={(e) => void patch(m.id, "role", e.target.value.trim() || null)}
+                    value={m.role ?? ""}
+                    onChange={(e) => patch(m.id, "role", e.target.value.trim() || null)}
                     placeholder="Principal Consultant / Project Lead"
                     className={`${fieldClass} mt-1`}
                   />
@@ -79,8 +103,8 @@ export function TeamDepthEditor({ initial }: { initial: TeamMemberRow[] }) {
                 <label className="block text-sm text-rfp-ink-secondary">
                   Primary responsibilities on an engagement
                   <textarea
-                    defaultValue={m.responsibilities ?? ""}
-                    onBlur={(e) => void patch(m.id, "responsibilities", e.target.value.trim() || null)}
+                    value={m.responsibilities ?? ""}
+                    onChange={(e) => patch(m.id, "responsibilities", e.target.value.trim() || null)}
                     rows={3}
                     placeholder="Overall project accountability, client management, workplan development, stakeholder coordination, co-facilitation"
                     className={`${fieldClass} mt-1`}
@@ -90,8 +114,8 @@ export function TeamDepthEditor({ initial }: { initial: TeamMemberRow[] }) {
                 <label className="block text-sm text-rfp-ink-secondary">
                   Biography
                   <textarea
-                    defaultValue={m.bio ?? ""}
-                    onBlur={(e) => void patch(m.id, "bio", e.target.value.trim() || null)}
+                    value={m.bio ?? ""}
+                    onChange={(e) => patch(m.id, "bio", e.target.value.trim() || null)}
                     rows={4}
                     placeholder="Two or three sentences. What they do, the kind of client they do it for, and what they are known for."
                     className={`${fieldClass} mt-1`}
@@ -102,8 +126,8 @@ export function TeamDepthEditor({ initial }: { initial: TeamMemberRow[] }) {
                   <label className="block text-sm text-rfp-ink-secondary">
                     Credentials
                     <input
-                      defaultValue={m.credentials ?? ""}
-                      onBlur={(e) => void patch(m.id, "credentials", e.target.value.trim() || null)}
+                    value={m.credentials ?? ""}
+                      onChange={(e) => patch(m.id, "credentials", e.target.value.trim() || null)}
                       placeholder="PhD Organisational Psychology; ICF PCC"
                       className={`${fieldClass} mt-1`}
                     />
@@ -113,9 +137,9 @@ export function TeamDepthEditor({ initial }: { initial: TeamMemberRow[] }) {
                     <input
                       type="number"
                       min={0}
-                      defaultValue={m.years_experience ?? ""}
-                      onBlur={(e) =>
-                        void patch(m.id, "years_experience", e.target.value ? Number(e.target.value) : null)
+                      value={m.years_experience ?? ""}
+                      onChange={(e) =>
+                        patch(m.id, "years_experience", e.target.value ? Number(e.target.value) : null)
                       }
                       className={`${fieldClass} mt-1`}
                     />
@@ -126,7 +150,15 @@ export function TeamDepthEditor({ initial }: { initial: TeamMemberRow[] }) {
           </div>
         );
       })}
-      {saved && <p className="text-xs font-medium text-rfp-good">{saved}</p>}
+
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        error={error}
+        justSaved={justSaved}
+        onSave={() => void commit()}
+        onDiscard={discard}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser, safeError, type ActionResult } from "@/lib/auth";
 import { openRouterChat, openRouterKeys } from "@/lib/openrouter";
+import { COST_PER_PROPOSAL, openRouterCredit, TOP_UP_URL } from "@/lib/openrouter-credit";
 import type { QuestionLane, RfpRow } from "@/lib/supabase/types";
 import { attachStandingDocuments, fileProposal, folderIdFrom, moveToLane } from "@/lib/drive";
 import { caravannTemplate } from "@/lib/template-store";
@@ -35,6 +36,26 @@ function capped(values: string[], limit: number, label: string): string[] {
 export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted: number; needsInput: number; preserved: number }>> {
   const { supabase, denied } = await requireUser();
   if (denied) return denied;
+
+  // Refuse to start a build that cannot finish.
+  //
+  // Running out of credit halfway through does not fail loudly. The sections
+  // already composed stay, the rest fall back to stitched library text, and the
+  // result is a draft that looks finished and is quietly worse in a way nobody
+  // can see from the document. Half a proposal is harder to spot than none, and
+  // the money is spent either way.
+  //
+  // Checked against the cost of a whole build rather than the warning line, so
+  // the answer is the one that matters: is there enough to finish this.
+  const credit = await openRouterCredit();
+  if (credit && credit.remaining < COST_PER_PROPOSAL) {
+    return {
+      error:
+        `Not enough OpenRouter credit to write a proposal. $${credit.remaining.toFixed(2)} left and a build costs about ` +
+        `$${COST_PER_PROPOSAL.toFixed(2)}. Starting now would compose part of it and quietly fall back to library text for the rest. ` +
+        `Top up at ${TOP_UP_URL}.`,
+    };
+  }
 
   const [{ data: rfp }, { data: blocks }, { data: addenda }] = await Promise.all([
     supabase.from("rfps").select("*").eq("id", rfpId).maybeSingle(),

@@ -1,70 +1,50 @@
 "use client";
 
-import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useUnsavedGuard } from "@/components/useUnsavedGuard";
+import { useSavedForm } from "@/components/settings/useSavedForm";
+import { SaveBar } from "@/components/settings/SaveBar";
 import type { OrgProfileRow } from "@/lib/supabase/types";
 
 // The org-wide eligibility profile (module 3) - confirmed once, read by the
 // disqualifier gate on every RFP. A singleton row (id is always `true`).
 export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
-  const [profile, setProfile] = useState(initial);
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-
-  // These fields save on blur, which is invisible and mostly fine. The gap is
-  // typing an insurance paragraph and then reloading without leaving the field:
-  // gone, with no indication it was ever at risk, and that paragraph is the
-  // most valuable thing anyone types into this system.
-  //
-  // Compared against what was last written rather than against the props, so
-  // the warning clears the moment a save lands rather than staying on for the
-  // rest of the session.
-  // State rather than a ref: a ref cannot be read during render, and this has
-  // to be compared on every keystroke to know whether the guard is armed.
-  const [lastSaved, setLastSaved] = useState(() => JSON.stringify(initial));
-  useUnsavedGuard(JSON.stringify(profile) !== lastSaved);
-
-  async function save(next: OrgProfileRow) {
-    setProfile(next);
-    setSaving(true);
-    const supabase = createClient();
-    await supabase
-      .from("org_profile")
-      .update({
-        bilingual_staff: next.bilingual_staff,
-        media_production_capable: next.media_production_capable,
-        pr_capable: next.pr_capable,
-        office_locations: next.office_locations,
-        consultant_locations: next.consultant_locations,
-        certifications: next.certifications,
-        set_aside_status: next.set_aside_status,
-        notes: next.notes,
-        insurance_coverage: next.insurance_coverage,
-        governing_body_experience: next.governing_body_experience,
-        profile_confirmed: next.profile_confirmed,
-      })
-      .eq("id", true);
-    setSaving(false);
-    setLastSaved(JSON.stringify(next));
-    setSavedAt(Date.now());
-  }
+  // Nothing here is written until Save. These figures decide verdicts - the
+  // insurance limit alone can move a bid - and saving them the instant focus
+  // left the field meant a half-typed number became the live one with nobody
+  // having agreed to it.
+  const { value: profile, setValue: setProfile, dirty, saving, error, justSaved, commit, discard } =
+    useSavedForm<OrgProfileRow>(initial, async (next) => {
+      const { error: failure } = await createClient()
+        .from("org_profile")
+        .update({
+          bilingual_staff: next.bilingual_staff,
+          media_production_capable: next.media_production_capable,
+          pr_capable: next.pr_capable,
+          office_locations: next.office_locations,
+          consultant_locations: next.consultant_locations,
+          certifications: next.certifications,
+          set_aside_status: next.set_aside_status,
+          notes: next.notes,
+          insurance_coverage: next.insurance_coverage,
+          governing_body_experience: next.governing_body_experience,
+          profile_confirmed: next.profile_confirmed,
+        })
+        .eq("id", true);
+      return failure ? { message: failure.message } : null;
+    });
 
   function toggle(field: "bilingual_staff" | "media_production_capable" | "pr_capable") {
-    void save({ ...profile, [field]: !profile[field] });
+    setProfile({ ...profile, [field]: !profile[field] });
   }
 
-  function updateList(field: "office_locations" | "consultant_locations" | "certifications" | "set_aside_status", value: string) {
-    const list = value
-      .split(",")
-      .map((v) => v.trim())
-      .filter(Boolean);
-    setProfile({ ...profile, [field]: list });
-  }
-
-  function commitList(field: "office_locations" | "consultant_locations" | "certifications" | "set_aside_status") {
-    void save(profile);
-    void field;
+  function updateList(
+    field: "office_locations" | "consultant_locations" | "certifications" | "set_aside_status",
+    value: string,
+  ) {
+    setProfile({
+      ...profile,
+      [field]: value.split(",").map((v) => v.trim()).filter(Boolean),
+    });
   }
 
   return (
@@ -84,25 +64,21 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
           label="Office locations"
           value={profile.office_locations.join(", ")}
           onChange={(v) => updateList("office_locations", v)}
-          onBlur={() => commitList("office_locations")}
         />
         <ListField
           label="Consultant locations"
           value={profile.consultant_locations.join(", ")}
           onChange={(v) => updateList("consultant_locations", v)}
-          onBlur={() => commitList("consultant_locations")}
         />
         <ListField
           label="Certifications"
           value={profile.certifications.join(", ")}
           onChange={(v) => updateList("certifications", v)}
-          onBlur={() => commitList("certifications")}
         />
         <ListField
           label="Set-aside status"
           value={profile.set_aside_status.join(", ")}
           onChange={(v) => updateList("set_aside_status", v)}
-          onBlur={() => commitList("set_aside_status")}
         />
       </div>
 
@@ -118,7 +94,6 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
           id="insurance"
           value={profile.insurance_coverage ?? ""}
           onChange={(e) => setProfile({ ...profile, insurance_coverage: e.target.value })}
-          onBlur={() => save(profile)}
           rows={2}
           placeholder="e.g. General liability $2M per occurrence / $4M aggregate; professional liability $1M; auto and workers' comp per California statute"
           className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
@@ -136,7 +111,6 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
           id="governing"
           value={profile.governing_body_experience ?? ""}
           onChange={(e) => setProfile({ ...profile, governing_body_experience: e.target.value })}
-          onBlur={() => save(profile)}
           rows={2}
           placeholder="e.g. Board retreats and strategic planning committees for transit boards, water district boards and university governance since 2014"
           className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
@@ -148,13 +122,19 @@ export function OrgProfileForm({ initial }: { initial: OrgProfileRow }) {
         <textarea
           value={profile.notes ?? ""}
           onChange={(e) => setProfile({ ...profile, notes: e.target.value })}
-          onBlur={() => save(profile)}
           rows={3}
           className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-base sm:text-sm text-rfp-ink focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
         />
       </div>
 
-      <p className="mt-3 text-xs text-rfp-ink-muted">{saving ? "Saving…" : savedAt ? "Saved" : "Autosaves on change"}</p>
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        error={error}
+        justSaved={justSaved}
+        onSave={() => void commit()}
+        onDiscard={discard}
+      />
     </div>
   );
 }
@@ -177,12 +157,10 @@ function ListField({
   label,
   value,
   onChange,
-  onBlur,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  onBlur: () => void;
 }) {
   return (
     <div className="space-y-1.5">
@@ -191,7 +169,6 @@ function ListField({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
         placeholder="Comma-separated"
         className="w-full min-h-11 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 py-2.5 text-base sm:text-sm text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60"
       />

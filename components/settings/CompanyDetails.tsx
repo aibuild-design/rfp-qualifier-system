@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+
 import { createClient } from "@/lib/supabase/client";
+import { useSavedForm } from "@/components/settings/useSavedForm";
+import { SaveBar } from "@/components/settings/SaveBar";
 import { fieldClass } from "@/components/ui/form";
 import type { OrgProfileRow } from "@/lib/supabase/types";
 
@@ -31,23 +33,20 @@ const FIELDS: { key: Field; label: string; hint?: string }[] = [
  * Caravann's name. An EIN is not a thing to discover is wrong after submitting.
  */
 export function CompanyDetails({ initial }: { initial: OrgProfileRow }) {
-  const [row, setRow] = useState(initial);
-  const [saved, setSaved] = useState<string | null>(null);
-
-  async function save(key: Field, value: string) {
-    const next = value.trim() || null;
-    setRow({ ...row, [key]: next });
-    const patch: Record<string, string | null> = {};
-    patch[key] = next;
-    const { error } = await createClient()
-      .from("org_profile")
-      // The generated row type rejects a computed key, and every field here is
-      // a nullable string, so one narrow cast beats ten branches.
-      .update(patch as Partial<OrgProfileRow>)
-      .eq("id", true);
-    setSaved(error ? `Not saved. ${error.message}` : "Saved");
-    setTimeout(() => setSaved(null), 2000);
-  }
+  // An EIN is not a thing to discover is wrong after submitting, which is also
+  // the reason it is not written the moment focus leaves the field.
+  const { value: row, setValue: setRow, dirty, saving, error, justSaved, commit, discard } =
+    useSavedForm<OrgProfileRow>(initial, async (next) => {
+      const patch: Record<string, string | null> = {};
+      for (const f of FIELDS) patch[f.key] = (next[f.key] as string | null) || null;
+      const { error: failure } = await createClient()
+        .from("org_profile")
+        // The generated row type rejects a computed key, and every field here
+        // is a nullable string, so one narrow cast beats ten branches.
+        .update(patch as Partial<OrgProfileRow>)
+        .eq("id", true);
+      return failure ? { message: failure.message } : null;
+    });
 
   const missing = FIELDS.filter((f) => !row[f.key]).length;
 
@@ -66,15 +65,22 @@ export function CompanyDetails({ initial }: { initial: OrgProfileRow }) {
             {f.label}
             {f.hint && <span className="ml-2 text-xs text-rfp-ink-muted">{f.hint}</span>}
             <input
-              defaultValue={row[f.key] ?? ""}
-              onBlur={(e) => void save(f.key, e.target.value)}
+              value={(row[f.key] as string | null) ?? ""}
+              onChange={(e) => setRow({ ...row, [f.key]: e.target.value })}
               className={`${fieldClass} mt-1`}
             />
           </label>
         ))}
       </div>
 
-      {saved && <p className="mt-3 text-xs font-medium text-rfp-good">{saved}</p>}
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        error={error}
+        justSaved={justSaved}
+        onSave={() => void commit()}
+        onDiscard={discard}
+      />
     </div>
   );
 }

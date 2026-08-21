@@ -2,13 +2,32 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useSavedForm } from "@/components/settings/useSavedForm";
+import { SaveBar } from "@/components/settings/SaveBar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { TeamMemberRow } from "@/lib/supabase/types";
 
 // The private roster module 9's team match recommends against - Khaled
 // confirms every assignment, nothing here auto-assigns.
 export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
-  const [rows, setRows] = useState(initial);
+  // Edits to a row are held until Save. Adding and removing stay immediate:
+  // those are already explicit button presses, and a Save button for "I pressed
+  // Add" would be a second confirmation of something already confirmed.
+  const { value: rows, setValue: setRows, dirty, saving, error: saveError, justSaved, commit, discard } =
+    useSavedForm(initial, async (next) => {
+      const before = new Map(initial.map((r) => [r.id, r]));
+      const supabase = createClient();
+      for (const r of next) {
+        const was = before.get(r.id);
+        if (was && JSON.stringify(was) === JSON.stringify(r)) continue;
+        const { error: failure } = await supabase
+          .from("team_members")
+          .update({ name: r.name, role: r.role, rate: r.rate, bandwidth: r.bandwidth, active: r.active })
+          .eq("id", r.id);
+        if (failure) return { message: failure.message };
+      }
+      return null;
+    });
   const [newName, setNewName] = useState("");
   // Removal used to happen on the click. Every other field here saves as you
   // type, which is right for an edit you can see and undo by typing again - but
@@ -27,10 +46,8 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
     }
   }
 
-  async function update(id: string, patch: Partial<TeamMemberRow>) {
+  function update(id: string, patch: Partial<(typeof rows)[number]>) {
     setRows(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-    const supabase = createClient();
-    await supabase.from("team_members").update(patch).eq("id", id);
   }
 
   async function remove(member: TeamMemberRow) {
@@ -132,6 +149,14 @@ export function TeamRosterEditor({ initial }: { initial: TeamMemberRow[] }) {
           Add
         </button>
       </div>
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        error={saveError}
+        justSaved={justSaved}
+        onSave={() => void commit()}
+        onDiscard={discard}
+      />
     </div>
     </>
   );
@@ -149,8 +174,8 @@ function Cell({
   return (
     <input
       type={type}
-      defaultValue={value}
-      onBlur={(e) => onChange(e.target.value)}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
       className="w-full min-h-11 rounded border border-transparent bg-transparent px-1.5 py-1 text-rfp-ink hover:border-rfp-border focus:border-rfp-gold focus:bg-rfp-surface-sunken focus:outline-none"
     />
   );

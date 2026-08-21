@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+
 import { createClient } from "@/lib/supabase/client";
+import { useSavedForm } from "@/components/settings/useSavedForm";
+import { SaveBar } from "@/components/settings/SaveBar";
 
 /**
  * Where verdicts go in Slack.
@@ -15,20 +17,17 @@ import { createClient } from "@/lib/supabase/client";
  * set up can never be the reason a verdict reaches nobody.
  */
 export function SlackWebhook({ initial }: { initial: string | null }) {
-  const [url, setUrl] = useState(initial ?? "");
-  const [saved, setSaved] = useState<string | null>(null);
+  const { value: url, setValue: setUrl, dirty, saving, error, justSaved, commit, discard } =
+    useSavedForm<string>(initial ?? "", async (next) => {
+      const { error: failure } = await createClient()
+        .from("scoring_settings")
+        .update({ slack_webhook_url: next.trim() || null })
+        .eq("id", true);
+      return failure ? { message: failure.message } : null;
+    });
 
   const looksWrong = url.trim().length > 0 && !url.trim().startsWith("https://hooks.slack.com/");
 
-  async function save() {
-    const next = url.trim() || null;
-    const { error } = await createClient()
-      .from("scoring_settings")
-      .update({ slack_webhook_url: next })
-      .eq("id", true);
-    setSaved(error ? `Not saved. ${error.message}` : next ? "Saved" : "Slack turned off");
-    setTimeout(() => setSaved(null), 3000);
-  }
 
   return (
     <div className="rounded-xl border border-rfp-border bg-rfp-surface p-5">
@@ -45,18 +44,19 @@ export function SlackWebhook({ initial }: { initial: string | null }) {
           id="slack-url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          onBlur={() => void save()}
           placeholder="https://hooks.slack.com/services/…"
           className="min-h-11 flex-1 rounded-lg border border-rfp-border bg-rfp-surface-sunken px-3 text-base text-rfp-ink placeholder:text-rfp-ink-muted focus:border-rfp-gold focus:bg-rfp-surface focus:outline-none focus:ring-2 focus:ring-rfp-gold/60 sm:text-sm"
         />
-        <button
-          type="button"
-          onClick={() => void save()}
-          className="press inline-flex min-h-11 items-center rounded-lg bg-rfp-ink px-4 text-sm font-semibold text-rfp-surface hover:opacity-90"
-        >
-          Save
-        </button>
       </div>
+
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        error={error}
+        justSaved={justSaved}
+        onSave={() => void commit()}
+        onDiscard={discard}
+      />
 
       <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
         {looksWrong && (
@@ -64,8 +64,7 @@ export function SlackWebhook({ initial }: { initial: string | null }) {
             A Slack webhook starts with https://hooks.slack.com/. This will not post.
           </span>
         )}
-        {saved && <span className="font-medium text-rfp-good">{saved}</span>}
-        {!saved && !looksWrong && (
+        {!looksWrong && (
           <span className="text-rfp-ink-muted">
             {url.trim() ? "Verdicts post to Slack and email." : "Email only."}
           </span>

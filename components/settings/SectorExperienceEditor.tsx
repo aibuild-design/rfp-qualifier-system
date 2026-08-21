@@ -2,13 +2,32 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useSavedForm } from "@/components/settings/useSavedForm";
+import { SaveBar } from "@/components/settings/SaveBar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { SectorExperienceRow } from "@/lib/supabase/types";
 
 // "It knows your depth, sector by sector" (module 3) - the disqualifier gate
 // and scoring both read this table per RFP.
 export function SectorExperienceEditor({ initial }: { initial: SectorExperienceRow[] }) {
-  const [rows, setRows] = useState(initial);
+  // Edits to a row are held until Save. Adding and removing stay immediate:
+  // those are already explicit button presses, and a Save button for "I pressed
+  // Add" would be a second confirmation of something already confirmed.
+  const { value: rows, setValue: setRows, dirty, saving, error: saveError, justSaved, commit, discard } =
+    useSavedForm(initial, async (next) => {
+      const before = new Map(initial.map((r) => [r.id, r]));
+      const supabase = createClient();
+      for (const r of next) {
+        const was = before.get(r.id);
+        if (was && JSON.stringify(was) === JSON.stringify(r)) continue;
+        const { error: failure } = await supabase
+          .from("sector_experience")
+          .update({ sector: r.sector, years_experience: r.years_experience, engagement_count: r.engagement_count, notes: r.notes })
+          .eq("id", r.id);
+        if (failure) return { message: failure.message };
+      }
+      return null;
+    });
   const [newSector, setNewSector] = useState("");
   // Worse than it looks. The gate and the score both read this table, and a
   // sector that is absent is not the same as a sector recorded at zero: one is
@@ -30,10 +49,8 @@ export function SectorExperienceEditor({ initial }: { initial: SectorExperienceR
     }
   }
 
-  async function update(id: string, patch: Partial<SectorExperienceRow>) {
+  function update(id: string, patch: Partial<(typeof rows)[number]>) {
     setRows(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-    const supabase = createClient();
-    await supabase.from("sector_experience").update(patch).eq("id", id);
   }
 
   async function remove(row: SectorExperienceRow) {
@@ -121,6 +138,14 @@ export function SectorExperienceEditor({ initial }: { initial: SectorExperienceR
           Add
         </button>
       </div>
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        error={saveError}
+        justSaved={justSaved}
+        onSave={() => void commit()}
+        onDiscard={discard}
+      />
     </div>
     </>
   );
@@ -138,8 +163,8 @@ function Cell({
   return (
     <input
       type={type}
-      defaultValue={value}
-      onBlur={(e) => onChange(e.target.value)}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
       className="w-full min-h-11 rounded border border-transparent bg-transparent px-1.5 py-1 text-rfp-ink hover:border-rfp-border focus:border-rfp-gold focus:bg-rfp-surface-sunken focus:outline-none"
     />
   );

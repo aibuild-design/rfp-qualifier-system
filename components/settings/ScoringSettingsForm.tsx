@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { NumberField, SaveState, Toggle } from "@/components/ui/form";
+import { useSavedForm } from "@/components/settings/useSavedForm";
+import { SaveBar } from "@/components/settings/SaveBar";
+import { NumberField, Toggle } from "@/components/ui/form";
 import type { ScoringSettingsRow } from "@/lib/supabase/types";
 
 /**
@@ -26,10 +28,22 @@ export function ScoringSettingsForm({
    *  visible against real work rather than imagined. */
   scoreSample: number[];
 }) {
-  const [settings, setSettings] = useState(initial);
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Thresholds decide every verdict, so they are written when somebody presses
+  // Save and not when focus happens to leave a number field.
+  const { value: settings, setValue: setSettings, dirty, saving, error, justSaved, commit, discard } =
+    useSavedForm<ScoringSettingsRow>(initial, async (next) => {
+      const { error: failure } = await createClient()
+        .from("scoring_settings")
+        .update({
+          go_threshold: next.go_threshold,
+          maybe_threshold: next.maybe_threshold,
+          deadline_warning_days: next.deadline_warning_days,
+          deadline_critical_days: next.deadline_critical_days,
+          preferred_misses_are_fatal: next.preferred_misses_are_fatal,
+        })
+        .eq("id", true);
+      return failure ? { message: failure.message } : null;
+    });
 
   // Mirrors the database's own constraint. Checking here too means the person
   // gets told why, next to the field, instead of a Postgres error.
@@ -42,28 +56,6 @@ export function ScoringSettingsForm({
       ? "The red window has to be shorter than the yellow one."
       : null;
 
-  async function save(next: ScoringSettingsRow) {
-    setSettings(next);
-    if (next.maybe_threshold > next.go_threshold || next.deadline_critical_days > next.deadline_warning_days) {
-      return; // Invalid - the field-level message already explains why.
-    }
-    setSaving(true);
-    setError(null);
-    const supabase = createClient();
-    const { error: saveError } = await supabase
-      .from("scoring_settings")
-      .update({
-        go_threshold: next.go_threshold,
-        maybe_threshold: next.maybe_threshold,
-        deadline_warning_days: next.deadline_warning_days,
-        deadline_critical_days: next.deadline_critical_days,
-        preferred_misses_are_fatal: next.preferred_misses_are_fatal,
-      })
-      .eq("id", true);
-    setSaving(false);
-    if (saveError) setError(`Could not save: ${saveError.message}`);
-    else setSavedAt(Date.now());
-  }
 
   const counts = useMemo(() => {
     const go = scoreSample.filter((s) => s >= settings.go_threshold).length;
@@ -89,7 +81,7 @@ export function ScoringSettingsForm({
           error={thresholdError}
           hint="Scores at or above this are worth bidding."
           onChange={(e) => setSettings({ ...settings, go_threshold: num(e.target.value, settings.go_threshold) })}
-          onBlur={() => save(settings)}
+          
         />
         <NumberField
           id="maybe-threshold"
@@ -100,7 +92,7 @@ export function ScoringSettingsForm({
           value={settings.maybe_threshold}
           hint="Below this, it is ruled out on overlap alone."
           onChange={(e) => setSettings({ ...settings, maybe_threshold: num(e.target.value, settings.maybe_threshold) })}
-          onBlur={() => save(settings)}
+          
         />
       </div>
 
@@ -144,7 +136,7 @@ export function ScoringSettingsForm({
           onChange={(e) =>
             setSettings({ ...settings, deadline_warning_days: num(e.target.value, settings.deadline_warning_days) })
           }
-          onBlur={() => save(settings)}
+          
         />
         <NumberField
           id="deadline-critical"
@@ -158,7 +150,7 @@ export function ScoringSettingsForm({
           onChange={(e) =>
             setSettings({ ...settings, deadline_critical_days: num(e.target.value, settings.deadline_critical_days) })
           }
-          onBlur={() => save(settings)}
+          
         />
       </div>
 
@@ -169,16 +161,28 @@ export function ScoringSettingsForm({
           label="Treat missed “preferred” requirements as dealbreakers"
           description="Off by default, and worth leaving off. Agencies write “preferred” for things they would like, not things they require - a firm that bids anyway still wins these. Turning this on will rule out work Caravann could take."
           checked={settings.preferred_misses_are_fatal}
-          onChange={(next) => save({ ...settings, preferred_misses_are_fatal: next })}
+          onChange={(next) => setSettings({ ...settings, preferred_misses_are_fatal: next })}
         />
       </div>
 
       {/* Only a genuine save failure belongs here. Validation problems are
           already stated next to the field that caused them, and repeating
-          them at the bottom reads as two separate faults. */}
-      <div className="mt-4">
-        <SaveState saving={saving} savedAt={savedAt} error={error} />
-      </div>
+          them at the bottom reads as two separate faults.
+
+          Save is refused while a threshold pair is contradictory, because a
+          maybe floor above the go bar means nothing can ever be a go and the
+          database rejects it anyway. */}
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        error={error ?? thresholdError ?? deadlineError}
+        justSaved={justSaved}
+        onSave={() => {
+          if (thresholdError || deadlineError) return;
+          void commit();
+        }}
+        onDiscard={discard}
+      />
     </div>
   );
 }

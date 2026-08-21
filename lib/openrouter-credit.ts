@@ -34,6 +34,15 @@ export type Credit = {
 /** Measured across real runs: about 18 cents a solicitation, three reads. */
 export const COST_PER_SOLICITATION = 0.18;
 
+/**
+ * What one proposal build costs, measured across real runs.
+ *
+ * Five composed sections at roughly 2,500 words each, plus a retry when one is
+ * rejected. Observed between $0.28 and $0.52; the upper figure is used, because
+ * the failure this guards against is starting a build that runs out halfway.
+ */
+export const COST_PER_PROPOSAL = 0.52;
+
 /** Where money actually goes in. */
 export const TOP_UP_URL = "https://openrouter.ai/settings/credits";
 
