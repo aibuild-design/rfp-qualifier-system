@@ -275,6 +275,39 @@ async function main() {
     .eq("rfp_id", rfpId);
   assert(gapCount === body.gap_items.length, `children replaced not appended (${gapCount} = ${body.gap_items.length})`);
 
+  // ── 5b. does the desk agree with the other fixtures ───────────────────────
+  //
+  // The deep test above runs one solicitation through everything. These two
+  // exist because they encode judgements the earlier ones do not: a hard
+  // disqualifier buried in the body rather than the requirements list, and a
+  // bid that should land on maybe rather than either extreme. Both carried an
+  // expected verdict from the day they were written and neither had ever been
+  // executed, so two thirds of the only answer key in the repository was
+  // sitting unread.
+  //
+  // Triage and the verdict only. What they are checking is the judgement, and
+  // running the drafting and filing again would spend real money to re-test
+  // what section 4 already covered.
+  console.log("\n▸ Verdict agreement on the remaining fixtures");
+  for (const other of FIXTURES.filter((f) => !f.name.startsWith("transit"))) {
+    const payload = await triage(other, ctx);
+    const posted = await postIntake(payload);
+    if (posted.status !== 200) {
+      assert(false, `${other.name.split(" ")[0]}: intake accepted`, JSON.stringify(posted.json).slice(0, 160));
+      continue;
+    }
+    const { data: row } = await supabase
+      .from("rfps")
+      .select("status, score_percent, verdict_why_not")
+      .eq("id", posted.json.id)
+      .single();
+    assert(
+      row?.status === other.expect.status,
+      `${other.name.split(" ")[0]}: ${row?.status} (expected ${other.expect.status}) at ${row?.score_percent}%`,
+      row?.verdict_why_not ?? "",
+    );
+  }
+
   // ── 6. the dashboard's own queries ────────────────────────────────────────
   console.log("\n▸ Dashboard queries");
   const { data: ranked } = await supabase
