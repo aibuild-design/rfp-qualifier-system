@@ -133,9 +133,18 @@ function numberFromEnv(name: string, fallback: number): number {
  *
  * A capability gap still caps. "Five years of behavioral health experience" is
  * not something anybody obtains before Friday.
+ *
+ * The list grew when it met a real solicitation. Leesburg RFP 100120-FY27-09
+ * asks the offeror to be "authorized to transact business in the Commonwealth
+ * of Virginia" and "a registered vendor in eVA" - a filing and a free portal
+ * account, both doable in an afternoon. `registrat` matched neither, because
+ * the words on the page were "registered" and "authorized", so the desk
+ * reported three fatal failures where there was one. The verdict happened to
+ * be right for the wrong reason; on a bid whose only gaps were registrations
+ * it would have closed a winnable pursuit.
  */
 const OBTAINABLE =
-  /insur|liabilit|coverage|indemnif|\bbond(ed|ing)?\b|references?\b|registrat|licen[cs]e|certificate of|w-?9|sam\.gov|business registry/i;
+  /insur|liabilit|coverage|indemnif|\bbond(ed|ing)?\b|references?\b|regist(er|ered|ering|ration|ry)|licen[cs]e|certificate of|w-?9|sam\.gov|authori[sz]ed to transact business|vendor (registration|account|portal)|enroll?ment/i;
 
 export type Decision = {
   status: VerdictStatus;

@@ -371,6 +371,29 @@ console.log("\nVerdict thresholds");
   check("raising the bar re-labels the same score", decideVerdict(87, [pass], strict).status === "maybe");
   check("thresholds are stated in the reason", decideVerdict(87, [pass], strict).reason.includes("95%"));
 
+  // A requirement you can satisfy before award is not a closed bid. Leesburg
+  // RFP 100120-FY27-09 asks for eVA vendor registration and authorisation to
+  // transact business in Virginia; both are afternoon errands. The word on the
+  // page is "registered", not "registration", which the first version of
+  // OBTAINABLE did not match - so the desk reported three fatal failures where
+  // there was one, and would have closed a bid whose only gaps were paperwork.
+  const registrations = [
+    { requirement_text: "Offeror must be authorized to transact business in the Commonwealth of Virginia.", is_required: true, result: "fail" },
+    { requirement_text: "Offeror must be a registered vendor in eVA, the Commonwealth's eProcurement portal.", is_required: true, result: "fail" },
+  ];
+  const paperworkOnly = decideVerdict(78, [pass, ...registrations]);
+  check("registrations alone do not close a bid", paperworkOnly.status === "maybe", paperworkOnly.status);
+  check("and the reason says they are curable before award", /before award/i.test(paperworkOnly.reason));
+
+  const realGap = {
+    requirement_text: "Must have significant experience in the management and delivery of local government services with direct knowledge and background in the Commonwealth of Virginia.",
+    is_required: true,
+    result: "fail",
+  };
+  const withGap = decideVerdict(78, [pass, realGap, ...registrations]);
+  check("a capability gap still closes it", withGap.status === "no_go", withGap.status);
+  check("and counts only the one that is fatal", /Fails 1 mandatory requirement/.test(withGap.reason), withGap.reason.slice(0, 60));
+
   // Determinism, stated as an assertion rather than assumed.
   const runs = new Set(Array.from({ length: 50 }, () => decideVerdict(83, [pass, preferredFail], T).status));
   check("50 identical inputs give exactly one answer", runs.size === 1, [...runs].join(","));
