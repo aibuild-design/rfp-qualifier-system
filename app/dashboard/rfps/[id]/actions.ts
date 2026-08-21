@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser, safeError, type ActionResult } from "@/lib/auth";
-import { openRouterChat } from "@/lib/openrouter";
+import { openRouterChat, openRouterKeys } from "@/lib/openrouter";
 import type { QuestionLane, RfpRow } from "@/lib/supabase/types";
 import { attachStandingDocuments, fileProposal, folderIdFrom, moveToLane } from "@/lib/drive";
 import { caravannTemplate } from "@/lib/template-store";
@@ -538,8 +538,16 @@ export async function tailorSection(rfpId: string, sectionId: string): Promise<A
   const { supabase, denied } = await requireUser();
   if (denied) return denied;
 
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return { error: "OPENROUTER_API_KEY is not set, so nothing can be tailored." };
+  // Any configured account will do, not one specific variable.
+  //
+  // This read OPENROUTER_API_KEY directly. The moment the official slot was
+  // emptied and the working key moved to the backup slot, this returned early
+  // and the composer never ran: a full pipeline test produced fourteen
+  // sections, 2,880 words, and not one of them written for the bid - with no
+  // error anywhere, because nothing had failed. It had simply not been asked.
+  if (openRouterKeys().length === 0) {
+    return { error: "No OpenRouter account is configured, so nothing can be tailored." };
+  }
 
   // The analysis the desk already paid to produce. Reading it here is the
   // difference between a section adapted to this solicitation and one with the
@@ -666,8 +674,14 @@ async function composeAdaptiveSections(
   sections: { section_type: string; heading: string }[],
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return out;
+  // Any configured account will do, not one specific variable.
+  //
+  // This read OPENROUTER_API_KEY directly. The moment the official slot was
+  // emptied and the working key moved to the backup slot, this returned early
+  // and the composer never ran: a full pipeline test produced fourteen
+  // sections, 2,880 words, and not one of them written for the bid - with no
+  // error anywhere, because nothing had failed. It had simply not been asked.
+  if (openRouterKeys().length === 0) return out;
 
   const wanted = sections.filter((s) => s.section_type in ADAPTIVE_SECTIONS);
   if (wanted.length === 0) return out;

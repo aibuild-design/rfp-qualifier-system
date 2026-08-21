@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { openRouterChat } from "@/lib/openrouter";
+import { openRouterChat, openRouterKeys } from "@/lib/openrouter";
 import { createClient } from "@/lib/supabase/server";
 import { extractText } from "@/lib/extract";
 
@@ -27,8 +27,11 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return NextResponse.json({ error: "OPENROUTER_API_KEY is not set." }, { status: 503 });
+  // Any configured account, not one specific variable - see the note in
+  // composeAdaptiveSections. An emptied official slot silently disabled this.
+  if (openRouterKeys().length === 0) {
+    return NextResponse.json({ error: "No OpenRouter account is configured." }, { status: 503 });
+  }
 
   const form = await req.formData();
   const file = form.get("file");
