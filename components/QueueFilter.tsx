@@ -28,7 +28,7 @@ export function QueueFilter({
   sortByDeadline,
   folder,
 }: {
-  counts: { all: number; go: number; maybe: number; no_go: number; pending: number };
+  counts: { all: number; go: number; maybe: number; no_go: number; pending: number; drafting: number };
   active: string | null;
   sortByDeadline: boolean;
   /** Carried through so picking a verdict does not silently drop the section. */
@@ -49,6 +49,9 @@ export function QueueFilter({
     { key: "maybe", label: "Maybe", n: counts.maybe, tone: "var(--rfp-warning)" },
     { key: "no-go", label: "No-go", n: counts.no_go, tone: "var(--rfp-critical)" },
     { key: "pending", label: "Being read", n: counts.pending },
+    // Accepted, with a proposal being written. It has left the queue and lives
+    // on the Proposals page; this is the way back to it.
+    { key: "drafting", label: "Drafting", n: counts.drafting },
   ];
 
   return (

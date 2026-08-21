@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { createFolder, renameFolder, deleteFolder } from "@/app/dashboard/folders/actions";
 import type { FolderRow } from "@/lib/supabase/types";
 import { buttonClass, buttonSecondaryClass, fieldClass } from "@/components/ui/form";
-import { PlusIcon } from "./icons";
 
 /**
  * Folders, as a row of chips above the queue.
@@ -149,13 +148,7 @@ export function FolderBar({
           </button>
         )}
 
-        <button
-          onClick={() => setCreating(true)}
-          className="press inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-rfp-border-strong px-3 text-sm font-medium text-rfp-ink-muted hover:bg-rfp-surface-sunken hover:text-rfp-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
-        >
-          <PlusIcon className="h-3.5 w-3.5" />
-          New section
-        </button>
+        
       </div>
 
       {/* Behind a menu, not on the page.

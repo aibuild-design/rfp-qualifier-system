@@ -43,14 +43,23 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   const baseQuery = folder
     ? supabase.from("rfps").select("*").eq("folder_id", folder)
     : supabase.from("rfps").select("*");
+  // A bid Khaled has accepted is no longer a queue item. It has a proposal
+  // being written and it lives on the Proposals page; leaving it here too meant
+  // the same work appeared in two places and the queue never got shorter, which
+  // is the one thing a queue has to do.
+  //
+  // Moved rather than hidden. "Drafting" is a chip beside the verdicts, so it
+  // is one click away and the count is always visible.
   const listQuery =
     view === "no-go"
       ? baseQuery.eq("status", "no_go")
       : view === "go"
-        ? baseQuery.eq("status", "go")
+        ? baseQuery.eq("status", "go").or("human_verdict.is.null,human_verdict.eq.no_go")
         : view === "pending"
           ? baseQuery.eq("status", "pending")
-          : baseQuery.neq("status", "no_go");
+          : view === "drafting"
+            ? baseQuery.not("human_verdict", "is", null).neq("human_verdict", "no_go")
+            : baseQuery.neq("status", "no_go").or("human_verdict.is.null,human_verdict.eq.no_go");
 
   // One wave, six queries. This page used to issue twelve across two waves: an
   // indexed lookup for the deadline windows on its own, and then eleven
@@ -78,7 +87,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     sortByDeadline
       ? listQuery.order("due_at", { ascending: true, nullsFirst: false })
       : listQuery.order("score_percent", { ascending: false, nullsFirst: false }),
-    supabase.from("rfps").select("status, folder_id, is_demo"),
+    // human_verdict rides along so an accepted bid can be counted out of the
+    // queue without a second round trip.
+    supabase.from("rfps").select("status, folder_id, is_demo, human_verdict"),
     supabase.from("sector_experience").select("*", { count: "exact", head: true }),
     supabase.from("org_profile").select("profile_confirmed").eq("id", true).maybeSingle(),
     supabase.from("rfp_folders").select("*").order("sort_order").order("name"),
@@ -110,14 +121,18 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   const inSection = (r: { folder_id: string | null }) => !folder || r.folder_id === folder;
   // Mirrors listQuery above: no view means everything except no-go, which is
   // why "All verdicts" is not simply the row count.
-  const inView = (r: { status: string }) =>
+  const accepted = (r: { human_verdict: string | null }) =>
+    Boolean(r.human_verdict) && r.human_verdict !== "no_go";
+  const inView = (r: { status: string; human_verdict: string | null }) =>
     view === "no-go"
       ? r.status === "no_go"
       : view === "go"
-        ? r.status === "go"
+        ? r.status === "go" && !accepted(r)
         : view === "pending"
           ? r.status === "pending"
-          : r.status !== "no_go";
+          : view === "drafting"
+            ? accepted(r)
+            : r.status !== "no_go" && !accepted(r);
 
   // Section chips, counted inside the verdict that is currently selected.
   const forSections = all.filter(inView);
@@ -127,14 +142,21 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   }
   // "All" resets both filters, so it counts the default view across every
   // section rather than whatever is currently narrowed.
-  const resetCount = all.reduce((n, r) => (r.status === "no_go" ? n : n + 1), 0);
+  const resetCount = all.reduce((n, r) => (r.status === "no_go" || accepted(r) ? n : n + 1), 0);
 
   // Verdict chips, counted inside the section that is currently selected.
   const forVerdicts = all.filter(inSection);
   const byStatus = (status: string) =>
     forVerdicts.reduce((n, r) => (r.status === status ? n + 1 : n), 0);
-  const totalCount = forVerdicts.reduce((n, r) => (r.status === "no_go" ? n : n + 1), 0);
-  const goCount = byStatus("go");
+  const totalCount = forVerdicts.reduce(
+    (n, r) => (r.status === "no_go" || accepted(r) ? n : n + 1),
+    0,
+  );
+  const draftingCount = forVerdicts.reduce((n, r) => (accepted(r) ? n + 1 : n), 0);
+  const goCount = forVerdicts.reduce(
+    (n, r) => (r.status === "go" && !accepted(r) ? n + 1 : n),
+    0,
+  );
   const maybeCount = byStatus("maybe");
   const noGoCount = byStatus("no_go");
   const pendingCount = byStatus("pending");
@@ -162,13 +184,6 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             screen - so repeating it here only ever duplicated whichever was
             already visible. */}
         <div className="flex w-full flex-wrap items-center gap-2 text-xs font-medium sm:w-auto">
-          <a
-            href={`/api/rfps/export${demoCount ? "?include_demo=1" : ""}`}
-            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-rfp-border px-3 text-rfp-ink-secondary press hover:bg-rfp-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rfp-gold"
-            title="Opens in Google Sheets or Excel"
-          >
-            Export CSV
-          </a>
           {/* The read-only mirror. It lives here rather than in Settings because
               the person who wants it is looking at the queue and wants to send
               someone a view of it, which is exactly this row. */}
@@ -209,6 +224,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
               maybe: maybeCount ?? 0,
               no_go: noGoCount ?? 0,
               pending: pendingCount ?? 0,
+              drafting: draftingCount,
             }}
             active={view ?? null}
             sortByDeadline={sortByDeadline}
