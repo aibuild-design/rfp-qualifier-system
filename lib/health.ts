@@ -31,7 +31,7 @@ export async function runHealthChecks(supabase: SupabaseClient<Database>): Promi
   const checks: Check[] = [];
 
   // Money. The one that stops everything and says nothing.
-  const credit = await openRouterCredit(process.env.OPENROUTER_API_KEY);
+  const credit = await openRouterCredit();
   if (!credit) {
     checks.push({
       kind: "openrouter",

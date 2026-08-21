@@ -173,7 +173,7 @@ export default async function SettingsPage() {
         triageConfigured={Boolean(process.env.N8N_BASE_URL && process.env.RFP_INTAKE_API_KEY)}
         profileConfirmed={Boolean(orgProfile?.profile_confirmed)}
         n8nUrl={process.env.N8N_BASE_URL ?? null}
-        credit={await openRouterCredit(process.env.OPENROUTER_API_KEY)}
+        credit={await openRouterCredit()}
       />
     </div>
   );

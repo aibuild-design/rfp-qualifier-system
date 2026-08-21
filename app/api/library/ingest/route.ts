@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { openRouterChat } from "@/lib/openrouter";
 import { createClient } from "@/lib/supabase/server";
 import { extractText } from "@/lib/extract";
 
@@ -84,10 +85,7 @@ export async function POST(req: NextRequest) {
 
   let payload: unknown;
   try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const call = await openRouterChat({
         model: "anthropic/claude-sonnet-5",
         temperature: 0,
         // Transcription is output-heavy: every block returned is the firm's own
@@ -142,13 +140,20 @@ export async function POST(req: NextRequest) {
           { role: "system", content: system },
           { role: "user", content: capped },
         ],
-      }),
-      signal: AbortSignal.timeout(180000),
-    });
-    if (!res.ok) {
-      return NextResponse.json({ error: `The model refused the request (${res.status}).` }, { status: 502 });
+      },
+      { signal: AbortSignal.timeout(180000) },
+    );
+    if (!call.ok) {
+      return NextResponse.json(
+        {
+          error: call.outOfCredit
+            ? "Every OpenRouter account is out of credit, so the proposal cannot be read. Top one up at openrouter.ai/settings/credits."
+            : `The model refused the request (${call.status}).`,
+        },
+        { status: 502 },
+      );
     }
-    const json = await res.json();
+    const json = await call.response.json();
     const finish = json?.choices?.[0]?.finish_reason;
     const content = String(json?.choices?.[0]?.message?.content ?? "");
 

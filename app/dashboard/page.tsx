@@ -89,7 +89,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       .maybeSingle(),
     // Cached for five minutes inside the helper, so this costs one call per
     // five minutes rather than one per page load.
-    openRouterCredit(process.env.OPENROUTER_API_KEY),
+    openRouterCredit(),
   ]);
 
   const windows = deadlineWindowsFrom(scoring);

@@ -49,6 +49,16 @@ export function CreditBanner({ credit }: { credit: Credit | null }) {
             solicitation{credit.solicitationsLeft === 1 ? "" : "s"} at the current rate.
           </>
         )}{" "}
+        {/* Which account, not just how much. With two configured, "$3.18 left"
+            does not tell you whose money is being spent or which one to top
+            up, and those are the only two things a person does about it. */}
+        {credit.accounts.length > 1 && (
+          <span className="mt-1 block text-rfp-ink-muted">
+            {credit.accounts
+              .map((a) => `${a.label}: ${a.reachable ? `$${a.remaining.toFixed(2)}` : "unreachable"}`)
+              .join(" · ")}
+          </span>
+        )}{" "}
         <a
           href="https://openrouter.ai/settings/credits"
           target="_blank"

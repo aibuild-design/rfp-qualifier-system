@@ -1,3 +1,4 @@
+import { openRouterKeys } from "@/lib/openrouter";
 /**
  * What is left on the OpenRouter account.
  *
@@ -19,6 +20,15 @@ export type Credit = {
   /** Roughly how many more solicitations that buys, at the measured rate. */
   solicitationsLeft: number;
   level: "ok" | "low" | "empty";
+  /**
+   * Per account, in the order they are tried.
+   *
+   * The totals above are the sum, because what the desk can actually do is
+   * decided by every account together: one empty account does not stop
+   * anything while another still has credit. The breakdown is here so the
+   * gauge can say *which* one ran dry, which is the part a person acts on.
+   */
+  accounts: { id: string; label: string; remaining: number; reachable: boolean }[];
 };
 
 /** Measured across real runs: about 18 cents a solicitation, three reads. */
@@ -56,12 +66,12 @@ export const GAUGE_CEILING = 10;
  */
 export const WARN_BELOW = 2;
 
-export async function openRouterCredit(apiKey: string | undefined): Promise<Credit | null> {
-  if (!apiKey) return null;
+/** One account's balance, or null when it cannot be reached. */
+async function balanceOf(apiKey: string): Promise<{ total: number; used: number } | null> {
   try {
     const res = await fetch("https://openrouter.ai/api/v1/credits", {
       headers: { Authorization: `Bearer ${apiKey}` },
-      // Billing does not change minute to minute, and Settings should not wait
+      // Billing does not change minute to minute, and a page should not wait
       // on a third party to paint.
       next: { revalidate: 300 },
       signal: AbortSignal.timeout(5000),
@@ -71,21 +81,48 @@ export async function openRouterCredit(apiKey: string | undefined): Promise<Cred
     const total = Number(body?.data?.total_credits ?? 0);
     const used = Number(body?.data?.total_usage ?? 0);
     if (!Number.isFinite(total) || !Number.isFinite(used)) return null;
-
-    const remaining = Math.max(0, total - used);
-    const solicitationsLeft = Math.floor(remaining / COST_PER_SOLICITATION);
-    return {
-      used,
-      total,
-      remaining,
-      solicitationsLeft,
-      // Empty means it cannot pay for one more, not that the number reached
-      // zero: at eleven cents the next solicitation still arrives with no
-      // verdict, and that is the thing worth saying.
-      level:
-        remaining < COST_PER_SOLICITATION ? "empty" : remaining < WARN_BELOW ? "low" : "ok",
-    };
+    return { total, used };
   } catch {
     return null;
   }
+}
+
+/**
+ * What the desk has to spend, across every configured account.
+ *
+ * Takes no key. It used to take the one it should check, which stopped being
+ * meaningful the moment there were two: reporting only the first would show an
+ * empty gauge while the desk was working perfectly well on the second.
+ */
+export async function openRouterCredit(): Promise<Credit | null> {
+  const keys = openRouterKeys();
+  if (keys.length === 0) return null;
+
+  const balances = await Promise.all(keys.map((k) => balanceOf(k.key)));
+  const accounts = keys.map((k, i) => {
+    const b = balances[i];
+    return {
+      id: k.id,
+      label: k.label,
+      remaining: b ? Math.max(0, b.total - b.used) : 0,
+      reachable: b !== null,
+    };
+  });
+  if (accounts.every((a) => !a.reachable)) return null;
+
+  const total = balances.reduce((n, b) => n + (b?.total ?? 0), 0);
+  const used = balances.reduce((n, b) => n + (b?.used ?? 0), 0);
+  const remaining = accounts.reduce((n, a) => n + a.remaining, 0);
+
+  return {
+    used,
+    total,
+    remaining,
+    solicitationsLeft: Math.floor(remaining / COST_PER_SOLICITATION),
+    // Empty means it cannot pay for one more, not that the number reached
+    // zero: at eleven cents the next solicitation still arrives with no
+    // verdict, and that is the thing worth saying.
+    level: remaining < COST_PER_SOLICITATION ? "empty" : remaining < WARN_BELOW ? "low" : "ok",
+    accounts,
+  };
 }

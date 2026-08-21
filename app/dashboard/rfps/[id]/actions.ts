@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser, safeError, type ActionResult } from "@/lib/auth";
+import { openRouterChat } from "@/lib/openrouter";
 import type { QuestionLane, RfpRow } from "@/lib/supabase/types";
 import { attachStandingDocuments, fileProposal, folderIdFrom, moveToLane } from "@/lib/drive";
 import { caravannTemplate } from "@/lib/template-store";
@@ -561,10 +562,7 @@ export async function tailorSection(rfpId: string, sectionId: string): Promise<A
 
   let reply: string;
   try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const attempt = await openRouterChat({
         model: "anthropic/claude-sonnet-5",
         temperature: 0,
         messages: [
@@ -585,19 +583,19 @@ export async function tailorSection(rfpId: string, sectionId: string): Promise<A
           },
           { role: "user", content: `SECTION: ${section.heading}\n\n${section.body}` },
         ],
-      }),
-      signal: AbortSignal.timeout(60000),
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      if (res.status === 402 || /insufficient credits/i.test(detail)) {
+      },
+      { signal: AbortSignal.timeout(60000) },
+    );
+    if (!attempt.ok) {
+      if (attempt.outOfCredit) {
         return {
           error:
-            "OpenRouter is out of credit, so nothing can be drafted or triaged until the account is topped up at openrouter.ai/settings/credits.",
+            "Every OpenRouter account is out of credit, so nothing can be drafted or triaged until one is topped up at openrouter.ai/settings/credits.",
         };
       }
-      return { error: `OpenRouter refused the request (${res.status}).` };
+      return { error: `OpenRouter refused the request (${attempt.status}).` };
     }
+    const res = attempt.response;
     const json = await res.json();
     reply = String(json?.choices?.[0]?.message?.content ?? "").trim();
   } catch {
@@ -830,10 +828,7 @@ async function composeAdaptiveSections(
         let text = "";
         let lastReason = "";
         for (let attempt = 0; attempt < 2; attempt++) {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const call = await openRouterChat({
             model: "anthropic/claude-sonnet-5",
             temperature: 0,
             // Enough room for the longest section. Without it the technical
@@ -851,14 +846,16 @@ async function composeAdaptiveSections(
                   : `Draft the ${s.section_type} section.`,
               },
             ],
-          }),
-          // Three minutes, not ninety seconds. Asking for a 3,000 word section
-          // and then timing out at ninety seconds silently dropped the longest
-          // and most important section back to the library stitch: the request
-          // that mattered most was the only one guaranteed to fail.
-          signal: AbortSignal.timeout(180000),
-        });
-        if (!res.ok) {
+          },
+          {
+            // Three minutes, not ninety seconds. Asking for a 3,000 word section
+            // and then timing out at ninety seconds silently dropped the longest
+            // and most important section back to the library stitch: the request
+            // that mattered most was the only one guaranteed to fail.
+            signal: AbortSignal.timeout(180000),
+          },
+        );
+        if (!call.ok) {
           // Say which failure this was, because they are not the same problem.
           //
           // Every non-OK response used to return here, so the section fell back
@@ -867,17 +864,16 @@ async function composeAdaptiveSections(
           // the case that matters: it fails every section of every proposal
           // until somebody tops the account up, and it looked identical to the
           // model simply having an opinion about one section.
-          const detail = await res.text().catch(() => "");
-          if (res.status === 402 || /insufficient credits/i.test(detail)) {
+          if (call.outOfCredit) {
             console.error(
-              `[compose ${rfpId}] OpenRouter is out of credit - ${s.section_type} and every other written section will fall back to the library until the account is topped up. https://openrouter.ai/settings/credits`,
+              `[compose ${rfpId}] every OpenRouter account is out of credit - ${s.section_type} and every other written section will fall back to the library until one is topped up. https://openrouter.ai/settings/credits`,
             );
           } else {
-            console.error(`[compose ${rfpId}] ${s.section_type} failed: OpenRouter ${res.status} ${detail.slice(0, 200)}`);
+            console.error(`[compose ${rfpId}] ${s.section_type} failed: OpenRouter ${call.status} ${call.detail.slice(0, 200)}`);
           }
           return;
         }
-        const json = await res.json();
+        const json = await call.response.json();
         const raw = String(json?.choices?.[0]?.message?.content ?? "").trim();
         text = cleanComposed(raw, s.heading);
         const grounded = source.map((b) => b.body).join(" ");
