@@ -21,7 +21,8 @@
     "verify": "node --experimental-strip-types scripts/verify-all.mjs",
     "seed:sourced": "node scripts/seed-sourced.mjs",
     "reset:queue": "node scripts/reset-queue.mjs",
-    "test:fidelity": "node --experimental-strip-types scripts/test-fidelity.mjs"
+    "test:fidelity": "node --experimental-strip-types scripts/test-fidelity.mjs",
+    "seed:portals": "node scripts/seed-portal-rules.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

@@ -122,7 +122,17 @@ function esc(value: string): string {
  * oversight.
  */
 function substitutions(v: TemplateValues): [string, string][] {
-  const keep = (value: string | undefined, placeholder: string) => value?.trim() || placeholder;
+  // An unknown agency field becomes a braced note saying why it is empty.
+  //
+  // It used to fall back to the template's own "[Insert Agency Address]",
+  // which is visibly unfilled and says nothing else. Everything else the desk
+  // cannot supply is written as {to be supplied by Caravann} and coloured red
+  // off the brace, so one field in square brackets was the odd one out and did
+  // not get the colour. More usefully, the reason matters: the desk read the
+  // solicitation and the address genuinely was not in it, which is a different
+  // instruction to whoever finishes the document than "nobody filled this in".
+  const keep = (value: string | undefined, field: string) =>
+    value?.trim() || `{${field} is not stated in the solicitation: confirm with the agency before filing}`;
   return [
     ["[Insert Company Name]", COMPANY],
     // The cover's conditional remit-to line, which asks for an address only if
@@ -165,13 +175,13 @@ function substitutions(v: TemplateValues): [string, string][] {
     ["[Insert Offeror UEI#]", esc(v.firm?.uei || "HSV8KJY684V5")],
     ["[Insert Offeror DUNS#]", esc(v.firm?.duns || "N/A - replaced by UEI (April 2022)")],
     ["[Insert Offeror TAX EIN#]", esc(v.firm?.taxEin || "92-1867651")],
-    ["[Insert Agency Name]", esc(keep(v.agencyName, "[Insert Agency Name]"))],
-    ["[Insert Agency Address]", esc(keep(v.agencyAddress, "[Insert Agency Address]"))],
-    ["[Insert Agency POC Telephone]", esc(keep(v.agencyPocPhone, "[Insert Agency POC Telephone]"))],
-    ["[Insert Agency POC Email]", esc(keep(v.agencyPocEmail, "[Insert Agency POC Email]"))],
+    ["[Insert Agency Name]", esc(keep(v.agencyName, "the agency name"))],
+    ["[Insert Agency Address]", esc(keep(v.agencyAddress, "the agency address"))],
+    ["[Insert Agency POC Telephone]", esc(keep(v.agencyPocPhone, "the agency contact telephone"))],
+    ["[Insert Agency POC Email]", esc(keep(v.agencyPocEmail, "the agency contact email"))],
     // Last, because "[Insert Agency POC]" is a prefix of the two above and
     // would otherwise consume them.
-    ["[Insert Agency POC]", esc(keep(v.agencyPocName, "[Insert Agency POC]"))],
+    ["[Insert Agency POC]", esc(keep(v.agencyPocName, "the agency point of contact"))],
   ];
 }
 
@@ -281,6 +291,27 @@ export async function fillTemplate(template: Buffer | Uint8Array, values: Templa
   // Roman beside it.
   const stylesPart = zip.file("word/styles.xml");
   if (stylesPart) zip.file("word/styles.xml", setDefaultFont(await stylesPart.async("string")));
+
+  // Setting the document default is not sufficient on its own. A default only
+  // governs runs that name no font, and the template names one in 25 places:
+  // every numbered list marker carries an explicit Calibri, so a document whose
+  // body is Times New Roman renders "1." "2." "3." in a sans face beside it.
+  //
+  // Applied across every part that holds text, and only to text faces. Symbol
+  // and Wingdings are how Word draws bullet glyphs; rewriting those turns a
+  // bullet into a letter.
+  //
+  // The same pass carries the no-dashes rule into the template's own words.
+  // Every string the model writes is stripped at intake, and the template was
+  // never covered by that, so "Appendix A – Completed RFP" shipped with an en
+  // dash in the heading and again in the contents page. Caravann's rule is that
+  // the documents contain none, and the template is part of the document.
+  for (const name of Object.keys(zip.files)) {
+    if (!/^word\/(document|numbering|header\d*|footer\d*|footnotes|endnotes)\.xml$/.test(name)) continue;
+    const part = zip.file(name);
+    if (!part) continue;
+    zip.file(name, houseStyle(await part.async("string")));
+  }
 
   // Blank pages. The template carries 54 paragraphs with pageBreakBefore, and
   // several of them hold no text at all - an empty paragraph forced onto a new
@@ -899,6 +930,26 @@ function fillAmendments(xml: string, rows: { label: string; date: string }[]): {
  * already commits to everywhere it commits to anything: Heading1, and every
  * run in the past-performance blocks it shipped with.
  */
+/** Fonts that carry glyphs rather than letters. Rewriting these breaks bullets. */
+const GLYPH_FONTS = /^(Symbol|Wingdings|Webdings|Courier New)/i;
+
+/**
+ * One typeface, and no en or em dashes, across a document part.
+ */
+function houseStyle(xml: string): string {
+  const out = xml.replace(/<w:rFonts\b[^>]*\/>/g, (tag) => {
+    const named = tag.match(/w:ascii="([^"]*)"/)?.[1] ?? "";
+    if (GLYPH_FONTS.test(named)) return tag;
+    return tag.replace(/w:(ascii|hAnsi|cs|eastAsia)="[^"]*"/g, (attr, which) =>
+      `w:${which}="Times New Roman"`,
+    );
+  });
+  // Only inside text, so an attribute value or a field instruction is untouched.
+  return out.replace(/(<w:t[^>]*>)([^<]*)(<\/w:t>)/g, (_m, open, text, close) =>
+    `${open}${text.replace(/[\u2013\u2014]/g, "-")}${close}`,
+  );
+}
+
 function setDefaultFont(styles: string): string {
   // The block first, then the test inside it. Testing the whole file for
   // `<w:docDefaults>[\s\S]*?<w:rFonts` looks scoped and is not: the lazy

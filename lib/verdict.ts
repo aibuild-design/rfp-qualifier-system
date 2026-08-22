@@ -240,8 +240,16 @@ export function decideVerdict(
   // a statement of needs was being treated as a gate, and most of them are
   // scored: Leesburg asks for Virginia experience under a heading that says
   // must, then weights Firm Experience at 30% and rejects nobody for it.
+  //
+  // The pattern is subject matter, not force. An agency that awards extra
+  // points for MBE certification has written the letters MBE into a preferred
+  // item, and matching on the letters alone capped those bids at maybe over a
+  // certification that was never going to be required. A requirement the
+  // document itself calls preferred cannot gate anything, whatever it is about;
+  // only an explicit `false` opts out, so an unstated one still gets the net.
   const disqualifying = (c: GateCheck) =>
-    c.is_hard_knockout === true || NON_RESPONSIVE.test(c.requirement_text ?? "");
+    c.is_hard_knockout === true ||
+    (c.is_required !== false && NON_RESPONSIVE.test(c.requirement_text ?? ""));
 
   // Only a requirement Caravann demonstrably cannot meet closes the bid.
   //
@@ -286,32 +294,6 @@ export function decideVerdict(
     return { status: "pending", reason: "No score yet - triage has not returned." };
   }
 
-  // A requirement the profile is silent on is not a requirement Caravann
-  // fails. It used to be treated as one, because "fail" was the only answer
-  // available for "the profile does not say" - and that closed winnable bids
-  // on gaps in our own data. Now it caps the verdict at maybe and names the
-  // question, which is both the honest answer and the useful one: every
-  // unclear here is a specific line Khaled can add to the profile once and
-  // never be asked about again.
-  const unclear = checks
-    .filter((c) => c.result === "unclear" && c.is_required === true)
-    // Obtainable requirements are tracked on the compliance checklist instead,
-    // which is where the scope put them and where they can actually be ticked.
-    .filter((c) => NON_RESPONSIVE.test(c.requirement_text ?? ""));
-  if (unclear.length > 0) {
-    const list = unclear
-      .map((c) => c.requirement_text?.trim())
-      .filter(Boolean)
-      .map((text) => truncate(text as string, 90));
-    return {
-      status: "maybe",
-      reason:
-        `Scores ${Math.round(scorePercent)}% and fails nothing outright, but the eligibility profile does not say ` +
-        `whether Caravann meets ${unclear.length} mandatory requirement${unclear.length > 1 ? "s" : ""}: ` +
-        `${list.join("; ")}. Confirm ${unclear.length > 1 ? "these" : "this"} and the verdict settles.`,
-    };
-  }
-
   const score = Math.round(scorePercent);
   // Everything still unmet at this point is scored rather than fatal, so it is
   // named as context and nothing more. The two kinds are counted separately
@@ -321,6 +303,20 @@ export function decideVerdict(
   const unmet = checks.filter((c) => c.result === "fail");
   const preferredMisses = unmet.filter((c) => c.is_required === false).length;
   const statedMisses = unmet.length - preferredMisses;
+
+  // Anything disqualifying and unconfirmed has already returned above, so what
+  // is left here is obtainable: a certificate to request, a state registration,
+  // a portal signup. None of it should move the verdict, and the compliance
+  // checklist is where it gets tracked.
+  //
+  // It does have to be said out loud, though. The line underneath used to read
+  // "Clears every mandatory requirement" whenever the gate had not blocked, and
+  // that sentence was false on any bid carrying an unconfirmed one: SPRCS-2017
+  // shipped a go reading "Clears every mandatory requirement and scores 78%"
+  // while its general liability check sat unanswered. Nothing was cleared. The
+  // desk simply had not checked, and the verdict said the opposite of that.
+  const unconfirmed = checks.filter((c) => c.result === "unclear" && c.is_required === true).length;
+
   const note =
     [
       statedMisses > 0
@@ -329,10 +325,20 @@ export function decideVerdict(
       preferredMisses > 0
         ? `${preferredMisses} preferred item${preferredMisses > 1 ? "s" : ""} not met`
         : "",
+      unconfirmed > 0
+        ? `${unconfirmed} mandatory requirement${unconfirmed > 1 ? "s" : ""} not confirmed either way, none of them disqualifying - they are on the compliance checklist`
+        : "",
     ]
       .filter(Boolean)
       .join(", ");
   const noteText = note ? ` ${note[0].toUpperCase()}${note.slice(1)}.` : "";
+
+  // Says only what was actually established. With something still unconfirmed,
+  // the claim narrows to the checks that were answered.
+  const cleared =
+    unconfirmed > 0
+      ? "Nothing here rules Caravann out"
+      : "Clears every mandatory requirement";
 
   // The gate above has already passed, so nothing here is disqualifying - the
   // only question left is degree of fit, and that is exactly the judgement the
@@ -350,12 +356,12 @@ export function decideVerdict(
   }
 
   if (score >= thresholds.go) {
-    return { status: "go", reason: `Clears every mandatory requirement and scores ${score}%.${noteText}` };
+    return { status: "go", reason: `${cleared} and scores ${score}%.${noteText}` };
   }
   if (score >= thresholds.maybe) {
     return {
       status: "maybe",
-      reason: `Clears every mandatory requirement but scores ${score}%, below the ${thresholds.go}% mark for a clear go.${noteText}`,
+      reason: `${cleared} but scores ${score}%, below the ${thresholds.go}% mark for a clear go.${noteText}`,
     };
   }
   return {

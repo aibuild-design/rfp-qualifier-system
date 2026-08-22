@@ -15,7 +15,7 @@
  * Nothing here touches the demo rows or the eligibility profile.
  */
 
-import { readFile } from "node:fs/promises";
+import { readdir, readFile, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
@@ -45,6 +45,29 @@ const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUP
 
 const results = [];
 let section = "";
+
+// Sweep before the run, not only after it.
+//
+// Cleanup lives in the last section, which means it runs only when every
+// section before it completed. A single thrown error - a renamed variable in
+// one assertion was enough - killed the process on the spot and left ten
+// `verify-` solicitations sitting in the queue as real bids, indistinguishable
+// from Khaled's own. They were still there days later.
+//
+// Sweeping on the way in makes the run idempotent regardless of how the last
+// one ended, and the crash handler below closes the same hole from the other
+// side.
+await admin.from("rfps").delete().like("external_id", "verify-%");
+
+async function sweepAndDie(err) {
+  console.error(`\n\x1b[31mverify crashed during: ${section || "startup"}\x1b[0m`);
+  console.error(err?.stack ?? String(err));
+  const { data: swept } = await admin.from("rfps").delete().like("external_id", "verify-%").select("id");
+  console.error(`swept ${swept?.length ?? 0} test row(s) from the queue before exiting`);
+  process.exit(1);
+}
+process.on("uncaughtException", sweepAndDie);
+process.on("unhandledRejection", sweepAndDie);
 const bold = (s) => `\x1b[1m${s}\x1b[0m`;
 const dim = (s) => `\x1b[2m${s}\x1b[0m`;
 
@@ -189,11 +212,17 @@ heading("6 · Verdict logic");
   const { decideVerdict } = await import(join(ROOT, "lib/verdict.ts"));
   const T = { go: 85, maybe: 60 };
   const pass = [{ is_required: true, result: "pass" }];
-  const fail = [{ is_required: true, result: "fail", requirement_text: "3 years behavioral health" }];
+  // Two kinds of failure, and the gate has to tell them apart. An experience
+  // shortfall costs points at evaluation; a bond Caravann cannot post means the
+  // envelope is never opened. Asserting only the first kind is what let the old
+  // rule - any mandatory miss closes the bid - look correct for months.
+  const shortfall = [{ is_required: true, result: "fail", requirement_text: "3 years behavioral health" }];
+  const nonResponsive = [{ is_required: true, result: "fail", requirement_text: "A 10% bid bond must accompany the proposal" }];
 
   ok("83 is a maybe", decideVerdict(83, pass, T).status === "maybe");
   ok("87 is a go", decideVerdict(87, pass, T).status === "go");
-  ok("a failed mandatory requirement beats a 99% score", decideVerdict(99, fail, T).status === "no_go");
+  ok("an experience shortfall is scored, not fatal", decideVerdict(99, shortfall, T).status !== "no_go");
+  ok("a bond Caravann cannot post beats a 99% score", decideVerdict(99, nonResponsive, T).status === "no_go");
   ok("no score means pending, not no-go", decideVerdict(null, pass, T).status === "pending");
 
   const runs = new Set(Array.from({ length: 100 }, () => decideVerdict(83, pass, T).status));
@@ -207,15 +236,40 @@ heading("6 · Verdict logic");
     { is_required: true, result: "unclear", requirement_text: "Experience facilitating elected or appointed governing bodies" },
   ];
   const held = decideVerdict(92, unclear, T);
-  ok("an unanswered mandatory requirement holds at maybe, not no-go", held.status === "maybe", `got ${held.status}`);
+  // Not capped. Measured against the ten real solicitations in the queue, the
+  // mandatory requirements that come back unclear are overwhelmingly errands -
+  // Leesburg alone has thirteen, every one of them an insurance certificate, a
+  // state registration or an eVA signup. Holding the verdict for those would
+  // park a 72% bid in maybe permanently over paperwork nobody has requested yet.
+  ok("an unanswered mandatory requirement does not close the bid", held.status !== "no_go", `got ${held.status}`);
+  // But it must never be described as cleared. This is the sentence that used
+  // to lie: a go carrying an unconfirmed requirement read "Clears every
+  // mandatory requirement", which is the opposite of what happened.
   ok(
-    "and the verdict names the requirement to confirm",
-    held.reason.includes("elected or appointed governing bodies"),
-    held.reason.slice(0, 80)
+    "and the verdict does not claim it was cleared",
+    !held.reason.includes("Clears every mandatory requirement"),
+    held.reason.slice(0, 90)
   );
   ok(
-    "a genuine miss still outranks an unanswered one",
-    decideVerdict(92, [...unclear, ...fail], T).status === "no_go"
+    "and it says how many are unconfirmed",
+    /1 mandatory requirement not confirmed/.test(held.reason),
+    held.reason.slice(0, 140)
+  );
+  // An unconfirmed requirement that IS disqualifying is the opposite case, and
+  // still holds - nobody should bid a bond they cannot post on the theory that
+  // it might turn out fine.
+  const unresolvedBond = decideVerdict(92, [
+    { is_required: true, result: "unclear", requirement_text: "A 10% bid bond must accompany the proposal" },
+  ], T);
+  ok("an unconfirmed BOND holds at maybe", unresolvedBond.status === "maybe", `got ${unresolvedBond.status}`);
+  ok(
+    "...and names what would settle it",
+    unresolvedBond.reason.includes("bid bond"),
+    unresolvedBond.reason.slice(0, 90)
+  );
+  ok(
+    "a responsiveness failure still outranks an unanswered one",
+    decideVerdict(92, [...unclear, ...nonResponsive], T).status === "no_go"
   );
   ok(
     "an unanswered PREFERRED requirement changes nothing",
@@ -290,11 +344,17 @@ heading("7 · Intake, thresholds and idempotency");
     const below = await send(`${PREFIX}below`, { status: "go", score_percent: goBar - 10, disqualifier_checks: okChecks });
     ok(`a claimed "go" below the bar is stored as maybe`, below.row?.status === "maybe", `stored ${below.row?.status}`);
 
-    const gated = await send(`${PREFIX}gated`, {
+    const scored = await send(`${PREFIX}scored`, {
       status: "go", score_percent: 99,
       disqualifier_checks: [{ is_required: true, result: "fail", requirement_text: "behavioral health" }],
     });
-    ok("a failed mandatory requirement forces no-go", gated.row?.status === "no_go", `stored ${gated.row?.status}`);
+    ok("an experience shortfall does not force no-go", scored.row?.status !== "no_go", `stored ${scored.row?.status}`);
+
+    const gated = await send(`${PREFIX}gated`, {
+      status: "go", score_percent: 99,
+      disqualifier_checks: [{ is_required: true, result: "fail", requirement_text: "A 10% bid bond must accompany the proposal" }],
+    });
+    ok("a responsiveness failure forces no-go", gated.row?.status === "no_go", `stored ${gated.row?.status}`);
 
     // Child rows must survive, including a date the model phrased as prose.
     const rich = await send(`${PREFIX}children`, {
@@ -453,7 +513,6 @@ heading("10 · Downstream modules");
     const { data: rfp } = await admin.from("rfps").select("*").eq("id", demo.id).maybeSingle();
     const { data: blocks } = await admin.from("language_blocks").select("*");
     const { data: members } = await admin.from("team_members").select("*");
-    const { data: checks } = await admin.from("rfp_disqualifier_checks").select("requirement_text,is_required").eq("rfp_id", demo.id);
 
     const sections = assembleDraft(rfp, blocks ?? [], DEFAULT_SECTIONS);
     ok("proposal assembly produces every section", sections.length === DEFAULT_SECTIONS.length, `${sections.length} sections`);
@@ -462,8 +521,44 @@ heading("10 · Downstream modules");
     ok("the file name follows [Engagement]_[Client]_Caravann Consulting",
       proposalFileName(rfp).endsWith("_Caravann Consulting"), proposalFileName(rfp).slice(0, 50));
 
-    const recs = recommendTeam(members ?? [], checks ?? []);
-    ok("team match returns ranked people", recs.length > 0 && recs.every((r) => r.match_reason), `${recs.length} recommended`);
+    // Matched against a solicitation that actually states requirements.
+    //
+    // This used to run on the first demo row it found, and not one of the
+    // fifty-two demo rows has a single gate row - so it fed the matcher an
+    // empty requirement list and then failed it for returning nobody, which is
+    // the correct answer to that question. It was reporting a fixture, not the
+    // module.
+    const { data: withChecks } = await admin
+      .from("rfp_disqualifier_checks")
+      .select("rfp_id, requirement_text, is_required");
+    const byRfp = new Map();
+    for (const c of withChecks ?? []) {
+      if (!byRfp.has(c.rfp_id)) byRfp.set(c.rfp_id, []);
+      byRfp.get(c.rfp_id).push(c);
+    }
+    const richest = [...byRfp.values()].sort((a, b) => b.length - a.length)[0] ?? [];
+    if (richest.length === 0) {
+      skip("team match returns ranked people", "no solicitation in the queue states any requirements");
+    } else {
+      const recs = recommendTeam(members ?? [], richest);
+      ok(
+        "team match returns ranked people",
+        recs.length > 0 && recs.every((r) => r.match_reason),
+        `${recs.length} from ${richest.length} requirements`
+      );
+      // The failure that started this: three people tied on one shallow keyword
+      // hit, and the top three were whoever the database returned first.
+      ok(
+        "and the ranking is not a three-way tie",
+        recs.length < 2 || new Set(recs.map((r) => r.match_score)).size > 1,
+        recs.map((r) => `${r.name} ${r.match_score}`).join(", ")
+      );
+      ok(
+        "no score above 100",
+        recs.every((r) => r.match_score <= 100),
+        recs.map((r) => r.match_score).join(", ")
+      );
+    }
 
     const { count: rules } = await admin.from("portal_rules").select("*", { count: "exact", head: true });
     ok("portal rules are stored for the weekly pass", (rules ?? 0) > 0, `${rules} rules`);
@@ -576,6 +671,15 @@ heading("12 · The dashboard, in a real browser");
         const browser = await chromium.launch();
         try {
           const desktop = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+          // A fresh browser context has never seen the tour, so the tour opens
+          // over the dashboard and its scrim swallows every click underneath -
+          // which is a correct thing for the product to do to a first-time
+          // visitor, and the reason this suite could not reach a bid page.
+          // Marked seen before any script runs. The tour has its own coverage;
+          // it should not be a prerequisite for the twenty checks behind it.
+          await desktop.addInitScript(() => {
+            try { localStorage.setItem("rfp-tour-seen", "1"); } catch {}
+          });
           const page = await desktop.newPage();
           const errors = [];
           page.on("pageerror", (e) => errors.push(e.message));
@@ -617,8 +721,24 @@ heading("12 · The dashboard, in a real browser");
               await page.waitForLoadState("networkidle");
               const h1 = await page.locator("h1").first().innerText();
               ok("an RFP detail page renders", h1.length > 0, h1.slice(0, 48));
-              for (const heading of ["Gap list", "Compliance checklist", "Disqualifier checks", "Proposal draft", "Drive filing"]) {
+              // Drive filing is deliberately not in this list. It reports where
+              // a finished document was put, so it lives on the proposal page,
+              // and asserting it here failed a screen that was correct for a
+              // section that was never meant to be on it.
+              for (const heading of ["Gap list", "Compliance checklist", "Disqualifier checks", "Proposal draft"]) {
                 ok(`  · ${heading} section present`, (await page.locator(`text=${heading}`).count()) > 0);
+              }
+
+              // ...and checked where it does belong.
+              await page.goto(`${APP}/dashboard/proposals`, { waitUntil: "networkidle" });
+              const proposalLinks = page.locator('a[href^="/dashboard/proposals/"]:visible');
+              if ((await proposalLinks.count()) > 0) {
+                await proposalLinks.first().click();
+                await page.waitForURL(/\/dashboard\/proposals\//, { timeout: 30000 });
+                await page.waitForLoadState("networkidle");
+                ok("  · Drive filing section present on the proposal", (await page.locator("text=Drive filing").count()) > 0);
+              } else {
+                skip("Drive filing section", "no proposals built yet");
               }
             } else {
               skip("RFP detail page", "no RFPs in the queue");
@@ -627,6 +747,9 @@ heading("12 · The dashboard, in a real browser");
 
             // Phone: reuse the session rather than re-authenticating.
             const mobile = await browser.newContext({ ...devices["iPhone 13"], storageState: await desktop.storageState() });
+            await mobile.addInitScript(() => {
+              try { localStorage.setItem("rfp-tour-seen", "1"); } catch {}
+            });
             const mp = await mobile.newPage();
             for (const path of ["/dashboard", "/dashboard/overview", "/dashboard/settings"]) {
               await mp.goto(`${APP}${path}`, { waitUntil: "networkidle" });
@@ -822,7 +945,22 @@ heading("14 · Filling Caravann's own template");
       writeFileSync("/tmp/verify-partial.docx", partial.buffer);
       return execSync("unzip -p /tmp/verify-partial.docx word/document.xml").toString();
     })();
-    ok("unknown agency fields stay visible as red placeholders", partialXml.includes("[Insert Agency POC]"), "a blank reads as an oversight nobody caught");
+    // Braced, not the template's own square brackets.
+    //
+    // The point has not changed: an unknown field must stay visibly unfilled,
+    // because a blank reads as an oversight nobody caught. What changed is that
+    // it now says why it is empty and uses the same braces as every other
+    // outstanding item, which is what the red colouring keys off.
+    ok(
+      "unknown agency fields stay visible as red placeholders",
+      /\{the agency point of contact is not stated in the solicitation/.test(partialXml),
+      "a blank reads as an oversight nobody caught",
+    );
+    ok(
+      "...and the template's own square brackets are gone",
+      !partialXml.includes("[Insert Agency POC]"),
+      "one field in a different style is the one that gets missed",
+    );
 
     // The drafted prose has to land under the right heading, replacing the
     // template's writing instruction and leaving the lead sentence above it.
@@ -1007,6 +1145,28 @@ heading("16 · Nothing orphaned, nothing phantom");
 
 heading("17 · Cleanup");
 {
+  // The .docx scratch this suite writes while inspecting the template.
+  //
+  // Five files, none of them removed, all of them roughly half a megabyte, on
+  // every run. One was still sitting in /tmp days later. They exist only to be
+  // unzipped and read a few lines further up, so nothing needs them once the
+  // section that made them has finished.
+  // Matched by name rather than listed. The first version of this named the
+  // five files it knew about and left three behind, because a suite that grows
+  // a new check grows a new scratch file and nobody updates a list in a
+  // different section. Everything this run writes is prefixed `verify-`.
+  let cleared = 0;
+  try {
+    for (const name of await readdir("/tmp")) {
+      if (!/^verify-.*\.docx$/.test(name)) continue;
+      await rm(join("/tmp", name), { force: true });
+      cleared++;
+    }
+  } catch {
+    /* never a reason to fail a run */
+  }
+  ok("temporary documents removed", true, `${cleared} file(s) from /tmp`);
+
   const { data: removed } = await admin.from("rfps").delete().like("external_id", `${PREFIX}%`).select("id");
   ok("test rows removed", true, `${removed?.length ?? 0} deleted`);
   // The claim is that *this script* cleaned up after itself - not that the queue

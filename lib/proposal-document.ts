@@ -1,6 +1,6 @@
-import { fillTemplate } from "@/lib/docx-fill";
-import { rankEngagements } from "@/lib/compose";
-import { caravannTemplate } from "@/lib/template-store";
+import { fillTemplate } from "./docx-fill.ts";
+import { rankEngagements } from "./compose.ts";
+import { caravannTemplate } from "./template-store.ts";
 
 /**
  * One proposal document, assembled the same way wherever it is asked for.

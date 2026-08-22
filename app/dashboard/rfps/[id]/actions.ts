@@ -10,7 +10,8 @@ import { caravannTemplate } from "@/lib/template-store";
 import { assembleProposalDocx } from "@/lib/proposal-document";
 import { proposalFileName } from "@/lib/proposal";
 import { tailorPrompt, vetTailored } from "@/lib/tailor";
-import { ADAPTIVE_SECTIONS, cleanComposed, composePrompt, rankEngagements, vetComposed } from "@/lib/compose";
+import { ADAPTIVE_SECTIONS, cleanComposed, composePrompt, vetComposed } from "@/lib/compose";
+import { buildComposeContext } from "@/lib/compose-context";
 import { assembleDraft, DEFAULT_SECTIONS } from "@/lib/proposal";
 import { recommendTeam } from "@/lib/team-match";
 
@@ -21,13 +22,6 @@ import { recommendTeam } from "@/lib/team-match";
  * that answers the solicitation and one that answers most of it, and there is
  * no way to tell them apart by reading the output.
  */
-function capped(values: string[], limit: number, label: string): string[] {
-  if (values.length > limit) {
-    console.warn(`[compose] ${values.length - limit} of ${values.length} ${label} did not fit the prompt (cap ${limit}).`);
-  }
-  return values.slice(0, limit);
-}
-
 // Server actions rather than API routes: these are user-initiated from the
 // dashboard, so they run under the caller's own session and stay subject to
 // the RLS allowlist. The service-role client is reserved for n8n's machine
@@ -838,153 +832,21 @@ async function composeAdaptiveSections(
   const wanted = sections.filter((s) => s.section_type in ADAPTIVE_SECTIONS);
   if (wanted.length === 0) return out;
 
-  // Caravann's own language, so a composed section can state facts the firm
-  // already publishes rather than describing its practice areas in the
-  // abstract. A real won engagement was sitting unread in the library while
-  // Past Performance talked about "lines of practice".
-  const { data: library } = await supabase.from("language_blocks").select("section_type, title, body, won");
-
-  // Ordered, and `is_required` carried.
+  // Gathered by lib/compose-context, not here.
   //
-  // These three feed the prompt through a `.slice(0, N)` further down, and
-  // none of them had an ORDER BY. Postgres does not promise row order without
-  // one, so on a solicitation with more requirements than the cap the composer
-  // saw an arbitrary subset - and could see a *different* arbitrary subset on
-  // the next build of the same bid. Nothing logged the drop, so the first
-  // symptom would have been two drafts of one proposal disagreeing about what
-  // the RFP asks for.
-  //
-  // `is_required` was being dropped on the way in, which left the composer
-  // unable to tell "shall carry $2,000,000 insurance" from "it is preferred
-  // that the team include a local consultant". It now comes through and sorts
-  // first, so if anything is cut it is a preference rather than a mandate.
-  const [{ data: checks }, { data: rules }, { data: gaps }, { data: assigned }, { data: roster }, { data: profile }, { data: engagements }, { data: amendments }, { data: solicitation }] =
-    await Promise.all([
-      supabase
-        .from("rfp_disqualifier_checks")
-        .select("requirement_text, is_required")
-        .eq("rfp_id", rfpId)
-        .order("is_required", { ascending: false })
-        .order("requirement_text"),
-      supabase
-        .from("rfp_compliance_items")
-        .select("label, detail")
-        .eq("rfp_id", rfpId)
-        .order("label"),
-      supabase.from("rfp_gap_items").select("description").eq("rfp_id", rfpId).order("description"),
-      supabase.from("rfp_team_assignments").select("team_member_id").eq("rfp_id", rfpId).eq("status", "confirmed"),
-      supabase.from("team_members").select("id, name, role, responsibilities, bio, credentials, years_experience"),
-      supabase
-        .from("org_profile")
-        .select("capabilities, bilingual_staff, media_production_capable, pr_capable")
-        .eq("id", true)
-        .maybeSingle(),
-      supabase.from("past_engagements").select("*"),
-      // What the addenda actually changed, not merely that they exist. An
-      // amendment routinely moves a page limit, a deadline or a scope item,
-      // and the draft was being written against the original document.
-      supabase
-        .from("rfp_related_documents")
-        .select("title, sequence, body")
-        .eq("rfp_id", rfpId)
-        .eq("kind", "addendum")
-        .order("sequence"),
-      // The solicitation itself, archived at intake. Extracted requirements say
-      // what was asked; only the document says how it was asked.
-      supabase
-        .from("source_documents")
-        .select("body")
-        .eq("rfp_id", rfpId)
-        .eq("kind", "solicitation")
-        .maybeSingle(),
-    ]);
-
-  const byId = new Map((roster ?? []).map((m) => [m.id, m]));
-  const team = (assigned ?? [])
-    .map((a) => byId.get(a.team_member_id))
-    .filter((m): m is NonNullable<typeof m> => Boolean(m))
-    .map((m) => ({
-      name: m.name,
-      role: m.role,
-      responsibilities: m.responsibilities,
-      bio: m.bio,
-      credentials: m.credentials,
-      years_experience: m.years_experience,
-    }));
-
-  // Capped, and the cap is about leaving room for the answer.
-  //
-  // Ingesting a proposal put twenty-two technical blocks in the library, all of
-  // which were then fed into the prompt: 24,857 characters of input, the
-  // response truncated after its first heading, and the section fell back to a
-  // stitch of those same twenty-two blocks. More source material produced a
-  // worse section.
-  //
-  // The composer needs enough of Caravann's voice to write in it, not the
-  // entire library. Wins first, then longest, because a substantial block shows
-  // more of how the firm writes than a one-line one.
-  const SOURCE_PER_SECTION = 6;
-  const forSection = (type: string) =>
-    (library ?? [])
-      .filter((b) => b.section_type === type)
-      .sort((a, b) => Number(b.won) - Number(a.won) || (b.body?.length ?? 0) - (a.body?.length ?? 0))
-      .slice(0, SOURCE_PER_SECTION)
-      .map((b) => ({ title: b.title, body: b.body, won: Boolean(b.won) }));
-
-  const base = {
-    agency: rfp.client_agency,
-    title: rfp.title,
-    solicitationNumber: rfp.solicitation_number,
-    // Marked, so a mandate reads as one, and counted, so a cap that bites says
-    // so in the build log instead of quietly shortening the RFP.
-    requirements: capped(
-      (checks ?? [])
-        .filter((c) => c.requirement_text)
-        .map((c) => `${c.is_required ? "[required] " : "[preferred] "}${c.requirement_text}`),
-      14,
-      "requirements",
-    ),
-    rules: capped(
-      (rules ?? []).map((r) => [r.label, r.detail].filter(Boolean).join(": ")).filter(Boolean),
-      12,
-      "compliance rules",
-    ),
-    gaps: capped((gaps ?? []).map((g) => g.description).filter(Boolean) as string[], 8, "gaps"),
-    solicitation: solicitation?.body ?? null,
-    amendments: (amendments ?? [])
-      .filter((a) => a.body)
-      .map((a) => `${a.title ?? `Addendum ${a.sequence ?? ""}`.trim()}: ${a.body}`),
-    team,
-    capabilities: [
-      ...(profile?.capabilities?.subject_areas ?? []),
-      ...(profile?.capabilities?.key_capabilities ?? []),
-    ].slice(0, 14),
-    // The negatives, which the composer was never given. Only flags recorded
-    // as false are sent: an unanswered flag is not a denial, and telling the
-    // model Caravann lacks something nobody has said either way about would
-    // be inventing a limitation instead of an ability.
-    cannot: [
-      profile?.bilingual_staff === false ? "bilingual English and Spanish delivery" : null,
-      profile?.media_production_capable === false ? "media production" : null,
-      profile?.pr_capable === false ? "public relations and communications" : null,
-    ].filter((x): x is string => Boolean(x)),
-    dueDate: rfp.due_at?.slice(0, 10) ?? null,
-    budget: rfp.budget_amount,
-    costWeight: rfp.cost_weight_percent ?? null,
-    // Chosen by overlap with this solicitation rather than left to the model,
-    // which would pick the most impressive rather than the most relevant.
-    engagements: rankEngagements(
-      engagements ?? [],
-      [rfp.title, rfp.project_type, rfp.client_agency].filter(Boolean).join(" "),
-    ),
-  };
+  // All of it used to be inline, which meant a test harness wanting to exercise
+  // the composer had to assemble the same context itself. One did, drifted from
+  // this within a day, and then reported the app as broken over agency fields
+  // the app had been passing correctly the whole time. There is one
+  // implementation now and both callers use it.
+  const { base, sourceFor, team } = await buildComposeContext(supabase, rfpId, rfp);
 
   // In parallel. Four sequential model calls is most of a minute of somebody
   // watching a progress bar for no reason.
   await Promise.all(
     wanted.map(async (s) => {
       try {
-        const source = forSection(s.section_type);
+        const source = sourceFor(s.section_type);
         const context = { ...base, source };
 
         // Two attempts, the second told what was wrong with the first.

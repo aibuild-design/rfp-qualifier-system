@@ -334,7 +334,18 @@ export function composePrompt(section: string, c: ComposeContext): string {
 const PAST_CLAIM = [
   /\b\d+\+?\s*(?:years?|decades?)\s+(?:of\s+)?(?:experience|practice|delivering|serving|working)/i,
   /\b(?:completed|delivered|led|managed|served|supported)\s+(?:over\s+|more than\s+)?\d+\s+(?:engagements?|projects?|clients?|contracts?|agencies)/i,
-  /\b(?:certified|accredited|licensed|registered)\s+(?:in|as|by|under)\b/i,
+  // Only when the subject is Caravann.
+  //
+  // This fired on "placed with a carrier licensed in the Commonwealth of
+  // Virginia", which is a true statement about an insurance company written
+  // while disclosing that Caravann's own cover falls short of what the Town
+  // requires. The guard exists to stop the firm claiming a credential it does
+  // not hold, and it rejected the section for being honest about one it does
+  // not hold. The cost is not a warning: a rejected section is discarded and
+  // replaced by a stitch of library blocks, so the technical description, the
+  // longest thing in the document and the section the bid is scored on, was
+  // thrown away over somebody else's insurance licence.
+  /(?:Caravann|the firm|our team|we are|we have been)\b(?:[^.]{0,60}?)\b(?:certified|accredited|licensed|registered)\s+(?:in|as|by|under)\b/i,
   /\bISO\s?\d{4,}|\bCMMI\b|\bPMP\b|\bSHRM\b/i,
   /\bhas\s+(?:previously\s+)?(?:worked|partnered|contracted)\s+with\s+[A-Z]/,
   /\bour\s+(?:award|awards|accolades)\b/i,

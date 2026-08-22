@@ -108,7 +108,48 @@ const RFP_FIELDS = [
   "verdict_why_not",
   "standout",
   "verdict_set_at",
+  // The issuing agency's own contact block.
+  //
+  // These were declared on IntakeBody, documented in the header above, given a
+  // paragraph of their own in the triage prompt telling the model the job is
+  // "not optional", carried through reconciliation, and then dropped here -
+  // because the allowlist is what actually decides, and they were never added
+  // to it. Every one of the four arrived and none was ever stored. The values
+  // sitting on a few older rows were put there by hand.
+  //
+  // What that cost: they print on the proposal cover under "Prepared For", so
+  // every document the desk produced went out with four red placeholders on
+  // page one for somebody to notice and fill in.
+  "agency_address",
+  "agency_poc_name",
+  "agency_poc_phone",
+  "agency_poc_email",
 ] as const;
+
+/** The four contact fields, as they should reach the cover page. */
+const AGENCY_FIELDS = ["agency_address", "agency_poc_name", "agency_poc_phone", "agency_poc_email"] as const;
+
+/**
+ * A sentence explaining that a value is missing is not a value.
+ *
+ * The prompt asks for null when the document does not state something, and a
+ * read of the LA County RFSQ returned the string "Not stated in the
+ * solicitation" in the phone field instead. Stored as written it prints under
+ * "Prepared For" on a document going to a public buyer, which is worse than the
+ * red placeholder it displaced: the placeholder is visibly unfinished, and this
+ * looks like a considered answer.
+ */
+const NOT_STATED =
+  /^\s*(?:n\/?a|none|null|unknown|-+|(?:not|none)\s+(?:stated|listed|provided|specified|given|available|found|indicated|named)\b.*|no\s+(?:phone|email|address|contact|number)\b.*|not\s+in\s+the\b.*)\s*\.?\s*$/i;
+
+function cleanAgencyFields(body: IntakeBody): void {
+  for (const key of AGENCY_FIELDS) {
+    const value = body[key];
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    body[key] = trimmed === "" || NOT_STATED.test(trimmed) ? null : trimmed;
+  }
+}
 
 type RfpInsert = TableInsert<"rfps">;
 
@@ -154,6 +195,8 @@ export async function POST(req: NextRequest) {
       { status: 503 }
     );
   }
+
+  cleanAgencyFields(body);
 
   const { gap_items, disqualifier_checks, questions } = body;
   const supabase = createServiceRoleClient();

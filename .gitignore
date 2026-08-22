@@ -60,3 +60,10 @@ guide/
 # public. His proposal is the firm's competitive work product and the
 # solicitations are his pipeline; neither belongs in a public git history.
 reference/
+
+# Local triage and compose harness working files. These hold whole client
+# solicitations and drafted proposal text, and this repository is public.
+scripts/scratch/
+
+# Architecture write-up. Useful to read, not something the repo needs to carry.
+ARCHITECTURE.md
