@@ -166,6 +166,13 @@ console.log("\n▸ Settings print in the proposal");
       .map((run) => [...run.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((t) => t[1]).join("").trim())
       .filter(Boolean);
     check("nothing is left unfilled", reds.length === 0, reds.slice(0, 3).join(" | "));
+
+    // Anything still outstanding has to look outstanding. Red is the first
+    // thing a printed or forwarded copy loses, and prose like "to be supplied
+    // by Caravann" reads as a statement the firm is making rather than a hole
+    // in the submission. A brace survives black and white.
+    const unbraced = reds.filter((t) => !t.includes("{"));
+    check("every placeholder is braced, not prose", unbraced.length === 0, unbraced.slice(0, 2).join(" | "));
   }
 }
 

@@ -119,9 +119,9 @@ export function referenceBlocks(engagements: ProposalEngagement[], against: stri
 /** The appendices, which the template ships as bare headings over white space. */
 export const APPENDIX_BODIES: Record<string, string> = {
   "Appendix A - Completed RFP":
-    "The completed solicitation forms for this RFP, signed by an authorised representative of Caravann Consulting, are to be attached here prior to submission.",
+    "{to be attached: the completed solicitation forms for this RFP, signed by an authorised representative of Caravann Consulting}",
   "Appendix B - FAR/DFAR Report":
-    "Caravann Consulting's representations and certifications report is to be attached here prior to submission.",
+    "{to be attached: Caravann Consulting's representations and certifications report from SAM.gov}",
   "Appendix C - Reserved":
     "This appendix is reserved and carries no content for this solicitation.",
 };

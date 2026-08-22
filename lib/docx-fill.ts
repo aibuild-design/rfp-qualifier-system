@@ -743,7 +743,15 @@ function injectPastPerformance(
 
   // Label to value, resolved per entry. Order follows the template.
   const fieldFor = (e: PastPerformanceEntry, label: string): { value: string; supplied: boolean } | null => {
-    const pending = "To be supplied by Caravann.";
+    // Braced, because it has to read as a slot and not as a sentence.
+    //
+    // "To be supplied by Caravann." is grammatical prose sitting where a
+    // contract number should be. Skimmed, it looks like a statement the firm is
+    // making rather than a hole in the submission, and the red that marks it is
+    // exactly what a printed or forwarded copy loses first. Braces survive
+    // black and white, a screenshot and a PDF, and nobody mistakes them for
+    // something the author meant to say.
+    const pending = "{to be supplied by Caravann}";
     const known = (v: string | null | undefined) =>
       v && v.trim() ? { value: v.trim(), supplied: true } : { value: pending, supplied: false };
     if (/^Contract#/i.test(label)) return known(e.contractNumber);
@@ -820,7 +828,12 @@ function injectAppendices(xml: string, bodies: Record<string, string>): { xml: s
     filled++;
     // Red, because every one of these is a document somebody still has to
     // attach. Black would say it was already done.
-    const needsAttention = /to be attached|prior to submission/i.test(body);
+    //
+    // The brace is the marker rather than any particular wording. Matching on
+    // "to be attached" meant a rephrase silently turned a placeholder black,
+    // and a placeholder that does not look like one is worse than no marker at
+    // all.
+    const needsAttention = body.includes("{");
     const colour = needsAttention ? '<w:color w:val="ff0000"/>' : "";
     const para =
       '<w:p><w:pPr><w:spacing w:after="120"/><w:rPr>' + colour + '<w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:pPr>' +
