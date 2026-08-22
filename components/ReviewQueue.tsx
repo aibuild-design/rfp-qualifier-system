@@ -3,6 +3,7 @@
 import { useOptimistic, useState, useTransition } from "react";
 import { addPortalRule, removePortalRule, resolveEdgeCase } from "@/app/dashboard/review/actions";
 import { Paged } from "@/components/ReviewSteps";
+import { splitEdgeCase } from "@/lib/edge-case-text";
 import type { EdgeCaseRow, PortalRuleRow } from "@/lib/supabase/types";
 
 export function EdgeCaseList({ items }: { items: EdgeCaseRow[] }) {
@@ -36,18 +37,32 @@ export function EdgeCaseList({ items }: { items: EdgeCaseRow[] }) {
       noun="cases"
       render={(page) => (
     <ul className="divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
-      {page.map((c) => (
+      {page.map((c) => {
+        const { lead, items } = splitEdgeCase(c.description);
+        return (
         <li key={c.id} className="px-5 py-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">
             What happened
           </p>
-          <p className="mt-1 text-sm text-rfp-ink">{c.description}</p>
+          <p className="mt-1 text-sm leading-relaxed text-rfp-ink">{lead}</p>
+          {items.length > 0 && (
+            <ol className="mt-2 space-y-1.5">
+              {items.map((item, i) => (
+                <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-rfp-ink-secondary">
+                  <span aria-hidden className="tabular mt-px shrink-0 text-xs text-rfp-ink-muted">
+                    {i + 1}
+                  </span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ol>
+          )}
           {c.proposed_rule_change && (
-            <div className="mt-3 rounded-lg bg-rfp-surface-sunken px-3 py-2.5">
+            <div className="mt-3 rounded-lg bg-rfp-surface-sunken px-3.5 py-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">
                 What the desk suggests
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-rfp-ink-secondary">
+              <p className="mt-1.5 text-sm leading-relaxed text-rfp-ink-secondary">
                 {c.proposed_rule_change}
               </p>
             </div>
@@ -67,7 +82,8 @@ export function EdgeCaseList({ items }: { items: EdgeCaseRow[] }) {
             </button>
           </div>
         </li>
-      ))}
+        );
+      })}
     </ul>
       )}
     />

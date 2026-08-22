@@ -15,6 +15,7 @@ import { checkDocumentUrl, isBlockedHost } from "../lib/url-guard.ts";
 import { consensusGap, decideVerdict, spreadOf } from "../lib/verdict.ts";
 import { DEFAULT_SUBJECT_TERMS, emailQualifies, namedAsSolicitation, sentByTheDesk } from "../lib/intake-filter.ts";
 import { classifyDocument } from "../lib/document-kind.ts";
+import { splitEdgeCase } from "../lib/edge-case-text.ts";
 import { DEFAULT_WEIGHTS, RUBRIC, RUBRIC_MAX, rubricSchema, scoreFromRubric } from "../lib/rubric.ts";
 
 let passed = 0;
@@ -235,6 +236,31 @@ The solicitation is attached as RFP 2026-14.pdf. Vendors should download it.`);
   // before this existed.
   const odd = kind("Some document with no markers of any kind that runs on for a while.");
   check("anything unrecognised falls through to solicitation", odd.kind === "solicitation", odd.kind);
+}
+
+console.log("\nEdge case text");
+{
+  // Most cases are one sentence and must come through untouched.
+  const plain = splitEdgeCase("Scored 70%, within two points of the 70% line - the same document could land either side of it on another run.");
+  check("a one-sentence case is left alone", plain.items.length === 0 && plain.lead.startsWith("Scored 70%"));
+
+  // The one that needed this. Fifteen obligations in a single paragraph is
+  // something people skip, on the page whose whole job is deciding.
+  const listed = splitEdgeCase(
+    "2 mandatory requirements could not be confirmed from the document: Proposers shall have a minimum of seven (7) years of experience; At least one member shall hold a California license as an LCSW, LMFT, or Licensed Psychologist",
+  );
+  check("a requirement list is split out", listed.items.length === 2, `${listed.items.length} items`);
+  check("...and the lead keeps its sentence", listed.lead === "2 mandatory requirements could not be confirmed from the document:", listed.lead);
+  check("...and each item is trimmed", listed.items[0] === "Proposers shall have a minimum of seven (7) years of experience", listed.items[0]);
+  check("...including the last, which carried the full stop", listed.items[1].endsWith("Licensed Psychologist"), listed.items[1]);
+
+  // A colon inside requirement text must not be mistaken for the list marker.
+  const colon = splitEdgeCase("Scored 68%, close to the line: read it yourself before deciding.");
+  check("a colon in ordinary prose does not split", colon.items.length === 0, `${colon.items.length} items`);
+
+  check("empty input does not throw", splitEdgeCase(null).lead === "");
+  check("a lead with nothing after it stays whole",
+    splitEdgeCase("1 mandatory requirement could not be confirmed from the document:").items.length === 0);
 }
 
 console.log("\nTeam match");
