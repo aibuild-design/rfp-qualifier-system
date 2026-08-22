@@ -511,8 +511,10 @@ export interface Database {
       source_documents: {
         Row: {
           id: string;
+          /** The bid this belongs to. Null for firm-wide material. */
+          rfp_id: string | null;
           name: string;
-          kind: "proposal" | "solicitation" | "other";
+          kind: "proposal" | "case_study" | "solicitation" | "addendum" | "clarifying_questions";
           /** The extracted text. An archive for re-reading, never prompted. */
           body: string;
           characters: number;

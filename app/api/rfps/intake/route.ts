@@ -57,6 +57,11 @@ type IntakeBody = Partial<TableInsert<"rfps">> & {
   solicitation_number?: string | null;
   /** One rubric per triage read, for measuring how far they disagreed. */
   score_rubrics?: RubricBreakdown[] | null;
+  /**
+   * The solicitation itself, archived against the bid so a proposal written
+   * months later is composed by something that has actually read the RFP.
+   */
+  document_text?: string | null;
   source_mailbox?: string | null;
   /** The issuing agency's own contact block, read off the solicitation. Used on
    *  the proposal cover and nowhere else, so these are deliberately not columns
@@ -294,6 +299,37 @@ export async function POST(req: NextRequest) {
   // simply absent.
   const failures: string[] = [];
 
+  /**
+   * Keep the document the verdict was made from.
+   *
+   * Triage derived requirements, compliance items and a rubric from the
+   * solicitation and then dropped it. Nothing held the text: the only copy was
+   * a .txt file n8n put in the Drive folder, which nothing reads back.
+   *
+   * Fine while a bid is drafted the same week, quietly wrong afterwards. Khaled
+   * accepts a solicitation months after it lands, and the proposal is then
+   * written from a list of extracted requirements by a composer that has never
+   * read the RFP. It cannot use the agency's own words, follow the order the
+   * questions were asked in, or quote a clause back.
+   *
+   * Replaced rather than appended, so a re-triage after an addendum leaves one
+   * current copy instead of a pile.
+   */
+  async function archiveSolicitation() {
+    const text = typeof body.document_text === "string" ? body.document_text.trim() : "";
+    if (!text) return;
+
+    await supabase.from("source_documents").delete().eq("rfp_id", rfpId).eq("kind", "solicitation");
+    const { error } = await supabase.from("source_documents").insert({
+      rfp_id: rfpId,
+      kind: "solicitation",
+      name: `${body.solicitation_number ?? body.title ?? "Solicitation"}.txt`,
+      body: text,
+      characters: text.length,
+    });
+    if (error) failures.push(`source_documents: ${error.message}`);
+  }
+
   async function replaceChildren<T extends { rfp_id: string }>(
     table: "rfp_gap_items" | "rfp_compliance_items" | "rfp_disqualifier_checks" | "rfp_questions",
     rows: Omit<T, "rfp_id">[] | undefined
@@ -319,6 +355,7 @@ export async function POST(req: NextRequest) {
     replaceChildren("rfp_gap_items", gap_items),
     replaceChildren("rfp_compliance_items", compliance_items),
     replaceChildren("rfp_disqualifier_checks", disqualifier_checks),
+    archiveSolicitation(),
     replaceChildren("rfp_questions", questions),
     recordEdgeCases(),
     recordConnectionHealth(),

@@ -207,7 +207,10 @@ export async function POST(req: NextRequest) {
     .from("source_documents")
     .insert({
       name: file.name,
-      kind: kind === "case_study" ? "other" : "proposal",
+      // Recorded as what it is. This said "other" because the old constraint
+      // had no case_study, so every case study archived as an unlabelled blob
+      // and nothing could find them again.
+      kind: kind === "case_study" ? "case_study" : "proposal",
       body: text,
       characters: text.length,
       blocks_taken: blocks.length,

@@ -858,7 +858,7 @@ async function composeAdaptiveSections(
   // unable to tell "shall carry $2,000,000 insurance" from "it is preferred
   // that the team include a local consultant". It now comes through and sorts
   // first, so if anything is cut it is a preference rather than a mandate.
-  const [{ data: checks }, { data: rules }, { data: gaps }, { data: assigned }, { data: roster }, { data: profile }, { data: engagements }, { data: amendments }] =
+  const [{ data: checks }, { data: rules }, { data: gaps }, { data: assigned }, { data: roster }, { data: profile }, { data: engagements }, { data: amendments }, { data: solicitation }] =
     await Promise.all([
       supabase
         .from("rfp_disqualifier_checks")
@@ -889,6 +889,14 @@ async function composeAdaptiveSections(
         .eq("rfp_id", rfpId)
         .eq("kind", "addendum")
         .order("sequence"),
+      // The solicitation itself, archived at intake. Extracted requirements say
+      // what was asked; only the document says how it was asked.
+      supabase
+        .from("source_documents")
+        .select("body")
+        .eq("rfp_id", rfpId)
+        .eq("kind", "solicitation")
+        .maybeSingle(),
     ]);
 
   const byId = new Map((roster ?? []).map((m) => [m.id, m]));
@@ -942,6 +950,7 @@ async function composeAdaptiveSections(
       "compliance rules",
     ),
     gaps: capped((gaps ?? []).map((g) => g.description).filter(Boolean) as string[], 8, "gaps"),
+    solicitation: solicitation?.body ?? null,
     amendments: (amendments ?? [])
       .filter((a) => a.body)
       .map((a) => `${a.title ?? `Addendum ${a.sequence ?? ""}`.trim()}: ${a.body}`),

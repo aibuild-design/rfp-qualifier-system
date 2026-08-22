@@ -40,6 +40,15 @@ export type ComposeContext = {
   /** Where Caravann is genuinely thin, so the text never oversells. */
   gaps: string[];
   /**
+   * The solicitation itself, archived at intake.
+   *
+   * The extracted requirements say what the agency asked for. Only the document
+   * says how it asked: the headings it used, the order it put them in, the
+   * words it chose. Without it a section answers correctly in someone else's
+   * vocabulary.
+   */
+  solicitation?: string | null;
+  /**
    * What the addenda changed, in the agency's own words.
    *
    * Only the fact that an amendment existed used to reach here: its number
@@ -155,7 +164,7 @@ export const ADAPTIVE_SECTIONS: Record<string, { brief: string; shape: string }>
     brief:
       "The method, in full. How the work is actually done, why it is sequenced that way, how progress is measured, and the risks this particular engagement carries, stated plainly including the political ones. This is the section that wins or loses the bid on approach, so it should be the longest.",
     shape:
-      "Four parts. Every one of them is required and each must appear under its exact heading on its own line, in this order: Methodology, Sequencing Rationale, Measurement, Key Risks and Challenges. A section missing one of these is incomplete, whatever its length. Do not merge them, do not rename them, and do not drop the last two because the first two ran long.\n\nMethodology: how each phase is actually run. Named techniques, what happens in a session, how findings are synthesised, how disagreement is handled.\n\nSequencing Rationale: why this order and not another, in terms of this agency's situation.\n\nMeasurement: how progress and success are tracked, including the reporting cadence, who receives what and how often. Where the solicitation asks for performance measures or KPIs, describe how they are developed, who owns them, how they are monitored and reported, and what happens when one is missed.\n\nKey Risks and Challenges: six to nine numbered risks. Each names the specific condition in this agency's situation that causes it, why it matters for this engagement, and how the approach handles it. Include the uncomfortable ones: governance ambiguity, competing authority, history between parties, availability of executives. Aim for 2,500 to 3,500 words across all four parts.",
+      "Answer the solicitation's own list first, then these four.\n\nIf the solicitation names the things it wants this section to cover - evaluation criteria, required content, a list of questions - use its headings, in its order, in its words. Caravann's own submitted proposal does exactly this, and it is most of why that document reads as written for one agency rather than adapted from another. A heading lifted from the RFP tells an evaluator scoring against a rubric where the answer is.\n\nThese four are the floor, not the shape. Each must appear under its exact heading on its own line: Methodology, Sequencing Rationale, Measurement, Key Risks and Challenges. Add whatever else the solicitation asked for. A section missing one of the four is incomplete, whatever its length; a section containing only the four has ignored the question that was asked.\n\nWhere the work has a schedule, set it out as a table: timeframe, activity, sessions or meetings, primary participants, key outputs. An evaluator looking for how many sessions and who attends should find it without reading a paragraph.\n\nWhere there are risks, there are usually opportunities, and naming both reads as command of the engagement where risks alone read as hedging.\n\nEnd with the deliverables by name.\n\nMethodology: how each phase is actually run. Named techniques, what happens in a session, how findings are synthesised, how disagreement is handled.\n\nSequencing Rationale: why this order and not another, in terms of this agency's situation.\n\nMeasurement: how progress and success are tracked, including the reporting cadence, who receives what and how often. Where the solicitation asks for performance measures or KPIs, describe how they are developed, who owns them, how they are monitored and reported, and what happens when one is missed.\n\nKey Risks and Challenges: six to nine numbered risks. Each names the specific condition in this agency's situation that causes it, why it matters for this engagement, and how the approach handles it. Include the uncomfortable ones: governance ambiguity, competing authority, history between parties, availability of executives. Aim for 2,500 to 3,500 words across all four parts.",
   },
   past_performance: {
     brief:
@@ -176,6 +185,19 @@ export const ADAPTIVE_SECTIONS: Record<string, { brief: string; shape: string }>
       "Two paragraphs, and the first must begin with the words \"By the end of this engagement\" followed by what the agency will hold: the deliverables, the decisions and the capability it keeps afterwards. That opening is not a stylistic preference. An evaluator reads the first line of every proposal in the stack and most of them open by introducing the firm, which tells them nothing they cannot get from the cover page.",
   },
 };
+
+/**
+ * As much of a document as will fit, and an honest note when it will not.
+ *
+ * A solicitation can be several hundred thousand characters. Silently sending
+ * the first slice invites the reader to treat a truncated document as complete
+ * and reason about what it does not say.
+ */
+function excerpt(text: string, limit: number): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= limit) return trimmed;
+  return `${trimmed.slice(0, limit)}\n\n[This solicitation runs to ${trimmed.length.toLocaleString("en-US")} characters and is truncated here. Everything the desk extracted from the rest is in the lists above; do not conclude that something is absent from the solicitation because it is absent from this excerpt.]`;
+}
 
 export function composePrompt(section: string, c: ComposeContext): string {
   const spec = ADAPTIVE_SECTIONS[section];
@@ -222,6 +244,23 @@ export function composePrompt(section: string, c: ComposeContext): string {
     "",
     "WHAT THE SOLICITATION REQUIRES. Build the plan around these and nothing else:",
     ...c.requirements.map((r) => `- ${r}`),
+    "",
+    // The document, not only what was extracted from it.
+    //
+    // The list above says what the agency asked for. Only the solicitation says
+    // how it asked: the headings it used, the order it put them in, the words
+    // it chose. A section written from the list alone answers correctly in
+    // someone else's vocabulary, which is the difference between a proposal
+    // adapted from another one and a proposal written for this agency.
+    //
+    // Bounded, because a solicitation can run to hundreds of thousands of
+    // characters and the answer has to fit in the same context. Truncation is
+    // stated rather than hidden, so nothing is inferred from an ending that is
+    // not really the end.
+    c.solicitation
+      ? "THE SOLICITATION ITSELF. Use its headings, its order and its words where it names what this section must cover:"
+      : "",
+    c.solicitation ? excerpt(c.solicitation, 24000) : "",
     "",
     c.rules.length ? "RULES IT IS JUDGED AGAINST:" : "",
     ...c.rules.map((r) => `- ${r}`),
