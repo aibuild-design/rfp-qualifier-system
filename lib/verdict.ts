@@ -240,11 +240,18 @@ export function decideVerdict(
   // a statement of needs was being treated as a gate, and most of them are
   // scored: Leesburg asks for Virginia experience under a heading that says
   // must, then weights Firm Experience at 30% and rejects nobody for it.
-  const blocking = checks.filter(
-    (c) =>
-      (c.result === "fail" || c.result === "unclear") &&
-      (c.is_hard_knockout === true || NON_RESPONSIVE.test(c.requirement_text ?? "")),
-  );
+  const disqualifying = (c: GateCheck) =>
+    c.is_hard_knockout === true || NON_RESPONSIVE.test(c.requirement_text ?? "");
+
+  // Only a requirement Caravann demonstrably cannot meet closes the bid.
+  //
+  // "unclear" used to close it too, which is the same mistake as reading every
+  // "must" as a gate, one level down. LA County CEO-RFSQ-AO-25-01 asks for a
+  // redacted sample work product beside each reference and one client able to
+  // confirm it is genuine. Caravann has the references and has not yet asked
+  // them, so the honest answer is "not yet", and the desk answered "never" -
+  // closing an 80% bid on a firm's own paperwork not being done.
+  const blocking = checks.filter((c) => c.result === "fail" && disqualifying(c));
   if (blocking.length > 0) {
     const first = blocking[0].requirement_text?.trim();
     return {
@@ -252,6 +259,25 @@ export function decideVerdict(
       reason: `Cannot submit a responsive proposal: ${blocking.length} requirement${blocking.length > 1 ? "s" : ""} would have it rejected unopened${
         first ? `, starting with: ${truncate(first, 110)}` : ""
       }.`,
+    };
+  }
+
+  // A disqualifying requirement nobody has checked yet caps rather than closes,
+  // and names what would settle it. These are almost always errands - a client
+  // to ask, a portal to register on - and the compliance checklist is where
+  // they get tracked.
+  const unresolved = checks.filter((c) => c.result === "unclear" && disqualifying(c));
+  if (unresolved.length > 0) {
+    const list = unresolved
+      .map((c) => c.requirement_text?.trim())
+      .filter(Boolean)
+      .map((text) => truncate(text as string, 90));
+    return {
+      status: "maybe",
+      reason:
+        `Nothing here rules Caravann out, but ${unresolved.length} requirement${unresolved.length > 1 ? "s" : ""} the solicitation ` +
+        `treats as mandatory ${unresolved.length > 1 ? "have" : "has"} not been confirmed either way: ${list.join("; ")}. ` +
+        `Settle ${unresolved.length > 1 ? "those" : "that"} and the verdict follows.`,
     };
   }
 

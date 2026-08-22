@@ -406,6 +406,24 @@ console.log("\nVerdict thresholds");
   const bonded = decideVerdict(95, [pass, { requirement_text: "A performance bond of 100% of the contract value is required.", is_required: true, result: "fail" }], T);
   check("a bond Caravann cannot post still closes it", bonded.status === "no_go", bonded.status);
 
+  // "Not asked yet" is not "cannot comply". LA County CEO-RFSQ-AO-25-01 wants a
+  // redacted sample work product beside each reference and one client able to
+  // confirm it is genuine. Caravann has the references and has not yet asked
+  // them; closing an 80% bid on its own paperwork not being done is the same
+  // mistake as reading every "must" as a gate, one level further in.
+  const notAskedYet = decideVerdict(80, [
+    pass,
+    { requirement_text: "Each reference must be accompanied by a sample work product.", is_required: true, is_hard_knockout: true, result: "unclear" },
+  ], T);
+  check("an unchecked mandatory requirement caps rather than closes", notAskedYet.status === "maybe", notAskedYet.status);
+  check("...and names what would settle it", /sample work product/i.test(notAskedYet.reason));
+
+  const cannotComply = decideVerdict(80, [
+    pass,
+    { requirement_text: "Each reference must be accompanied by a sample work product.", is_required: true, is_hard_knockout: true, result: "fail" },
+  ], T);
+  check("but a demonstrated failure still closes it", cannotComply.status === "no_go", cannotComply.status);
+
   // Determinism, stated as an assertion rather than assumed.
   const runs = new Set(Array.from({ length: 50 }, () => decideVerdict(83, [pass, preferredFail], T).status));
   check("50 identical inputs give exactly one answer", runs.size === 1, [...runs].join(","));
