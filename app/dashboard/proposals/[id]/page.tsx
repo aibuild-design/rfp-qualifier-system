@@ -5,6 +5,7 @@ import { ProposalDraft } from "@/components/ProposalDraft";
 import { StandingDocuments } from "@/components/StandingDocuments";
 import { FilingStatusCard } from "@/components/FilingStatusCard";
 import { ProposalVersions } from "@/components/ProposalVersions";
+import { RefileButton } from "@/components/RefileButton";
 import { proposalFileName } from "@/lib/proposal";
 import { formatDate } from "@/lib/rfp";
 
@@ -78,6 +79,9 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
             >
               Open in Google Docs
             </a>
+          )}
+          {rfp.drive_folder_url && sections && sections.length > 0 && (
+            <RefileButton rfpId={rfp.id} />
           )}
           {rfp.drive_folder_url && (
             <a

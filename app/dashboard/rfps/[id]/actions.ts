@@ -275,6 +275,87 @@ export async function buildDraft(rfpId: string): Promise<ActionResult<{ drafted:
  *
  * Passing null clears the override, so a mis-click is recoverable.
  */
+/**
+ * File the document again from the sections already written.
+ *
+ * A template fix improves every proposal that has not been rebuilt, and none of
+ * them see it: the sections live in the database but the .docx in Drive was
+ * assembled by whatever the code looked like the day it was built. Rebuilding
+ * would pick the fix up and also recompose five sections through OpenRouter,
+ * which costs about fifty cents and rewrites prose that was already correct.
+ *
+ * This assembles from what is stored and files it. No model call, no change to
+ * a single word of the draft, and the document in the bid folder matches the
+ * code that exists now.
+ *
+ * It records a version, because the Doc URL changes and the history should say
+ * why a new file appeared rather than leaving a reader to guess.
+ */
+export async function refileProposal(rfpId: string): Promise<ActionResult<{ url: string }>> {
+  const { supabase, denied } = await requireUser();
+  if (denied) return denied;
+
+  const [{ data: rfp }, { data: sections }, { data: engagements }, { data: addenda }, { data: firm }] =
+    await Promise.all([
+      supabase.from("rfps").select("*").eq("id", rfpId).maybeSingle(),
+      supabase.from("rfp_proposal_sections").select("*").eq("rfp_id", rfpId).order("sort_order"),
+      supabase.from("past_engagements").select("*"),
+      supabase
+        .from("rfp_related_documents")
+        .select("title, sequence, received_at")
+        .eq("rfp_id", rfpId)
+        .eq("kind", "addendum")
+        .order("sequence"),
+      supabase
+        .from("org_profile")
+        .select("legal_name, address, point_of_contact, telephone, email, website, cage_code, uei, duns, tax_ein")
+        .eq("id", true)
+        .maybeSingle(),
+    ]);
+
+  if (!rfp) return { error: "RFP not found" };
+  if (!sections?.length) return { error: "There is no draft to file yet." };
+
+  const folderId = folderIdFrom(rfp.drive_folder_url);
+  if (!folderId) return { error: "This bid has no Drive folder to file into." };
+
+  const buffer = await assembleProposalDocx({
+    rfp,
+    sections,
+    engagements: engagements ?? [],
+    addenda: addenda ?? [],
+    firm: firm ?? null,
+  });
+  if (!buffer) return { error: "Caravann's template could not be read, so nothing was filed." };
+
+  const url = await fileProposal(folderId, `${proposalFileName(rfp)}.docx`, buffer);
+  if (!url) return { error: "Drive did not accept the document." };
+
+  await supabase.from("rfps").update({ proposal_doc_url: url, filing_status: "filed" }).eq("id", rfpId);
+
+  const text = sections.map((x) => `${x.heading}\n\n${x.tailored_body ?? x.body ?? ""}`).join("\n\n");
+  const { data: last } = await supabase
+    .from("proposal_versions")
+    .select("version")
+    .eq("rfp_id", rfpId)
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  await supabase.from("proposal_versions").insert({
+    rfp_id: rfpId,
+    version: (last?.version ?? 0) + 1,
+    word_count: text.split(/\s+/).filter(Boolean).length,
+    section_count: sections.length,
+    written_count: sections.filter((x) => x.notes?.startsWith("Written")).length,
+    doc_url: url,
+    body: text,
+    note: "Refiled from the existing draft. No section was rewritten.",
+  });
+
+  revalidatePath(`/dashboard/proposals/${rfpId}`);
+  return { ok: true, url };
+}
+
 export async function setHumanVerdict(
   rfpId: string,
   verdict: "go" | "no_go" | "maybe" | null,
