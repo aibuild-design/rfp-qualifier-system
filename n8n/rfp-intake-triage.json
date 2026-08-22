@@ -794,11 +794,20 @@
       },
       "onError": "continueRegularOutput",
       "parameters": {
-        "method": "GET",
+        "method": "POST",
         "url": "https://rfp-qualifier-system.vercel.app/api/rfps/intake-filter",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ emails: $('Gmail — new solicitation').all().map((i) => ({ subject: i.json.subject || '', body: i.json.snippet || i.json.textPlain || '', attachments: Object.values(i.binary || {}).map((b) => b.fileName).filter(Boolean) })) }) }}"
       }
     },
     {
@@ -811,7 +820,7 @@
         700
       ],
       "parameters": {
-        "jsCode": "// Keep only the emails whose subject Khaled has said counts.\n//\n// Substring, case-insensitive, deliberately not word-boundary matching: an\n// agency writing \"RFPs\" or \"Re: RFP/RFQ\" should not be dropped by a boundary\n// nobody thought about.\n//\n// An empty term list means everything qualifies. That is a real setting - \"show\n// me it all\" - and reading it as \"match nothing\" would turn a deliberate choice\n// into a silent outage.\nconst DEFAULTS = ['RFP', 'RFQ', 'solicitation', 'request for proposal', 'request for qualifications'];\n\nlet terms = DEFAULTS;\ntry {\n  const cfg = $('Which subjects count?').first().json;\n  if (Array.isArray(cfg.subject_terms)) terms = cfg.subject_terms;\n} catch (e) {\n  // Settings unreachable - fall through to the defaults rather than dropping mail.\n}\n\n// Mail the desk sent itself. Matched on the marker in the subject rather\n// than the sender, because the notification is sent from the same account it\n// is delivered to, so the sender cannot tell them apart.\nconst SELF_SENT = /^Caravann RFP Desk/i;\n\nconst kept = [];\nfor (const item of $('Gmail — new solicitation').all()) {\n  const subject = String(item.json.subject || '');\n  if (SELF_SENT.test(subject.trim())) continue;\n  const hay = subject.toLowerCase();\n  const match = terms.length === 0 || terms.some((t) => {\n    const needle = String(t || '').trim().toLowerCase();\n    return needle && hay.includes(needle);\n  });\n  if (match) kept.push(item);\n}\nreturn kept;"
+        "jsCode": "// Keep the emails the bid desk said qualify.\n//\n// The rule used to live here, in a second copy of lib/intake-filter.ts, and the\n// two drifted exactly the way two copies of one rule always do. This one never\n// applied the ignore list, so `email_ignore_terms` rendered in Settings, saved\n// to the database and changed nothing about a single email. It matched plain\n// substrings, so \"surfperch\" qualified as an RFP. And it never looked at the\n// attachment names, which is where an agency puts the solicitation number when\n// the subject only says \"Please see attached\".\n//\n// The desk decides now and this node carries the answer, which is the same\n// division of labour as the verdict itself: n8n moves things, the app judges\n// them.\n//\n// Fails open. If the endpoint could not be reached, keep everything and let\n// triage sort it out - dropping the entire poll because a settings lookup\n// failed is the one outcome nobody would notice.\nconst emails = $('Gmail — new solicitation').all();\n\nlet kept = null;\ntry {\n  const answer = $('Which subjects count?').first().json;\n  if (Array.isArray(answer.kept)) kept = new Set(answer.kept);\n} catch (e) {\n  // fall through\n}\n\nif (kept === null) return emails;\nreturn emails.filter((_, i) => kept.has(i));\n"
       }
     },
     {

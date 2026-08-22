@@ -13,6 +13,7 @@ import { recommendTeam } from "../lib/team-match.ts";
 import { toTimestamp } from "../lib/rfp.ts";
 import { checkDocumentUrl, isBlockedHost } from "../lib/url-guard.ts";
 import { consensusGap, decideVerdict, spreadOf } from "../lib/verdict.ts";
+import { DEFAULT_SUBJECT_TERMS, emailQualifies } from "../lib/intake-filter.ts";
 import { DEFAULT_WEIGHTS, RUBRIC, RUBRIC_MAX, rubricSchema, scoreFromRubric } from "../lib/rubric.ts";
 
 let passed = 0;
@@ -107,6 +108,72 @@ console.log("\nFile naming");
   );
   const messy = proposalFileName({ title: "A/B: Test", client_agency: "X*Y" });
   check("strips characters that break Drive and Windows paths", !/[\\/:*?"<>|]/.test(messy), messy);
+}
+
+console.log("\nIntake filter");
+{
+  const base = { terms: [...DEFAULT_SUBJECT_TERMS], ignoreTerms: [], matchBody: true };
+  const qualifies = (email, f = base) => emailQualifies(email, f);
+
+  check("a plain solicitation subject qualifies", qualifies({ subject: "RFP No. 100120-FY27-09" }));
+  check("a plural still qualifies", qualifies({ subject: "Re: RFPs open this week" }));
+  check("punctuation around the term does not break it", qualifies({ subject: "Re: RFP/RFQ opportunities" }));
+
+  // The one that started this. su-rfp-erch contains the letters, and a plain
+  // substring match read a fishing report as a solicitation.
+  check("a term inside a longer word does not qualify", !qualifies({ subject: "Surfperch fishing report" }));
+  check("...nor does a term inside a longer word in the body", !qualifies({ subject: "Weekend plans", body: "went surfperch fishing" }));
+
+  // Where agencies actually put the solicitation number.
+  check(
+    "the attachment name qualifies an otherwise blank subject",
+    qualifies({ subject: "Please see attached", attachments: ["RFP No. 2026-14.pdf"] }),
+  );
+  check(
+    "an attachment object with a fileName is read the same way",
+    qualifies({ subject: "Documents", attachments: ["Request for Proposals - Leadership.docx"] }),
+  );
+  check("an unrelated attachment does not qualify", !qualifies({ subject: "Invoice", attachments: ["march-invoice.pdf"] }));
+
+  // The ignore list has to actually do something, which in production it never did.
+  const ignoring = { ...base, ignoreTerms: ["notice of award"] };
+  check("an ignored subject is dropped even though it matched", !qualifies({ subject: "Notice of Award - RFP 2026-14" }, ignoring));
+  check("...and an ordinary solicitation still passes", qualifies({ subject: "RFP 2026-15 issued" }, ignoring));
+
+  // The ignore list reads the body too, which is the only way to exclude an
+  // email that qualified on its footer rather than its subject.
+  const disclaimer = { ...base, ignoreTerms: ["does not constitute a solicitation"] };
+  check(
+    "a disclaimer in the footer can be excluded",
+    !qualifies(
+      { subject: "Your monthly statement", body: "This communication does not constitute a solicitation to buy." },
+      disclaimer,
+    ),
+  );
+  check(
+    "...without touching a real solicitation",
+    qualifies({ subject: "RFP No. 2026-16 issued today" }, disclaimer),
+  );
+  // Which is exactly why the defaults are empty. An ignore term matched against
+  // the body is a loaded gun, and "unsubscribe" is in every aggregator footer.
+  check(
+    "a careless ignore term does drop real mail, which is why none ship",
+    !qualifies({ subject: "RFP No. 2026-16", body: "Click here to unsubscribe." }, { ...base, ignoreTerms: ["unsubscribe"] }),
+  );
+
+  check("the desk does not triage its own verdict emails", !qualifies({ subject: "Caravann RFP Desk: Go 84% - East Bay" }));
+  check("an empty term list means everything qualifies", qualifies({ subject: "anything at all" }, { ...base, terms: [] }));
+  check("nothing matching means it does not qualify", !qualifies({ subject: "Re: coffee next week", body: "no rush" }));
+  check(
+    "body matching off ignores the body",
+    !qualifies({ subject: "Weekly digest", body: "three new solicitations posted" }, { ...base, matchBody: false }),
+  );
+  check(
+    "...and on, it reads it",
+    qualifies({ subject: "Weekly digest", body: "three new solicitations posted" }, { ...base, matchBody: true }),
+  );
+  check("a term with regex characters does not throw", !qualifies({ subject: "hello" }, { ...base, terms: ["c++ (rfp"] }));
+  check("a custom prefix still matches a longer word", qualifies({ subject: "Procurement notice" }, { ...base, terms: ["procure"] }));
 }
 
 console.log("\nTeam match");
