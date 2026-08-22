@@ -269,6 +269,12 @@ export async function fillTemplate(template: Buffer | Uint8Array, values: Templa
     replacements += done.filled;
   }
 
+  // The contents page lists sections, not their internals.
+  {
+    const documentPart = zip.file("word/document.xml");
+    if (documentPart) zip.file("word/document.xml", tocTopLevelOnly(await documentPart.async("string")));
+  }
+
   // One font for the whole document. See setDefaultFont: the template names
   // none, so without this the body renders in whatever the reader's
   // application defaults to while the reference blocks render in Times New
@@ -895,6 +901,45 @@ function setDefaultFont(styles: string): string {
     'w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>';
   const patched = block[0].replace("<w:rPr>", `<w:rPr>${font}`);
   return styles.replace(block[0], patched);
+}
+
+/**
+ * Keep the contents page to the eleven sections, not their subheadings.
+ *
+ * The template's field reads `TOC \t "Heading 1,1,Heading 2,2,Heading 3,3"`, so
+ * it lists every Heading 2 as well. The only Heading 2s in the document are the
+ * three numbered past-performance blocks, which are part of Past Performance
+ * rather than sections of the proposal. A contents page that reads
+ *
+ *     5. Past Performance
+ *        Past Performance #1: ...
+ *        Past Performance #2: ...
+ *        Past Performance #3: ...
+ *
+ * gives three of its fourteen lines to one section's internals.
+ *
+ * Both halves have to change. The field instruction governs what Word rebuilds
+ * on open; the cached entries are what a reader sees before anything rebuilds,
+ * and Google Docs in particular will not rebuild it at all. Cached level-two
+ * entries are recognised by their indent: the template sets 900 twips for level
+ * one and 810 for level two.
+ */
+function tocTopLevelOnly(xml: string): string {
+  // What a rebuild will pick up.
+  let out = xml.replace(
+    /(TOC[^<"]*?\\t\s*&quot;)Heading 1,1,Heading 2,2,Heading 3,3[^&]*(&quot;)/g,
+    "$1Heading 1,1$2",
+  );
+
+  // What is on the page until then.
+  out = out.replace(/<w:p[ >][\s\S]*?<\/w:p>/g, (paragraph) => {
+    if (!paragraph.includes("<w:hyperlink")) return paragraph;
+    const indent = paragraph.match(/<w:ind[^>]*w:left="(\d+)"/);
+    if (!indent || indent[1] !== "810") return paragraph;
+    return "";
+  });
+
+  return out;
 }
 
 function fixFooter(xml: string): string {
