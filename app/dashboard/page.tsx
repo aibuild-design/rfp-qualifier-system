@@ -272,7 +272,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                 <ol className="rise-stagger mx-auto mt-8 flex max-w-lg flex-col gap-3 text-left sm:flex-row sm:gap-2">
                   {[
                     { n: 1, t: "It arrives", d: "By email, or added by hand" },
-                    { n: 2, t: "It gets read", d: "The whole document, three times" },
+                    { n: 2, t: "It gets read", d: "The whole document, twice over" },
                     { n: 3, t: "It gets a verdict", d: "About a minute later" },
                   ].map((step, i) => (
                     <li

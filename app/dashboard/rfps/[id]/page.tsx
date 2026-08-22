@@ -130,7 +130,7 @@ export default async function RfpDetailPage({ params }: PageProps<"/dashboard/rf
             <div className="min-w-0">
               <p className="text-sm font-semibold text-rfp-ink">Being read now</p>
               <p className="mt-0.5 text-[13px] leading-relaxed text-rfp-ink-secondary">
-                The whole document, three times over. About a minute. <span className="font-medium text-rfp-ink">You can close this page</span> -
+                The whole document, twice over. About a minute. <span className="font-medium text-rfp-ink">You can close this page</span> -
                 it carries on without you and the verdict will be here when you come back.
               </p>
             </div>

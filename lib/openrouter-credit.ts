@@ -31,7 +31,8 @@ export type Credit = {
   accounts: { id: string; label: string; remaining: number; reachable: boolean }[];
 };
 
-/** Measured across real runs: about 18 cents a solicitation, three reads. */
+/** Measured across real runs: about 18 cents a solicitation at three reads,
+ *  so roughly 12 at the two the workflow now runs. */
 export const COST_PER_SOLICITATION = 0.18;
 
 /**

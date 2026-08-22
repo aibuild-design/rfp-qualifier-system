@@ -446,7 +446,7 @@ RFP No. VTD-2026-01
    General liability insurance of $2,000,000 required.
 `.trim();
 
-    // Triage reads the document three times, so this is a minutes-long
+    // Triage reads the document more than once, so this is a minutes-long
     // request over a long-lived connection. A transient reset should cost a
     // retry, not the whole suite - and the run may well have completed
     // server-side even when the response never arrived, so the database is

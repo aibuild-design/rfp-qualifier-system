@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
    * Only the unmatched go to the model, so an inbox of ordinary solicitations
    * costs nothing extra and the screening is spent on the mail that actually
    * needs judgement. It reads a few hundred words and answers yes or no, which
-   * is a different job from the three reads triage does of the document itself.
+   * is a different job from the reads triage does of the document itself.
    *
    * Never used to reject. Anything the terms accepted is kept whatever the model
    * thinks, because the term list is Khaled's explicit instruction and a
