@@ -87,7 +87,7 @@ function contains(haystack: string, terms: readonly string[]): boolean {
 }
 
 /** Subject and attachment names: how the email announces what it is. */
-function identityOf(email: IntakeEmail): string {
+export function identityOf(email: IntakeEmail): string {
   const names = (email.attachments ?? [])
     .map((n) => String(n ?? "").trim())
     .filter(Boolean)
@@ -138,4 +138,44 @@ export function emailQualifies(email: IntakeEmail, filter: IntakeFilter): boolea
   if (contains(haystack, filter.ignoreTerms)) return false;
   if (filter.terms.length === 0) return true;
   return contains(haystack, filter.terms);
+}
+
+/**
+ * Does the email announce itself as a solicitation?
+ *
+ * The subject and the attachment names only, deliberately. A term found there is
+ * a statement about what the email is; the same term found in the body may be a
+ * statement about anything at all, and the commonest thing it is, is a footer
+ * reading "this does not constitute a solicitation to buy or sell any security".
+ *
+ * That distinction is what decides whether an email is admitted on the term list
+ * alone or handed to the screening model. A strong signal is cheap and certain
+ * and skips the model; a word buried in a body is neither, and is exactly the
+ * judgement the model is there to make.
+ */
+export function namedAsSolicitation(email: IntakeEmail, terms: readonly string[]): boolean {
+  if (sentByTheDesk(email)) return false;
+  if (terms.length === 0) return true;
+  return contains(identityOf(email), terms);
+}
+
+/**
+ * Mail the desk sent itself, which must never come back in.
+ *
+ * A hard reject before anything else, including the screening model. Returning
+ * false from the term check was enough while terms were the only gate; with a
+ * model reading whatever the terms missed, the verdict email goes to the model,
+ * and the model reads a message that names a solicitation, quotes its score and
+ * discusses its deadline. It says yes, correctly, to the wrong question. The
+ * desk then triages its own notification, files a bid folder for it and emails
+ * itself about that.
+ */
+export function sentByTheDesk(email: IntakeEmail): boolean {
+  return SELF_SENT.test(String(email.subject ?? ""));
+}
+
+/** Khaled's explicit veto, read across everything. Checked before any of it. */
+export function explicitlyExcluded(email: IntakeEmail, ignoreTerms: readonly string[]): boolean {
+  const haystack = `${identityOf(email)}\n${String(email.body ?? "").toLowerCase()}`;
+  return contains(haystack, ignoreTerms);
 }

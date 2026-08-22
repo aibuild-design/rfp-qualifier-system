@@ -803,11 +803,12 @@
             "response": {
               "neverError": true
             }
-          }
+          },
+          "timeout": 60000
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ emails: $('Gmail — new solicitation').all().map((i) => ({ subject: i.json.subject || '', body: i.json.snippet || i.json.textPlain || '', attachments: Object.values(i.binary || {}).map((b) => b.fileName).filter(Boolean) })) }) }}"
+        "jsonBody": "={{ JSON.stringify({ emails: $('Gmail — new solicitation').all().map((i) => ({ subject: i.json.subject || '', body: (i.json.textPlain || i.json.textHtml || i.json.snippet || '').slice(0, 4000), attachments: Object.values(i.binary || {}).map((b) => b.fileName).filter(Boolean) })) }) }}"
       }
     },
     {

@@ -13,7 +13,7 @@ import { recommendTeam } from "../lib/team-match.ts";
 import { toTimestamp } from "../lib/rfp.ts";
 import { checkDocumentUrl, isBlockedHost } from "../lib/url-guard.ts";
 import { consensusGap, decideVerdict, spreadOf } from "../lib/verdict.ts";
-import { DEFAULT_SUBJECT_TERMS, emailQualifies } from "../lib/intake-filter.ts";
+import { DEFAULT_SUBJECT_TERMS, emailQualifies, namedAsSolicitation, sentByTheDesk } from "../lib/intake-filter.ts";
 import { DEFAULT_WEIGHTS, RUBRIC, RUBRIC_MAX, rubricSchema, scoreFromRubric } from "../lib/rubric.ts";
 
 let passed = 0;
@@ -171,6 +171,23 @@ console.log("\nIntake filter");
     qualifies({ subject: "Weekly digest", body: "three new solicitations posted" }),
   );
   check("a term with regex characters does not throw", !qualifies({ subject: "hello" }, { ...base, terms: ["c++ (rfp"] }));
+
+  // The identity check is what decides whether an email skips the screening
+  // model. A term in the subject or on a file is the email announcing itself; a
+  // term in a body is a word that may be about anything.
+  const named = (e) => namedAsSolicitation(e, [...DEFAULT_SUBJECT_TERMS]);
+  check("a term in the subject is a strong signal", named({ subject: "RFP No. 2026-14" }));
+  check("a term on an attachment is a strong signal", named({ subject: "Please see attached", attachments: ["RFP 2026-14.pdf"] }));
+  check(
+    "a term only in the body is not, so it goes to be read",
+    !named({ subject: "Your monthly statement", body: "does not constitute a solicitation to buy" }),
+  );
+
+  // Must be caught before the screening model, not by it. The verdict email
+  // names a solicitation, quotes its score and discusses its deadline, so a
+  // model reading it says yes to the wrong question.
+  check("the desk recognises its own verdict email", sentByTheDesk({ subject: "Caravann RFP Desk: Go 84% - East Bay" }));
+  check("...and an ordinary subject is not mistaken for one", !sentByTheDesk({ subject: "RFP No. 2026-14" }));
   check("a custom prefix still matches a longer word", qualifies({ subject: "Procurement notice" }, { ...base, terms: ["procure"] }));
 }
 
