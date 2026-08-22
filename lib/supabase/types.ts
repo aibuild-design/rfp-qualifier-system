@@ -94,6 +94,9 @@ export interface Database {
 
       scoring_settings: {
         Row: {
+          /** Who agreed this is right. Null means nobody has. */
+          confirmed_by: string | null;
+          confirmed_at: string | null;
           id: boolean;
           go_threshold: number;
           maybe_threshold: number;
@@ -327,6 +330,9 @@ export interface Database {
 
       hard_knockouts: {
         Row: {
+          /** Who agreed this is right. Null means nobody has. */
+          confirmed_by: string | null;
+          confirmed_at: string | null;
           id: string;
           /** Matched case-insensitively against a requirement's text. */
           term: string;
