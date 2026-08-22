@@ -112,7 +112,7 @@ console.log("\nFile naming");
 
 console.log("\nIntake filter");
 {
-  const base = { terms: [...DEFAULT_SUBJECT_TERMS], ignoreTerms: [], matchBody: true };
+  const base = { terms: [...DEFAULT_SUBJECT_TERMS], ignoreTerms: [] };
   const qualifies = (email, f = base) => emailQualifies(email, f);
 
   check("a plain solicitation subject qualifies", qualifies({ subject: "RFP No. 100120-FY27-09" }));
@@ -164,13 +164,11 @@ console.log("\nIntake filter");
   check("the desk does not triage its own verdict emails", !qualifies({ subject: "Caravann RFP Desk: Go 84% - East Bay" }));
   check("an empty term list means everything qualifies", qualifies({ subject: "anything at all" }, { ...base, terms: [] }));
   check("nothing matching means it does not qualify", !qualifies({ subject: "Re: coffee next week", body: "no rush" }));
+  // Always. An aggregator digest whose subject is "Weekly opportunities" and
+  // whose body lists six solicitations is the case this exists for.
   check(
-    "body matching off ignores the body",
-    !qualifies({ subject: "Weekly digest", body: "three new solicitations posted" }, { ...base, matchBody: false }),
-  );
-  check(
-    "...and on, it reads it",
-    qualifies({ subject: "Weekly digest", body: "three new solicitations posted" }, { ...base, matchBody: true }),
+    "the body is always read",
+    qualifies({ subject: "Weekly digest", body: "three new solicitations posted" }),
   );
   check("a term with regex characters does not throw", !qualifies({ subject: "hello" }, { ...base, terms: ["c++ (rfp"] }));
   check("a custom prefix still matches a longer word", qualifies({ subject: "Procurement notice" }, { ...base, terms: ["procure"] }));

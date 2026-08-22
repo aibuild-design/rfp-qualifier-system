@@ -25,13 +25,10 @@ import { DEFAULT_IGNORE_TERMS, DEFAULT_SUBJECT_TERMS } from "@/lib/intake-filter
 export function IntakeFilterEditor({
   initialTerms,
   initialIgnore,
-  initialMatchBody,
 }: {
   initialTerms: string[];
   initialIgnore: string[];
-  initialMatchBody: boolean;
 }) {
-  const [matchBody, setMatchBody] = useState(initialMatchBody);
   const [saved, setSaved] = useState<string | null>(null);
 
   function flash(error: { message: string } | null) {
@@ -39,24 +36,11 @@ export function IntakeFilterEditor({
     setTimeout(() => setSaved(null), 2500);
   }
 
-  async function saveBody(next: boolean) {
-    setMatchBody(next);
-    const { error } = await createClient()
-      .from("scoring_settings")
-      .update({ intake_match_body: next })
-      .eq("id", true);
-    flash(error);
-  }
-
   return (
     <div className="flex flex-col gap-3">
       <ChipList
         label="Counts as a solicitation"
-        hint={
-          matchBody
-            ? "Matched anywhere in the subject or the body, ignoring case."
-            : "Matched anywhere in the subject, ignoring case."
-        }
+        hint="Matched against the subject, the attachment file names and the message body. Case is ignored, and a term matches where a word starts with it, so RFP catches RFPs."
         emptyWarning="Empty. Every email will be triaged."
         placeholder="bid opportunity"
         column="email_subject_terms"
@@ -65,26 +49,9 @@ export function IntakeFilterEditor({
         onSaved={flash}
       />
 
-      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-rfp-border bg-rfp-surface p-5">
-        <input
-          type="checkbox"
-          checked={matchBody}
-          onChange={(e) => void saveBody(e.target.checked)}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-rfp-gold"
-        />
-        <span>
-          <span className="block text-sm font-medium text-rfp-ink">
-            Also read the message body
-          </span>
-          <span className="mt-0.5 block text-xs leading-relaxed text-rfp-ink-muted">
-            Catches a forward whose subject says nothing useful.
-          </span>
-        </span>
-      </label>
-
       <ChipList
         label="Never triage"
-        hint="Checked last, against subject and body, so it overrules a match. Keep terms narrow: a broad one silently drops real solicitations."
+        hint="Checked first, against the same text, so it overrules a match. Keep terms narrow and specific: this reads the body, so one broad word silently drops real solicitations."
         emptyWarning="Empty. Nothing is excluded, which is the safe default."
         placeholder="webinar"
         column="email_ignore_terms"

@@ -49,9 +49,6 @@ const SELF_SENT = /^\s*Caravann RFP Desk/i;
 export type IntakeFilter = {
   terms: readonly string[];
   ignoreTerms: readonly string[];
-  /** Match the qualifying terms against the body too. Subject and attachment
-   *  names always count. */
-  matchBody: boolean;
 };
 
 export type IntakeEmail = {
@@ -101,15 +98,19 @@ function identityOf(email: IntakeEmail): string {
 /**
  * Does this email look like a solicitation?
  *
- * Three fields, and they are not equal. The subject and the attachment names
- * are how an email says what it is, and they are matched always. Agencies
- * routinely send "Please see attached" with the solicitation number on the file
- * rather than in the subject, and reading the subject alone missed every one of
- * those silently, which looks exactly like a quiet week.
+ * Three fields, all of them read. The subject and the attachment names are how
+ * an email says what it is: agencies routinely send "Please see attached" with
+ * the solicitation number on the file rather than in the subject, and reading
+ * the subject alone missed every one of those silently, which looks exactly like
+ * a quiet week.
  *
- * The body is opt-in, because the generic terms behave differently there. Any
- * financial or legal footer can carry "this does not constitute a solicitation",
- * and matching that as a qualifying term pulls in statements and newsletters.
+ * The body counts too, always. It used to be a toggle, and a toggle on this is a
+ * question nobody can answer well in the abstract: off, the desk misses an
+ * aggregator digest whose subject is "Weekly opportunities" and whose body lists
+ * six solicitations. On, it catches a statement whose footer says "this does not
+ * constitute a solicitation". Missing a bid is the worse of the two, so the body
+ * is read and the ignore list is the instrument for the noise, which is what it
+ * is for.
  *
  * An empty term list means everything qualifies. That is a real setting - "let
  * me see it all and I will judge" - and treating it as "match nothing" would
@@ -117,11 +118,11 @@ function identityOf(email: IntakeEmail): string {
  *
  * The ignore list is checked first and wins whatever matched, because a rule
  * that says "never this" has to be able to overrule a rule that says "always
- * that". It reads exactly the same text the qualifying terms read, including the
- * body when body matching is on: scoping it more narrowly leaves a class of
- * false positive that nothing can exclude. A monthly statement whose footer says
- * "this does not constitute a solicitation" qualifies on that footer, and if the
- * ignore list cannot see the body there is no setting that will stop it.
+ * that". It reads exactly the same text the qualifying terms read, body
+ * included: scoping it more narrowly leaves a class of false positive that
+ * nothing can exclude. A monthly statement whose footer says "this does not
+ * constitute a solicitation" qualifies on that footer, and an ignore list that
+ * cannot see the body has no answer to it.
  *
  * That symmetry is safe only because the defaults are empty. See
  * DEFAULT_IGNORE_TERMS: an ignore term matched against the body is a loaded gun,
@@ -132,10 +133,7 @@ export function emailQualifies(email: IntakeEmail, filter: IntakeFilter): boolea
   const subject = String(email.subject ?? "");
   if (SELF_SENT.test(subject)) return false;
 
-  const identity = identityOf(email);
-  const haystack = filter.matchBody
-    ? `${identity}\n${String(email.body ?? "").toLowerCase()}`
-    : identity;
+  const haystack = `${identityOf(email)}\n${String(email.body ?? "").toLowerCase()}`;
 
   if (contains(haystack, filter.ignoreTerms)) return false;
   if (filter.terms.length === 0) return true;

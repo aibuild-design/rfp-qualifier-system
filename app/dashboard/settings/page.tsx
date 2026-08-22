@@ -137,7 +137,7 @@ export default async function SettingsPage() {
           href: "/dashboard/settings/intake",
           title: "Which emails get triaged",
           blurb: "Used for intake. Nothing downstream runs without this.",
-          status: `${(scoring?.email_subject_terms ?? []).length} terms, body matching ${scoring?.intake_match_body ? "on" : "off"}`,
+          status: `${(scoring?.email_subject_terms ?? []).length} accepted, ${(scoring?.email_ignore_terms ?? []).length} excluded`,
           attention: (scoring?.email_subject_terms ?? []).length === 0,
         },
         {

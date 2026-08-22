@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from("scoring_settings")
-    .select("email_subject_terms, email_ignore_terms, intake_match_body")
+    .select("email_subject_terms, email_ignore_terms")
     .eq("id", true)
     .maybeSingle();
 
@@ -48,9 +48,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     subject_terms: clean(data.email_subject_terms),
     ignore_terms: clean(data.email_ignore_terms),
-    // Defaults to on when the column has not been added yet, matching the
-    // migration, so a database mid-deploy behaves the same as one that is done.
-    match_body: data.intake_match_body ?? true,
     source: "settings",
   });
 }
@@ -60,7 +57,6 @@ export async function GET(req: NextRequest) {
 const FALLBACK = {
   subject_terms: DEFAULT_SUBJECT_TERMS,
   ignore_terms: DEFAULT_IGNORE_TERMS,
-  match_body: true,
   source: "default",
 } as const;
 
@@ -106,14 +102,13 @@ export async function POST(req: NextRequest) {
   let filter = {
     terms: [...DEFAULT_SUBJECT_TERMS] as string[],
     ignoreTerms: [...DEFAULT_IGNORE_TERMS] as string[],
-    matchBody: true,
   };
   let source = "default";
 
   if (isServiceRoleConfigured) {
     const { data } = await createServiceRoleClient()
       .from("scoring_settings")
-      .select("email_subject_terms, email_ignore_terms, intake_match_body")
+      .select("email_subject_terms, email_ignore_terms")
       .eq("id", true)
       .maybeSingle();
     if (data) {
@@ -122,7 +117,6 @@ export async function POST(req: NextRequest) {
       filter = {
         terms: clean(data.email_subject_terms),
         ignoreTerms: clean(data.email_ignore_terms),
-        matchBody: data.intake_match_body ?? true,
       };
       source = "settings";
     }

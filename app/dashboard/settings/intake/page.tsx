@@ -18,7 +18,6 @@ export default async function Page() {
       <IntakeFilterEditor
         initialTerms={scoring?.email_subject_terms ?? []}
         initialIgnore={scoring?.email_ignore_terms ?? []}
-        initialMatchBody={scoring?.intake_match_body ?? true}
       />
     </SettingsShell>
   );
