@@ -14,6 +14,7 @@ import { toTimestamp } from "../lib/rfp.ts";
 import { checkDocumentUrl, isBlockedHost } from "../lib/url-guard.ts";
 import { consensusGap, decideVerdict, spreadOf } from "../lib/verdict.ts";
 import { DEFAULT_SUBJECT_TERMS, emailQualifies, namedAsSolicitation, sentByTheDesk } from "../lib/intake-filter.ts";
+import { classifyDocument } from "../lib/document-kind.ts";
 import { DEFAULT_WEIGHTS, RUBRIC, RUBRIC_MAX, rubricSchema, scoreFromRubric } from "../lib/rubric.ts";
 
 let passed = 0;
@@ -189,6 +190,51 @@ console.log("\nIntake filter");
   check("the desk recognises its own verdict email", sentByTheDesk({ subject: "Caravann RFP Desk: Go 84% - East Bay" }));
   check("...and an ordinary subject is not mistaken for one", !sentByTheDesk({ subject: "RFP No. 2026-14" }));
   check("a custom prefix still matches a longer word", qualifies({ subject: "Procurement notice" }, { ...base, terms: ["procure"] }));
+}
+
+console.log("\nDocument kind");
+{
+  const kind = (t) => classifyDocument(t);
+
+  const rfp = kind(`REQUEST FOR PROPOSAL (RFP)
+RFP NO.: 100120-FY27-09
+I. PURPOSE
+The Town is soliciting proposals. Scope of work: organizational review and strategic planning.`);
+  check("an RFP is a solicitation", rfp.kind === "solicitation", rfp.kind);
+
+  const addendum = kind(`ADDENDUM NO. 1
+RFP No. 100120-FY27-09
+The proposal due date is changed from September 3 to September 17.`);
+  check("an addendum is recognised", addendum.kind === "addendum", addendum.kind);
+  check("...and names the bid it amends", addendum.solicitationNumber === "100120-FY27-09", String(addendum.solicitationNumber));
+  check("...and which one it is", addendum.sequence === 1, String(addendum.sequence));
+
+  const qa = kind(`CLARIFYING QUESTIONS AND ANSWERS
+RFP No. 100120-FY27-09
+Q1: Is the thirty page limit inclusive of forms?
+A1: No. The forms do not count toward the limit.`);
+  check("an answer set is recognised", qa.kind === "clarifying_questions", qa.kind);
+  check("...and attaches to the same bid", qa.solicitationNumber === "100120-FY27-09", String(qa.solicitationNumber));
+
+  // A posting advertises a solicitation rather than containing one. Triaging
+  // the advert scores the advert.
+  const notice = kind(`Loudoun County Bid Board - New Posting
+Solicitation number: 100120-FY27-09
+The full solicitation document is attached as RFP-100120-FY27-09.pdf.`);
+  check("a posting-board advert is a notice", notice.kind === "notice", notice.kind);
+  check("...and says where the real document is", notice.attachmentName?.includes("RFP-100120-FY27-09.pdf"), String(notice.attachmentName));
+
+  // "attached", not only "attachment". The plural-only pattern read the
+  // commonest wording of the commonest notice as the solicitation itself.
+  const attached = kind(`New posting
+RFP No. 2026-14
+The solicitation is attached as RFP 2026-14.pdf. Vendors should download it.`);
+  check("a notice saying 'attached' is caught, not just 'attachment'", attached.kind === "notice", attached.kind);
+
+  // Anything it cannot place stays a solicitation, which is what happened
+  // before this existed.
+  const odd = kind("Some document with no markers of any kind that runs on for a while.");
+  check("anything unrecognised falls through to solicitation", odd.kind === "solicitation", odd.kind);
 }
 
 console.log("\nTeam match");

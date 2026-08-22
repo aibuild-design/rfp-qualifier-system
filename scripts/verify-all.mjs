@@ -180,11 +180,10 @@ heading("5 · Document extraction");
 {
   if (!APP) skip("extraction checks", "BID_DESK_URL not set");
   else {
-    const cases = [
-      ["PDF", "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf", "pdf"],
-      ["Word (.docx)", "https://calibre-ebook.com/downloads/demos/demo.docx", "docx"],
-      ["HTML page", "https://example.com/", "html"],
-    ];
+    // Only the Word file here is long enough to be a document. The other two are
+    // a one-line dummy PDF and example.com, and both are now refused for being
+    // too short to be a solicitation, which is the point of the check below.
+    const cases = [["Word (.docx)", "https://calibre-ebook.com/downloads/demos/demo.docx", "docx"]];
     for (const [label, url, expected] of cases) {
       try {
         const res = await post("/api/rfps/extract", { document_url: url });
@@ -192,6 +191,29 @@ heading("5 · Document extraction");
         ok(`reads ${label}`, res.status === 200 && body.format === expected, `format=${body.format} chars=${body.chars ?? 0}`);
       } catch (err) {
         ok(`reads ${label}`, false, err.message);
+      }
+    }
+
+    // A document that extracts to almost nothing has not been read.
+    //
+    // A scanned solicitation with no text layer does not come back empty. It
+    // comes back as the page number and the header, and that used to be a 200
+    // with fourteen characters, which triage then read twice and scored. The
+    // verdict was confident and it was about nothing.
+    for (const [label, url] of [
+      ["a one-line PDF", "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"],
+      ["a near-empty page", "https://example.com/"],
+    ]) {
+      try {
+        const res = await post("/api/rfps/extract", { document_url: url });
+        const body = await res.json();
+        ok(
+          `refuses ${label} as too short to be a solicitation`,
+          res.status === 422 && body.usable === false,
+          `http ${res.status}, ${body.chars ?? "?"} chars`,
+        );
+      } catch (err) {
+        ok(`refuses ${label} as too short to be a solicitation`, false, err.message);
       }
     }
     const dead = await post("/api/rfps/extract", { document_url: "https://www.w3.org/nope-404.pdf" });

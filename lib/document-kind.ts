@@ -143,10 +143,24 @@ export function classifyDocument(text: string): Classification {
   // A notice is recognised by what it lacks: it advertises a solicitation and
   // names the file holding it, rather than containing one. The attachment line
   // is the tell, because a real RFP does not point at itself.
-  const attachment = head.match(/([A-Za-z0-9._ -]*RFP[ _][A-Za-z0-9._ -]*\.pdf)/i);
+  // A hyphen counts, and so does nothing at all. Requiring a space or an
+  // underscore after "RFP" missed RFP-2026-14.pdf and RFP2026-14.pdf, which
+  // between them are most of how these files are actually named, so the notice
+  // was recognised and then could not say where the real document was.
+  // No spaces except the one that may follow "RFP", so the capture is the file
+  // name rather than the sentence around it. Allowing spaces on both sides made
+  // "The solicitation is attached as RFP-2026-14.pdf" capture the whole clause,
+  // and that string then went on the record as the document to fetch.
+  const attachment = head.match(/\b([A-Za-z0-9._-]*RFP[ _-]?[A-Za-z0-9._-]*\.pdf)/i);
   const postingBoard =
-    /electronic state business daily|state business daily|bid ?net|planetbids|bonfire|demandstar|sam\.gov/i.test(head);
-  const advertises = /\battachments?\b/i.test(head) && Boolean(attachment);
+    /electronic state business daily|state business daily|bid ?board|bid ?net|planetbids|bonfire|demandstar|bidexpress|periscope|vendor ?registry|public ?purchase|sam\.gov/i.test(
+      head,
+    );
+  // "attached", not only "attachment". A posting that says "the full
+  // solicitation is attached as RFP-2026-14.pdf" is the commonest wording of
+  // the commonest kind of notice, and the plural-only pattern read it as the
+  // solicitation itself.
+  const advertises = /\battach(?:ed|ment|ments|ing)\b/i.test(head) && Boolean(attachment);
   const lacksScope = !/\bscope of (?:work|services)\b/i.test(text) && text.length < 6000;
 
   if ((postingBoard || advertises) && lacksScope) {

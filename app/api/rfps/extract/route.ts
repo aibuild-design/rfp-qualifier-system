@@ -17,6 +17,11 @@ import { lookup } from "node:dns/promises";
 /** A solicitation is a document, not a disk image. Caps the download so a
  *  mistyped link to something enormous cannot exhaust the function. */
 const MAX_BYTES = 25 * 1024 * 1024;
+
+/** Below this, a document has not been read, whatever the extractor returned.
+ *  A real solicitation runs to thousands of characters; a scanned page with no
+ *  text layer returns tens. */
+const MIN_USABLE_CHARS = 500;
 const FETCH_TIMEOUT_MS = 30_000;
 
 export async function POST(req: NextRequest) {
@@ -166,9 +171,26 @@ export async function POST(req: NextRequest) {
   // No text means there is nothing to triage. Failing here is the honest
   // outcome - the alternative is a confident verdict about a document that was
   // never actually read.
-  if (!extraction.text) {
+  //
+  // "No text" includes almost none. A scanned solicitation with no text layer
+  // does not extract to an empty string: it extracts to the handful of
+  // characters that happen to be real text on the page, a header or a page
+  // number, and that came back as a 200 with fourteen characters. Triage then
+  // read fourteen characters, found no requirements in them, and produced a
+  // verdict. The document was never read and nothing in the result said so.
+  //
+  // Five hundred is far below any real solicitation and far above extraction
+  // noise, so it separates the two without needing to be tuned.
+  if (extraction.text.trim().length < MIN_USABLE_CHARS) {
     return NextResponse.json(
-      { error: extraction.warning ?? "No text could be extracted", format: extraction.format },
+      {
+        error:
+          extraction.warning ??
+          `Only ${extraction.text.trim().length} characters could be extracted, which is too little to be a solicitation. The file is most likely scanned images with no text layer.`,
+        format: extraction.format,
+        chars: extraction.text.trim().length,
+        usable: false,
+      },
       { status: 422 }
     );
   }
