@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { EdgeCaseList, PortalRules } from "@/components/ReviewQueue";
+import { ReviewSteps } from "@/components/ReviewSteps";
 
 // Module 11 - the weekly pass. Everything the system was unsure about, plus
 // the portal quirks it has been taught, in one place to clear in a sitting.
@@ -63,57 +64,125 @@ export default async function ReviewPage() {
 
   const preferences = learnPreferences(signals);
 
+  const pendingCases = pending ?? [];
+  const portalRules = rules ?? [];
+  const resolvedCases = resolved ?? [];
+
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-semibold text-rfp-ink">Weekly review</h1>
-        <p className="mt-1 text-sm text-rfp-ink-secondary">
-          Edge cases and proposed rule changes. Nothing applies until you approve it.
+        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-rfp-ink-secondary">
+          Four things to look at once a week. Nothing on this page changes anything until you say
+          so, and you can leave any step without deciding.
         </p>
       </div>
 
-      {/* First, because it answers the question the rest of the page assumes:
-          whether the desk's judgement is worth reviewing at all. */}
-      <CalibrationPanel calibration={calibration} preferences={preferences} />
-
-      {/* mt-8 like every other section heading on this page. Without it this
-          one sat flush against the card above while keeping the 12px gap to its
-          own list, so it read as the end of the previous section rather than
-          the start of this one. A heading has to be nearer what it labels than
-          what it follows. */}
-      <h2 className="mt-8 font-display text-sm font-semibold text-rfp-ink">
-        Waiting on you{pending?.length ? ` (${pending.length})` : ""}
-      </h2>
-      <div className="mt-3">
-        <EdgeCaseList items={pending ?? []} />
-      </div>
-
-      <h2 className="mt-8 font-display text-sm font-semibold text-rfp-ink">Portal rules</h2>
-      <p className="mt-1 text-xs text-rfp-ink-muted">
-        Taught once, applied to that portal&rsquo;s compliance checklist every time after.
-      </p>
-      <div className="mt-3">
-        <PortalRules rules={rules ?? []} />
-      </div>
-
-      {resolved && resolved.length > 0 && (
-        <>
-          <h2 className="mt-8 font-display text-sm font-semibold text-rfp-ink">Recently resolved</h2>
-          <ul className="mt-3 divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
-            {resolved.map((c) => (
-              <li key={c.id} className="flex items-start justify-between gap-3 px-5 py-3">
-                <p className="text-sm text-rfp-ink-secondary">{c.description}</p>
-                <span
-                  className="shrink-0 text-[11px] font-semibold uppercase tracking-wide"
-                  style={{ color: c.status === "approved" ? "var(--rfp-good)" : "var(--rfp-ink-muted)" }}
-                >
-                  {c.status}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      <ReviewSteps
+        steps={[
+          {
+            key: "calibration",
+            tab: "How it is doing",
+            title: "Is the desk agreeing with you?",
+            lede:
+              "Every time you overrule a verdict, that disagreement is recorded. This compares what the desk decided against what you decided, and proposes a threshold change when a pattern is clear enough to act on. It never changes a threshold itself.",
+            body: <CalibrationPanel calibration={calibration} preferences={preferences} />,
+          },
+          {
+            key: "waiting",
+            tab: "Waiting on you",
+            title: "Cases the desk could not settle",
+            lede:
+              "These are not mistakes. They are the bids where the desk was genuinely unsure and said so, and each one is here because a person can settle it in a few seconds.",
+            count: pendingCases.length,
+            needsYou: true,
+            body: (
+              <>
+                <ul className="mb-4 space-y-1.5 text-sm text-rfp-ink-secondary">
+                  <li className="flex gap-2">
+                    <span aria-hidden className="text-rfp-ink-muted">·</span>
+                    <span>The two reads disagreed by more than your tolerance allows</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span aria-hidden className="text-rfp-ink-muted">·</span>
+                    <span>A mandatory requirement could not be confirmed either way</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span aria-hidden className="text-rfp-ink-muted">·</span>
+                    <span>The score landed within two points of a threshold, where a rerun could flip the label</span>
+                  </li>
+                </ul>
+                <p className="mb-3 text-sm text-rfp-ink-secondary">
+                  <strong className="font-semibold text-rfp-ink">Approve</strong> applies the change
+                  the desk suggests.{" "}
+                  <strong className="font-semibold text-rfp-ink">Reject</strong> records that you
+                  looked and disagreed. Either way the case clears.
+                </p>
+                <EdgeCaseList items={pendingCases} />
+              </>
+            ),
+          },
+          {
+            key: "portals",
+            tab: "Portal rules",
+            title: "Things a portal does that no RFP tells you",
+            lede:
+              "Every procurement site has its own quirks, and they are almost never written in the solicitation. Teach the desk one here and it goes onto the compliance checklist of every future bid on that portal, so nobody has to remember it again.",
+            count: portalRules.length,
+            body: (
+              <>
+                <ul className="mb-4 space-y-1.5 text-sm text-rfp-ink-secondary">
+                  <li className="flex gap-2">
+                    <span aria-hidden className="text-rfp-ink-muted">·</span>
+                    <span>
+                      <span className="font-medium text-rfp-ink">eVA</span> will not accept an upload
+                      that is still in progress at the deadline
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span aria-hidden className="text-rfp-ink-muted">·</span>
+                    <span>
+                      <span className="font-medium text-rfp-ink">PlanetBids</span> runs a separate
+                      portal per agency, so registering on one is not registering on another
+                    </span>
+                  </li>
+                </ul>
+                <PortalRules rules={portalRules} />
+              </>
+            ),
+          },
+          {
+            key: "resolved",
+            tab: "Already done",
+            title: "What you cleared recently",
+            lede:
+              "The last ten cases you settled, so you can see what was decided and catch anything you would now call differently.",
+            count: resolvedCases.length,
+            body:
+              resolvedCases.length === 0 ? (
+                <p className="rounded-xl border border-rfp-border bg-rfp-surface px-5 py-4 text-sm text-rfp-ink-muted">
+                  Nothing cleared yet.
+                </p>
+              ) : (
+                <ul className="divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
+                  {resolvedCases.map((c) => (
+                    <li key={c.id} className="flex items-start justify-between gap-3 px-5 py-3">
+                      <p className="text-sm text-rfp-ink-secondary">{c.description}</p>
+                      <span
+                        className="shrink-0 text-[11px] font-semibold uppercase tracking-wide"
+                        style={{
+                          color: c.status === "approved" ? "var(--rfp-good)" : "var(--rfp-ink-muted)",
+                        }}
+                      >
+                        {c.status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ),
+          },
+        ]}
+      />
     </div>
   );
 }

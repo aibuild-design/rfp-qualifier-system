@@ -2,6 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import { addPortalRule, removePortalRule, resolveEdgeCase } from "@/app/dashboard/review/actions";
+import { Paged } from "@/components/ReviewSteps";
 import type { EdgeCaseRow, PortalRuleRow } from "@/lib/supabase/types";
 
 export function EdgeCaseList({ items }: { items: EdgeCaseRow[] }) {
@@ -29,15 +30,27 @@ export function EdgeCaseList({ items }: { items: EdgeCaseRow[] }) {
   }
 
   return (
+    <Paged
+      items={visible}
+      perPage={5}
+      noun="cases"
+      render={(page) => (
     <ul className="divide-y divide-rfp-border overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
-      {visible.map((c) => (
+      {page.map((c) => (
         <li key={c.id} className="px-5 py-4">
-          <p className="text-sm text-rfp-ink">{c.description}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">
+            What happened
+          </p>
+          <p className="mt-1 text-sm text-rfp-ink">{c.description}</p>
           {c.proposed_rule_change && (
-            <p className="mt-2 rounded-lg bg-rfp-surface-sunken px-3 py-2 text-xs leading-relaxed text-rfp-ink-secondary">
-              <span className="font-semibold text-rfp-ink">Proposed rule: </span>
-              {c.proposed_rule_change}
-            </p>
+            <div className="mt-3 rounded-lg bg-rfp-surface-sunken px-3 py-2.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">
+                What the desk suggests
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-rfp-ink-secondary">
+                {c.proposed_rule_change}
+              </p>
+            </div>
           )}
           <div className="mt-3 flex items-center gap-2">
             <button
@@ -56,6 +69,8 @@ export function EdgeCaseList({ items }: { items: EdgeCaseRow[] }) {
         </li>
       ))}
     </ul>
+      )}
+    />
   );
 }
 
@@ -79,11 +94,17 @@ export function PortalRules({ rules }: { rules: PortalRuleRow[] }) {
     <div className="overflow-hidden rounded-xl border border-rfp-border bg-rfp-surface">
       {rules.length === 0 ? (
         <p className="px-5 py-4 text-sm text-rfp-ink-muted">
-          No rules recorded. Teach it one once and it applies to that portal from then on.
+          Nothing taught yet. Add one and it goes onto the checklist of every future bid on that
+          portal, without anyone having to remember it.
         </p>
       ) : (
+        <Paged
+          items={rules}
+          perPage={6}
+          noun="rules"
+          render={(page) => (
         <ul className="divide-y divide-rfp-border">
-          {rules.map((r) => (
+          {page.map((r) => (
             <li key={r.id} className="flex items-start justify-between gap-3 px-5 py-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-rfp-ink-muted">
@@ -101,6 +122,8 @@ export function PortalRules({ rules }: { rules: PortalRuleRow[] }) {
             </li>
           ))}
         </ul>
+          )}
+        />
       )}
 
       <div className="flex flex-wrap gap-2 border-t border-rfp-border p-3">
